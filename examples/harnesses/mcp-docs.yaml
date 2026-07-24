@@ -1,0 +1,75 @@
+version: 1
+name: example-mcp-docs
+description: Builtin research harness backed by a local FastMCP documentation server.
+flavor: coding
+runtime:
+  backend: builtin
+  config:
+    mcp_servers:
+      docs:
+        transport: stdio
+        command: uv
+        args:
+          - run
+          - python
+          - examples/mcp/local_docs_server.py
+        tools:
+          - search_docs
+model_policy:
+  primary: gpt-4o-mini
+  profile: balanced-coding
+  temperature: 0.1
+  reasoning: medium
+  config:
+    provider: openai
+    max_iterations: 6
+execution_policy:
+  sandbox: local
+  approval_profile: deny
+  allow_read: true
+  allow_write: false
+  allow_shell: false
+  allow_network: false
+  allowed_commands: []
+  blocked_categories:
+    - destructive
+    - credential-access
+agents:
+  - id: docs-researcher
+    role: Search the local SuperQode documentation and answer with relevant paths.
+    system_prompt: |
+      Use mcp_docs_search_docs to find relevant SuperQode documentation before
+      answering. Cite the returned documentation paths.
+    tools:
+      - mcp_docs_search_docs
+    skills:
+      - repo-navigation
+    max_iterations: 6
+workflow:
+  mode: single
+  max_task_depth: 1
+  parallelism: 1
+  merge_strategy: summary
+context:
+  instruction_files:
+    - AGENTS.md
+    - SUPERQODE.md
+  skills_dir: .agents/skills
+  roles_dir: .agents/roles
+  session_storage: .superqode/sessions
+  compaction:
+    strategy: summarize-when-large
+  memory:
+    enabled: false
+checks:
+  enabled: false
+  fail_on_error: false
+  timeout_seconds: 300
+  custom_steps: []
+observability:
+  events: true
+  traces: false
+  run_store: file
+metadata:
+  example: mcp-docs
+  best_for: local MCP client and harness bridge testing

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.37] - 2026-07-24
+
+### Added
+
+- **Runnable MCP harness example** - Added a local stdio MCP documentation server and HarnessSpec that demonstrate MCP tool discovery and execution without an external service.
+- **MCP compatibility documentation** - Documented the separate MCP client, harness bridge, and harness-serving surfaces, including their current runtime ownership and protocol support.
+
+### Changed
+
+- **Standalone FastMCP server** - Migrated `superqode mcp` and `superqode serve harness` from the FastMCP 1.0 copy bundled in the MCP Python SDK to Prefect's stable standalone FastMCP 3.4.4 framework.
+- **MCP dependency safety** - Bounded the direct MCP Python SDK dependency below v2 while its breaking protocol stack remains prerelease, preventing an unplanned production upgrade.
+- **Release metadata** - Bumped package, runtime, lockfile, ACP registry, and package checks to `0.2.37`.
+
 ## [0.2.36] - 2026-07-24
 
 ### Added

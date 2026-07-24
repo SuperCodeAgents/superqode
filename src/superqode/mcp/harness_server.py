@@ -185,7 +185,7 @@ async def run_harness_workflow(
 
 def build_harness_mcp_server(harness_dir: Optional[str] = None):
     """Construct a FastMCP server exposing the harness tools."""
-    from mcp.server.fastmcp import FastMCP
+    from fastmcp import FastMCP
 
     server = FastMCP("superqode-harness")
 
@@ -249,9 +249,7 @@ def run_server(
 ) -> None:
     server = build_harness_mcp_server(harness_dir)
     if transport == "http":
-        server.settings.host = host
-        server.settings.port = port
-        server.run(transport="streamable-http")
+        server.run(transport="http", host=host, port=port)
     else:
         server.run(transport="stdio")
 

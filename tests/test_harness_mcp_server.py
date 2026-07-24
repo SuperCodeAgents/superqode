@@ -9,6 +9,7 @@ from superqode.mcp.harness_server import (
     build_harness_mcp_server,
     build_steps_from_spec,
     discover_harness_specs,
+    run_server,
 )
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples" / "harnesses"
@@ -28,9 +29,44 @@ def test_server_registers_three_tools():
     server = build_harness_mcp_server(str(EXAMPLES))
     import asyncio
 
+    assert type(server).__module__.startswith("fastmcp.")
     tools = asyncio.run(server.list_tools())
     names = {t.name for t in tools}
     assert {"list_harnesses", "describe_harness", "run_harness"} <= names
+
+
+@pytest.mark.parametrize(
+    ("transport", "expected"),
+    [
+        ("stdio", {"transport": "stdio"}),
+        (
+            "http",
+            {"transport": "http", "host": "127.0.0.2", "port": 9876},
+        ),
+    ],
+)
+def test_run_server_passes_transport_settings_to_fastmcp(
+    monkeypatch, transport, expected
+):
+    calls = []
+
+    class FakeServer:
+        def run(self, **kwargs):
+            calls.append(kwargs)
+
+    monkeypatch.setattr(
+        "superqode.mcp.harness_server.build_harness_mcp_server",
+        lambda harness_dir: FakeServer(),
+    )
+
+    run_server(
+        transport=transport,
+        host="127.0.0.2",
+        port=9876,
+        harness_dir=str(EXAMPLES),
+    )
+
+    assert calls == [expected]
 
 
 @pytest.mark.parametrize("spec_name", ["coding", "ds4"])

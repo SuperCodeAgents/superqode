@@ -388,6 +388,18 @@ SuperQode is tuned for local and Open Models, where context, tool calling, memor
 - **Safe parallelism**: Run read only tool batches concurrently while preserving strict order for edits, writes, and shell commands.
 - **Harness over MCP**: Expose your HarnessSpec workflows as MCP tools for any MCP client, alongside A2A and ACP servers.
 
+Serve every HarnessSpec in a directory over stdio or Streamable HTTP:
+
+```bash
+superqode mcp --dir ./harnesses
+superqode mcp --dir ./harnesses --http --port 8765
+```
+
+This is distinct from adding external MCP tools to a harness through
+`runtime.config.mcp_servers`. See the
+[MCP command](docs/cli-reference/mcp-command.md) and
+[MCP configuration](docs/configuration/mcp-config.md) guides.
+
 ## Developer Workflows
 
 Use SuperQode as a daily coding-agent harness from the TUI or CLI:

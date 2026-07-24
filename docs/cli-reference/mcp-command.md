@@ -11,12 +11,37 @@ superqode mcp [OPTIONS]
 This complements ACP and A2A. ACP connects to external coding agents. A2A
 connects agent services. MCP exposes your harness workflows as tools.
 
+This command is the **serving** side of SuperQode's MCP support. It is separate
+from configuring external MCP servers that SuperQode consumes as agent tools;
+see [MCP Configuration](../configuration/mcp-config.md) for that client path.
+
 ## Examples
 
 ```bash
 superqode mcp
 superqode mcp --dir ./harnesses
 superqode mcp --http --host 127.0.0.1 --port 8765
+```
+
+A typical stdio client entry is:
+
+```json
+{
+  "mcpServers": {
+    "superqode": {
+      "command": "superqode",
+      "args": ["mcp", "--dir", "./harnesses"]
+    }
+  }
+}
+```
+
+For a repository-local, runnable MCP consumer example:
+
+```bash
+superqode harness run \
+  --spec examples/harnesses/mcp-docs.yaml \
+  --prompt "Where is HarnessSpec documented?"
 ```
 
 ## Options
@@ -28,15 +53,38 @@ superqode mcp --http --host 127.0.0.1 --port 8765
 | `--port INTEGER` | HTTP port, default `8765` |
 | `--dir TEXT` | Directory of harness specs |
 
+## Compatibility
+
+| Surface | Implementation in this release | Ownership |
+| --- | --- | --- |
+| `superqode mcp` / `superqode serve harness` | Standalone FastMCP 3.4.4 over MCP Python SDK v1 | SuperQode |
+| Harness `runtime.config.mcp_servers` with `builtin` | SuperQode MCP bridge | SuperQode |
+| Harness `runtime.config.mcp_servers` with `openai-agents` | SuperQode tools bridged as SDK function tools | SuperQode |
+| PydanticAI MCP configuration | PydanticAI-native MCP toolsets | PydanticAI |
+| Codex, Claude, and Copilot MCP configuration | Runtime or local agent configuration | Runtime owner |
+| Google ADK MCP configuration | Not yet bridged | SuperQode follow-up |
+
+The production dependency remains on MCP Python SDK v1 while FastMCP 4 and MCP
+Python SDK v2 are prerelease. This release therefore preserves the legacy
+initialization protocol. Modern stateless MCP will be enabled through FastMCP
+after its v4 compatibility matrix passes.
+
+SSE is retained only for legacy MCP servers. Prefer stdio for local servers and
+Streamable HTTP for remote servers.
+
 ## When To Use It
 
 Use MCP serving when you want Claude Desktop, an IDE, another agent, or an
 internal tool to call a SuperQode harness without handing control of the harness
 to that client.
 
+HTTP binds to loopback by default. Do not bind to `0.0.0.0` or another
+non-loopback address unless an authenticated reverse proxy or equivalent
+network access control protects the endpoint. `run_harness` can execute tools
+and workflows allowed by the selected HarnessSpec.
+
 Related pages:
 
 - [Harness System](../advanced/harness-system.md)
 - [MCP Configuration](../configuration/mcp-config.md)
 - [Serve Commands](serve-commands.md)
-

@@ -9,8 +9,11 @@ Complete guide to configuring Model Context Protocol (MCP) servers in SuperQode.
 MCP servers provide tools and resources that agents can use during SuperQode sessions and harness runs. SuperQode supports:
 
 - **Stdio Transport**: Local process-based servers
-- **HTTP Transport**: HTTP/HTTPS servers
-- **SSE Transport**: Server-Sent Events for streaming
+- **HTTP Transport**: Streamable HTTP servers
+- **SSE Transport**: Legacy Server-Sent Events servers
+
+This page describes SuperQode **consuming** external MCP servers. To expose
+HarnessSpec workflows as an MCP server, use [`superqode mcp`](../cli-reference/mcp-command.md).
 
 ---
 
@@ -280,7 +283,35 @@ mcp_servers:
 
 ## MCP Server Assignment
 
-MCP servers defined in `mcp_servers` are available to all sessions automatically.
+MCP ownership depends on the selected runtime:
+
+| Runtime path | How MCP servers are attached |
+| --- | --- |
+| `builtin` HarnessSpec | `runtime.config.mcp_servers` uses the SuperQode bridge |
+| `openai-agents` HarnessSpec | SuperQode bridges discovered MCP tools as SDK function tools |
+| PydanticAI | Uses its native MCP configuration path |
+| Codex, Claude, and Copilot SDKs | Uses the runtime's local MCP configuration |
+| ACP coding agents | SuperQode forwards enabled JSON MCP definitions during session creation |
+| Google ADK | MCP tools are not bridged yet |
+
+Project-level `mcp_servers` definitions are available to SuperQode-managed
+client sessions, but they are not automatically injected into every vendor SDK.
+Use the runtime-specific documentation when the runtime owns its MCP lifecycle.
+
+### Runnable Harness Example
+
+The repository includes a local FastMCP documentation server and a HarnessSpec
+that consumes it over stdio:
+
+```bash
+superqode harness run \
+  --spec examples/harnesses/mcp-docs.yaml \
+  --prompt "Find the documentation for MCP serving"
+```
+
+The example server is
+`examples/mcp/local_docs_server.py`. Its tool is exposed to the harness as
+`mcp_docs_search_docs`.
 
 ## Environment Variables
 
