@@ -37,12 +37,14 @@ hide:
 ## Installation and first run
 
 ```bash
-uv tool install superqode    # or run without installing: uvx superqode
+curl -LsSf https://superagenticai.github.io/superqode/install.sh | sh
 cd your-project
 superqode
 ```
 
-This installs the latest [SuperQode release](https://pypi.org/project/superqode/) from PyPI.
+The installer adds `uv` when needed, installs the latest
+[SuperQode release](https://pypi.org/project/superqode/) from PyPI in an
+isolated environment, and verifies the command. It does not use `sudo`.
 
 The command starts the interactive TUI. Connect a model with one of the following commands:
 

@@ -143,6 +143,52 @@ def no_tool_template(*, name: str = "superqode-no-tool", backend: str = "builtin
     )
 
 
+def tau_template(*, name: str = "tau") -> HarnessSpec:
+    """Read-only first-party preset for Hugging Face Tau."""
+    return HarnessSpec(
+        name=name,
+        description=(
+            "Hugging Face Tau event-first agent in read-only preview mode; "
+            "sessions and progress remain visible in SuperQode."
+        ),
+        flavor=HarnessFlavor.CODING,
+        runtime=RuntimeSpec(
+            backend="tau",
+            config={"tool_mode": "read-only"},
+        ),
+        model_policy=ModelPolicySpec(
+            profile="tau",
+            config={
+                "tool_profile": "read-only",
+                "tau_uses_own_provider_catalog": True,
+            },
+        ),
+        execution_policy=ExecutionPolicySpec(
+            sandbox="local",
+            approval_profile="deny",
+            allow_read=True,
+            allow_write=False,
+            allow_shell=False,
+            allow_network=False,
+        ),
+        agents=(
+            AgentSpec(
+                id="tau",
+                role="repository-inspection",
+                tools=("read",),
+            ),
+        ),
+        checks=ChecksSpec(enabled=False),
+        metadata={
+            "template": "tau",
+            "builtin_harness": True,
+            "category": "workflow",
+            "continuity": "exact-resume",
+            "optional_dependency": "tau-ai>=0.3.3,<0.4",
+        },
+    )
+
+
 def gemma4_coding_template() -> HarnessSpec:
     """Gemma4-optimized coding harness starting point."""
     base = coding_template(name="gemma4-coding")
@@ -418,6 +464,7 @@ BUILTIN_TEMPLATES = {
     "benchmark_coding": benchmark_coding_template,
     "no-tool": no_tool_template,
     "no_tool": no_tool_template,
+    "tau": tau_template,
     "gemma4-coding": gemma4_coding_template,
     "gemma4-no-tool": gemma4_no_tool_template,
     "gemma4-no_tool": gemma4_no_tool_template,

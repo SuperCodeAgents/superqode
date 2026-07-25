@@ -24,7 +24,9 @@ classifiers = [
 dependencies = [
     "pyyaml>=6.0.3",
     "click>=8.0.0",
-    "litellm>=1.83.14",
+    # 1.92+ stopped publishing macOS wheels and requires a local Rust build.
+    # Keep installs one-command and cross-platform until macOS wheels return.
+    "litellm>=1.83.14,<1.92",
     # Actively evolving protocol library: 0.11 removed session/set_model and its
     # schema types. Code supports 0.10 and 0.11; cap to avoid surprise breakage
     # in released artifacts.
@@ -144,6 +146,11 @@ pydanticai-logfire = [
 ]
 rlm-code = [
     "rlm-code[llm-all]>=0.1.11,<0.2.0",
+]
+tau = [
+    # Hugging Face's Python port of Pi. Keep the fast-moving pre-1.0 API
+    # bounded to the adapter version tested by SuperQode.
+    "tau-ai>=0.3.3,<0.4.0",
 ]
 mem0 = [
     "mem0ai>=2.0.4,<3.0.0",

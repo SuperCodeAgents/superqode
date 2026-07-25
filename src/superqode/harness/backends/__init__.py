@@ -29,6 +29,7 @@ from .runtime import (
     OpenAIAgentsHarnessBackend,
     RuntimeHarnessBackend,
 )
+from .tau import TauHarnessBackend
 
 __all__ = [
     "HarnessBackend",
@@ -47,6 +48,7 @@ __all__ = [
     "RLMCodeHarnessBackend",
     "RLMCodeSettings",
     "RuntimeHarnessBackend",
+    "TauHarnessBackend",
     "backend_capabilities",
     "create_harness_backend",
     "inspect_harness_backend",

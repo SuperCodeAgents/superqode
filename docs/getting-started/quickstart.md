@@ -12,7 +12,7 @@ SuperQode is your portable coding agent harness. A harness defines the run contr
 ## 1. Install
 
 ```bash
-uv tool install superqode
+curl -LsSf https://superagenticai.github.io/superqode/install.sh | sh
 ```
 
 Optional runtime backends are installed only when you need them:

@@ -17,7 +17,13 @@ from ..agent.loop_policy import (
 from .loader import harness_spec_to_dict, load_harness_spec
 from .registry import list_registry_specs
 from .spec import HarnessSpec
-from .templates import BUILTIN_TEMPLATES, core_template, no_tool_template, workbench_template
+from .templates import (
+    BUILTIN_TEMPLATES,
+    core_template,
+    no_tool_template,
+    tau_template,
+    workbench_template,
+)
 
 
 DEFAULT_HARNESS_ID = "core"
@@ -139,6 +145,10 @@ def builtin_harnesses() -> tuple[HarnessDefinition, ...]:
     core = core_template()
     workbench = workbench_template()
     no_tool = no_tool_template(name="no-tool")
+    tau = tau_template()
+    from .tau_adapter import tau_installation_status
+
+    tau_available, tau_issue = tau_installation_status()
     workflows = (
         HarnessDefinition(
             id="core",
@@ -174,6 +184,7 @@ def builtin_harnesses() -> tuple[HarnessDefinition, ...]:
     )
     reserved = {entry.id for entry in workflows}
     reserved.update(alias for entry in workflows for alias in entry.aliases)
+    reserved.add("tau")
     presets: list[HarnessDefinition] = []
     seen_factories: set[object] = set()
     for template_id, factory in BUILTIN_TEMPLATES.items():
@@ -197,7 +208,19 @@ def builtin_harnesses() -> tuple[HarnessDefinition, ...]:
                 aliases=(template_id.replace("-", "_"),),
             )
         )
-    return workflows + tuple(presets)
+    tau_entry = HarnessDefinition(
+        id="tau",
+        display_name="Tau (Hugging Face)",
+        description=tau.description,
+        runtime=tau.runtime.backend,
+        source="optional:tau",
+        spec=tau,
+        loop_policy=workbench_loop_policy(),
+        aliases=("huggingface-tau", "hf-tau"),
+        available=tau_available,
+        issue=tau_issue,
+    )
+    return workflows + tuple(presets) + (tau_entry,)
 
 
 def _candidate_paths(root: Path) -> Iterable[Path]:

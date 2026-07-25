@@ -23,6 +23,7 @@ from .runtime import (
     OpenAIAgentsHarnessBackend,
     RuntimeHarnessBackend,
 )
+from .tau import TauHarnessBackend
 
 _RUNTIME_BACKENDS = {"builtin"}
 _OPTIONAL_BACKENDS = {
@@ -36,6 +37,7 @@ _OPTIONAL_BACKENDS = {
     "google-agent-engine",
     "pydanticai",
     "rlm-code",
+    "tau",
 }
 
 
@@ -60,6 +62,8 @@ def create_harness_backend(name: str | None) -> HarnessBackend:
         return PydanticAIHarnessBackend()
     if resolved == "rlm-code":
         return RLMCodeHarnessBackend()
+    if resolved == "tau":
+        return TauHarnessBackend()
     if resolved in {"google-agent-engine", "anthropic-managed"}:
         return ManagedAgentHarnessBackend(resolved)
     valid = ", ".join(known_harness_backend_names())
@@ -156,6 +160,15 @@ def backend_capabilities(name: str | None):
 def _with_availability(capabilities: HarnessBackendCapabilities) -> HarnessBackendCapabilities:
     if capabilities.backend in {"google-agent-engine", "anthropic-managed"}:
         return capabilities
+    if capabilities.backend == "tau":
+        from ..tau_adapter import tau_installation_status
+
+        available, issue = tau_installation_status()
+        return replace(
+            capabilities,
+            availability="available" if available else "missing",
+            install_hint=None if available else issue,
+        )
     from superqode.providers.env_introspect import install_command
 
     packages = {
@@ -167,6 +180,7 @@ def _with_availability(capabilities: HarnessBackendCapabilities) -> HarnessBacke
         "deepagents": ("deepagents", "deepagents"),
         "pydanticai": ("pydantic_ai", "pydanticai"),
         "rlm-code": ("rlm_code", "rlm-code"),
+        "tau": ("tau_coding", "tau"),
     }
     module_name, extra = packages.get(capabilities.backend, (None, None))
     hint = install_command(extra) if extra else None

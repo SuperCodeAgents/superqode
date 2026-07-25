@@ -117,6 +117,7 @@ superqode harness init my-coder -t qwen-coding
 | `ds4-fast-local` | DS4 fast local iteration starter |
 | `coding` | Any model (generic full coding agent) |
 | `no-tool` | Model-only reasoning/review, no tools |
+| `tau` | Hugging Face Tau event-first harness (optional, read-only preset) |
 
 List them anytime with `superqode harness list-templates`.
 

@@ -1,6 +1,7 @@
 # Installation
 
-This guide covers SuperQode installation with uv, including prerequisites, verification, optional runtime extras, and troubleshooting.
+This guide covers the one-line SuperQode installer and direct uv installation,
+including verification, optional runtime extras, and troubleshooting.
 
 **Safety note (OSS):** Run the open-source SuperQode in a safe, controlled environment (sandbox, VM, or low-risk machine). This reduces the blast radius for testing workflows and agent-driven actions.
 
@@ -8,10 +9,33 @@ This guide covers SuperQode installation with uv, including prerequisites, verif
 
 ## Quick Install
 
-SuperQode uses [uv](https://docs.astral.sh/uv/) as the supported installer and development workflow. Install uv first if it is not already available.
+Run the hosted installer on macOS, Linux, or WSL:
 
 ```bash
-uv tool install superqode
+curl -LsSf https://superagenticai.github.io/superqode/install.sh | sh
+```
+
+It:
+
+- uses an existing [uv](https://docs.astral.sh/uv/) installation when available;
+- otherwise announces and runs Astral's official uv installer;
+- installs the latest SuperQode release from PyPI in an isolated tool environment;
+- verifies both `superqode --version` and `sq --version`; and
+- never uses `sudo`.
+
+If you prefer to inspect downloaded scripts before running them:
+
+```bash
+curl -LsSf https://superagenticai.github.io/superqode/install.sh \
+  -o superqode-install.sh
+less superqode-install.sh
+sh superqode-install.sh
+```
+
+If uv is already installed, the direct equivalent is:
+
+```bash
+uv tool install --upgrade --force superqode
 ```
 
 Or run once without installing:
@@ -19,8 +43,6 @@ Or run once without installing:
 ```bash
 uvx superqode
 ```
-
-This installs the latest [SuperQode release](https://pypi.org/project/superqode/) from PyPI.
 
 Verify the installed tool:
 
@@ -91,7 +113,19 @@ If you need to install Python 3.12+:
 
 ## Installation Methods
 
-### Method 1: uv (Primary Recommendation)
+### Method 1: One-line installer
+
+```bash
+curl -LsSf https://superagenticai.github.io/superqode/install.sh | sh
+```
+
+Run the same command later to upgrade. Uninstall with:
+
+```bash
+uv tool uninstall superqode
+```
+
+### Method 2: uv directly
 
 Use `uv` for an isolated tool installation managed separately from project environments.
 
@@ -103,13 +137,33 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv tool install superqode
 ```
 
-### Method 2: uvx (No Persistent Install)
+### Method 3: uvx (No Persistent Install)
 
 Run SuperQode directly through uv when you want a temporary command.
 
 ```bash
 uvx superqode --version
 ```
+
+### Installing optional extras in one line
+
+Set `SUPERQODE_EXTRAS` immediately before the installer. For example, install
+the Hugging Face Tau adapter:
+
+```bash
+curl -LsSf https://superagenticai.github.io/superqode/install.sh |
+  SUPERQODE_EXTRAS=tau sh
+```
+
+Multiple extras use commas:
+
+```bash
+curl -LsSf https://superagenticai.github.io/superqode/install.sh |
+  SUPERQODE_EXTRAS=tau,vendor-sdks sh
+```
+
+Release automation can install an exact published version with
+`SUPERQODE_VERSION=0.2.37`.
 
 ## Installation for Developers
 
@@ -268,6 +322,7 @@ uv tool install "superqode[<extra>]"
 | `pydanticai` | PydanticAI runtime |
 | `pydanticai-logfire` | PydanticAI runtime with Logfire instrumentation |
 | `rlm-code` | RLM Code recursive harness backend |
+| `tau` | Hugging Face Tau Harness Protocol adapter and read-only TUI preset |
 | `mem0` | Mem0 memory provider |
 | `supermemory` | Supermemory provider |
 | `memory-providers` | Mem0 and Supermemory together |

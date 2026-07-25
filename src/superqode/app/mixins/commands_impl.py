@@ -2329,6 +2329,16 @@ class CommandImplMixin:
                 guidance="Run :harness to review available harnesses.",
             )
             return
+        if not entry.available:
+            self._announce_transition(
+                title="Harness needs setup",
+                primary=entry.display_name,
+                detail=entry.issue or "optional dependency is unavailable",
+                severity="warning",
+                log=log,
+                guidance="Install the dependency, then reopen :harness.",
+            )
+            return
 
         pure = self._ensure_pure_mode()
         previous_session_id = pure.get_current_session_id()

@@ -157,11 +157,17 @@ Runtime backends are interchangeable execution adapters behind the same harness 
 | `deepagents` | optional | You want DeepAgents graph, middleware, and subagent behavior for tool-capable coding harnesses |
 | `pydanticai` | optional | You want PydanticAI behavior with SuperQode tools and HarnessSpec policy |
 | `rlm-code` | optional | You want RLM Code v0.1.11+ recursive REPL execution, LID context isolation, and native trajectory evidence behind a HarnessSpec |
+| `tau` | optional | You want Hugging Face Tau's event-first Python harness and native JSONL sessions behind Harness Protocol |
 
 The `rlm-code` backend delegates recursive execution to RLM Code and maps its context record, steps,
 root/submodel usage, harness-exposure metrics, and native JSONL trajectory into SuperQode events and evidence.
 Install it with `uv tool install "superqode[rlm-code]"`; see [RLM Code Integration](rlm-code.md) for the
 configuration and safety boundary.
+
+The `tau` backend is selectable in `:harness` after installing
+`superqode[tau]`. Its maintained preset exposes only Tau's `read` tool because
+Tau's write, edit, and shell tools do not yet pass through SuperQode's approval
+manager. See [Hugging Face Tau Integration](tau.md).
 
 The `deepagents` backend is intentionally not used for no-tool harnesses. DeepAgents 0.6 is built around a
 tool-capable deep-agent stack, so SuperQode rejects no-tool specs for that backend and directs users to the

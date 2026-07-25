@@ -2314,6 +2314,9 @@ wheels = [
 http2 = [
     { name = "h2" },
 ]
+socks = [
+    { name = "socksio" },
+]
 
 [[package]]
 name = "httpx-sse"
@@ -6232,6 +6235,15 @@ wheels = [
 ]
 
 [[package]]
+name = "socksio"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/5c/48a7d9495be3d1c651198fd99dbb6ce190e2274d0f28b9051307bdec6b85/socksio-1.0.0.tar.gz", hash = "sha256:f88beb3da5b5c38b9890469de67d0cb0f9d494b78b106ca1845f96c10b91c4ac", size = 19055, upload-time = "2020-04-17T15:50:34.664Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/37/c3/6eeb6034408dac0fa653d126c9204ade96b819c936e136c5e8a6897eee9c/socksio-1.0.0-py3-none-any.whl", hash = "sha256:95dc1f15f9b34e8d7b16f06d74b8ccf48f609af32ab33c608d08761c5dcbb1f3", size = 12763, upload-time = "2020-04-17T15:50:31.878Z" },
+]
+
+[[package]]
 name = "sortedcontainers"
 version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -6547,6 +6559,9 @@ semantic = [
 supermemory = [
     { name = "supermemory" },
 ]
+tau = [
+    { name = "tau-ai" },
+]
 testing = [
     { name = "bandit" },
     { name = "coverage" },
@@ -6604,7 +6619,7 @@ requires-dist = [
     { name = "httpx-sse", specifier = ">=0.4.3" },
     { name = "huggingface-hub", extras = ["hf-xet"], marker = "extra == 'hf'", specifier = ">=1.0.0" },
     { name = "langsmith", marker = "extra == 'observability'", specifier = ">=0.8.5" },
-    { name = "litellm", specifier = ">=1.83.14" },
+    { name = "litellm", specifier = ">=1.83.14,<1.92" },
     { name = "locust", marker = "extra == 'performance'", specifier = ">=2.33.0" },
     { name = "logfire", marker = "extra == 'observability'", specifier = ">=4.33.0" },
     { name = "logfire", marker = "extra == 'pydanticai-logfire'", specifier = ">=4.0.0" },
@@ -6653,12 +6668,13 @@ requires-dist = [
     { name = "supermemory", marker = "extra == 'memory-providers'", specifier = ">=3.45.0,<4.0.0" },
     { name = "supermemory", marker = "extra == 'supermemory'", specifier = ">=3.45.0,<4.0.0" },
     { name = "superopt", specifier = ">=0.1.1" },
+    { name = "tau-ai", marker = "extra == 'tau'", specifier = ">=0.3.3,<0.4.0" },
     { name = "textual", specifier = ">=0.47.0" },
     { name = "textual-serve", marker = "extra == 'web'", specifier = ">=1.1.3" },
     { name = "uvicorn", marker = "extra == 'a2a'", specifier = ">=0.32.0" },
     { name = "websocket-client", marker = "extra == 'channels'", specifier = ">=1.6.0" },
 ]
-provides-extras = ["hf", "mlx", "monty", "semantic", "channels", "sandbox-e2b", "sandbox-modal", "sandbox-daytona", "sandbox-cloud", "web", "extras", "a2a", "adk", "openai-agents", "codex-sdk", "copilot-sdk", "claude-agent-sdk", "antigravity-sdk", "vendor-sdks", "deepagents", "pydanticai", "pydanticai-logfire", "rlm-code", "mem0", "supermemory", "memory-providers", "dev", "testing", "linters", "ui-testing", "performance", "docs", "optimization", "observability"]
+provides-extras = ["hf", "mlx", "monty", "semantic", "channels", "sandbox-e2b", "sandbox-modal", "sandbox-daytona", "sandbox-cloud", "web", "extras", "a2a", "adk", "openai-agents", "codex-sdk", "copilot-sdk", "claude-agent-sdk", "antigravity-sdk", "vendor-sdks", "deepagents", "pydanticai", "pydanticai-logfire", "rlm-code", "tau", "mem0", "supermemory", "memory-providers", "dev", "testing", "linters", "ui-testing", "performance", "docs", "optimization", "observability"]
 
 [[package]]
 name = "synchronicity"
@@ -6670,6 +6686,25 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5d/1c/f51dc54bbd302991026a53f9790735540e0e9e1184e9d5939f02446aa5bc/synchronicity-0.12.5.tar.gz", hash = "sha256:94d96b1d85698e3056b96a793b8c0949af6584e4a7d877fabdeb5385efe230aa", size = 60745, upload-time = "2026-06-18T21:06:23.545Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/06/74/ad9b99520f70c0bc3318e582e359d360cfc0f7afd7bf368a7f24013cece7/synchronicity-0.12.5-py3-none-any.whl", hash = "sha256:fdbbb10d437bc08a6b0f814fc66fddd1b58ffed314533d42f1ab555801e781af", size = 41107, upload-time = "2026-06-18T21:06:22.505Z" },
+]
+
+[[package]]
+name = "tau-ai"
+version = "0.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "httpx", extra = ["socks"] },
+    { name = "packaging" },
+    { name = "pydantic" },
+    { name = "pygments" },
+    { name = "rich" },
+    { name = "textual" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6f/06/4379bce9fc9cf88864c2cd9942e30f4e4ca36a3223f339016e85f8e93583/tau_ai-0.3.3.tar.gz", hash = "sha256:a798043dc4aa8d43c7176dbf9a3b7a08d7c037eefc8f1a47888253b9172a95a8", size = 826155, upload-time = "2026-07-24T23:13:08.361Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f6/99/377ab583a389cf5a39e7b30d39f86214975cff6afd29673961728a6bfbc0/tau_ai-0.3.3-py3-none-any.whl", hash = "sha256:8176111b87952a22b64abcb11b1d2e96ec960423a287a8d0e986b8a070a2bc10", size = 341468, upload-time = "2026-07-24T23:13:06.907Z" },
 ]
 
 [[package]]
@@ -6702,7 +6737,7 @@ wheels = [
 
 [[package]]
 name = "textual"
-version = "7.3.0"
+version = "8.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown-it-py", extra = ["linkify"] },
@@ -6712,9 +6747,9 @@ dependencies = [
     { name = "rich" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6f/ee/620c887bfad9d6eba062dfa3b6b0e735e0259102e2667b19f21625ef598d/textual-7.3.0.tar.gz", hash = "sha256:3169e8ba5518a979b0771e60be380ab1a6c344f30a2126e360e6f38d009a3de4", size = 1590692, upload-time = "2026-01-15T16:32:02.342Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/21/39a76b01bd5eea82a04baaca7580e105d8c59450df03998345bb2cfb307b/textual-8.2.8.tar.gz", hash = "sha256:3f106a9fbc73e39dd266c9712432087de78a6d644084c7c241d6a25c3169115b", size = 1860502, upload-time = "2026-06-30T06:51:24.495Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/1f/abeb4e5cb36b99dd37db72beb2a74d58598ccb35aaadf14624ee967d4a6b/textual-7.3.0-py3-none-any.whl", hash = "sha256:db235cecf969c87fe5a9c04d83595f506affc9db81f3a53ab849534d726d330a", size = 716374, upload-time = "2026-01-15T16:31:58.233Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/be/35261223d9416a0751cdff1c7b4a6f881387218a12d439fe22fefebc8c04/textual-8.2.8-py3-none-any.whl", hash = "sha256:267375fd402dc8d981457212efa71f0e3365fd17bba144ba9bb3ed7563cb374a", size = 731418, upload-time = "2026-06-30T06:51:26.364Z" },
 ]
 
 [[package]]

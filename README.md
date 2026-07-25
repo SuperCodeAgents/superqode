@@ -112,12 +112,20 @@ SuperQode separates agent systems into interchangeable pieces: the **harness** c
 
 ### Installation
 
-**Primary (Recommended)**
+**One-line installer (Recommended)**
 ```bash
-# Install with uv
+curl -LsSf https://superagenticai.github.io/superqode/install.sh | sh
+```
+
+The installer fetches `uv` from Astral when needed, installs SuperQode from
+PyPI in an isolated environment, and verifies both `superqode` and `sq`. It
+does not use `sudo`.
+
+**Already have uv?**
+```bash
 uv tool install superqode
 
-# Or run without installing
+# Or run once without installing
 uvx superqode
 ```
 
@@ -329,6 +337,7 @@ uv tool install "superqode[antigravity-sdk]"
 uv tool install "superqode[deepagents]"
 uv tool install "superqode[pydanticai]"
 uv tool install "superqode[rlm-code]"
+uv tool install "superqode[tau]"
 ```
 
 Install the vendor SDK runtimes together only when you need all of them:
@@ -367,10 +376,11 @@ superqode harness run --spec examples/harnesses/rlm-code-lid.yaml --provider oll
 - **Local first Open Model support**: Detect local engines, probe context windows, generate starter harnesses, run smoke checks, and benchmark local candidates.
 - **Local dynamic workflows with RLM**: Run recursive local-model analysis over large logs, traces, diffs, and repo slices with `context_handle`, `spawn_harness`, and bounded dynamic workflow scripts.
 - **First-class RLM Code backend**: Run RLM Code v0.1.11+ `reference`, `repo_evidence`, or `lid` profiles through HarnessSpec and Harness Protocol while preserving root/submodel usage, exposure metrics, and native JSONL trajectories.
+- **Optional Hugging Face Tau harness**: Select Tau in the TUI and stream its event-first Python agent through Harness Protocol, with resumable JSONL sessions and a read-only preset while the approval bridge is hardened.
 - **Measure and optimize**: Use harness tests, eval scorecards, local route optimization, harness optimization, and skill optimization with regression gates.
 - **Local code intelligence**: Use bounded reads, local code search, multi repo search, semantic search, offline indexes, and post edit verification.
 - **Configurable memory**: Keep local memory by default, then connect provider neutral memory systems when needed.
-- **Pluggable runtimes**: Run through the builtin engine, ADK, OpenAI Agents SDK, Codex SDK, GitHub Copilot SDK, Claude Agent SDK, DeepAgents, PydanticAI, or RLM Code while preserving the common contract each runtime can honor.
+- **Pluggable runtimes**: Run through the builtin engine, ADK, OpenAI Agents SDK, Codex SDK, GitHub Copilot SDK, Claude Agent SDK, DeepAgents, PydanticAI, RLM Code, or Hugging Face Tau while preserving the common contract each runtime can honor.
 - **Policy and safety**: Gate file access, shell commands, network access, approvals, sandboxing, plugins, MCP, and project trust through explicit policy.
 - **Headless and CI ready**: Run coding tasks, provider checks, evals, schema validated outputs, event exports, and change summaries from scripts.
 

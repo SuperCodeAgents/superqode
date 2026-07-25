@@ -65,8 +65,14 @@ def discover_harness_adapters(
         from .catalog import builtin_harnesses
         from .backends.rlm_code import rlm_code_installation_status
         from .rlm_code_adapter import RLMCodeHarnessProtocolAdapter
+        from .tau_adapter import TauHarnessProtocolAdapter, tau_installation_status
 
         for harness in builtin_harnesses():
+            if harness.source.startswith("optional:"):
+                # Optional catalog presets have their own native protocol
+                # adapters below; wrapping their spec as Core would execute the
+                # wrong engine and advertise the wrong capabilities.
+                continue
             adapter = CoreHarnessProtocolAdapter(harness.spec, adapter_id=harness.id)
             entries.append(
                 HarnessAdapterDefinition(
@@ -96,6 +102,24 @@ def discover_harness_adapters(
             )
         )
         known.add("rlm-code")
+
+        tau_available, tau_issue = tau_installation_status()
+        tau_adapter = TauHarnessProtocolAdapter() if tau_available else None
+        entries.append(
+            HarnessAdapterDefinition(
+                id="tau",
+                name="Hugging Face Tau",
+                description=(
+                    "Tau's event-first Python coding-agent harness through "
+                    "Harness Protocol v1"
+                ),
+                source="optional:tau",
+                available=tau_available,
+                adapter=tau_adapter,
+                issue=tau_issue,
+            )
+        )
+        known.add("tau")
 
     for entry_point in _harness_entry_points():
         source = _entry_point_source(entry_point)
