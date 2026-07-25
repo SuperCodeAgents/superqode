@@ -26,9 +26,11 @@
   <a href="https://github.com/SuperagenticAI/superqode/pulls"><img src="https://img.shields.io/github/issues-pr/SuperagenticAI/superqode?style=flat-square" alt="PRs"></a>
 </p>
 
+<h3 align="center">
+  <a href="https://superagenticai.github.io/superqode/">📚 Read the Full Documentation →</a>
+</h3>
+
 <p align="center">
-  <a href="https://superagenticai.github.io/superqode/"><strong>📚 Documentation</strong></a>
-  &nbsp;·&nbsp;
   <a href="https://superagenticai.github.io/superqode/getting-started/quickstart/"><strong>Quick Start</strong></a>
   &nbsp;·&nbsp;
   <a href="https://github.com/SuperagenticAI/superqode/discussions">Discussions</a>
