@@ -185,8 +185,7 @@ def acp_picker_items(*, include_registry: bool = False) -> list[HarnessPickerIte
 
     agents = [_acp_agent_mapping(dict(agent)) for agent in get_all_registry_agents().values()]
     recent_order = {
-        identity.casefold(): index
-        for index, identity in enumerate(recent_agent_identities())
+        identity.casefold(): index for index, identity in enumerate(recent_agent_identities())
     }
     candidates: list[tuple[dict[str, Any], bool, bool, str]] = []
     for agent in agents:

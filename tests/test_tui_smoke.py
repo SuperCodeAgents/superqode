@@ -1861,9 +1861,7 @@ def test_harness_switch_completion_includes_vendor_agents_and_all_presets():
     assert ":harness switch kimi-code" in [candidate.value for candidate in kimi_code]
     assert ":harness switch qwen-code" in [candidate.value for candidate in qwen_code]
     assert [candidate.value for candidate in pinned] == [":harness switch kimi-k3-coding"]
-    assert [candidate.value for candidate in registry_agent] == [
-        ":harness switch acp:stakpak"
-    ]
+    assert [candidate.value for candidate in registry_agent] == [":harness switch acp:stakpak"]
 
 
 def test_harness_picker_surfaces_curated_acp_agents_and_registry_browser(monkeypatch):

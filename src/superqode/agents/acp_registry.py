@@ -144,9 +144,7 @@ ACP_AGENTS_REGISTRY: dict[str, AgentMetadata] = {
         "description": "Moonshot AI's first-party coding agent with native ACP support.",
         "run_command": "kimi acp",
         "status": "available",
-        "installation_command": (
-            "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
-        ),
+        "installation_command": ("curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"),
         "installation_instructions": "Install Kimi Code, launch `kimi`, and complete `/login`.",
         "requirements": ["kimi"],
     },

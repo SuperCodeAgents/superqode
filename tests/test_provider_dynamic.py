@@ -179,9 +179,7 @@ def test_meta_is_curated_us_lab_not_synthesized_model_host():
         ("poolside", "POOLSIDE_API_KEY", "https://inference.poolside.ai/v1"),
     ],
 )
-def test_nvidia_and_poolside_are_first_class_us_byok_providers(
-    provider_id, env_var, base_url
-):
+def test_nvidia_and_poolside_are_first_class_us_byok_providers(provider_id, env_var, base_url):
     provider = PROVIDERS[provider_id]
 
     assert provider.category == ProviderCategory.US_LABS

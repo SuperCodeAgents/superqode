@@ -249,24 +249,18 @@ _PROFILES: List[ConnectionProfile] = [
     ConnectionProfile(
         id="qwen-code",
         label="Qwen Code",
-        description=(
-            "QwenLM's first-party open-source coding agent through its stable ACP mode"
-        ),
+        description=("QwenLM's first-party open-source coding agent through its stable ACP mode"),
         connector="acp",
         group="China Coding Agents",
         acp_agent="qwen",
         self_contained=True,
         detect=_qwen_code_ready,
-        unavailable_hint=(
-            "run `npm install -g @qwen-code/qwen-code`, then run `qwen auth`"
-        ),
+        unavailable_hint=("run `npm install -g @qwen-code/qwen-code`, then run `qwen auth`"),
     ),
     ConnectionProfile(
         id="kimi-code",
         label="Kimi Code",
-        description=(
-            "Moonshot AI's first-party coding agent through its official ACP server"
-        ),
+        description=("Moonshot AI's first-party coding agent through its official ACP server"),
         connector="acp",
         group="China Coding Agents",
         acp_agent="kimi",

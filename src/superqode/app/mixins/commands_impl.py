@@ -3390,9 +3390,7 @@ class CommandImplMixin:
         self._awaiting_harness_install = {
             "id": str(getattr(entry, "id", "") or ""),
             "display_name": str(
-                getattr(entry, "display_name", "")
-                or getattr(entry, "id", "")
-                or "Harness"
+                getattr(entry, "display_name", "") or getattr(entry, "id", "") or "Harness"
             ),
             "extra": extra,
             "command": command,

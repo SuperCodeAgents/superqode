@@ -567,7 +567,7 @@ async def test_prompt_ctrl_a_selects_all():
         assert prompt.selected_text == "select me all"
 
 
-async def test_grok_profile_selection_routes_to_grok_build_acp(monkeypatch):
+async def test_grok_profile_selection_routes_to_grok_build_acp(monkeypatch, tmp_path):
     """Selecting "Grok subscription" in the picker connects Grok Build (ACP).
 
     Since 0.2.x the bare Grok profile runs xAI's own agent, matching Codex and
@@ -575,6 +575,23 @@ async def test_grok_profile_selection_routes_to_grok_build_acp(monkeypatch):
     below.)
     """
     calls = []
+    grok_auth = tmp_path / ".grok"
+    grok_auth.mkdir()
+    (grok_auth / "auth.json").write_text("{}", encoding="utf-8")
+
+    import superqode.providers.connection_profiles as connection_profiles
+
+    original_which = connection_profiles.shutil.which
+    monkeypatch.setattr(
+        connection_profiles.shutil,
+        "which",
+        lambda name: "/usr/bin/grok" if name == "grok" else original_which(name),
+    )
+    monkeypatch.setattr(
+        connection_profiles.Path,
+        "home",
+        staticmethod(lambda: tmp_path),
+    )
 
     def fake_connect_acp(self, args, log):
         calls.append(args)

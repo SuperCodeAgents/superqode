@@ -284,9 +284,7 @@ def test_dispatch_unavailable_first_party_acp_profile_shows_setup(_dispatch):
     _dispatch(stub, profile, log=log)
 
     assert not any(call[0] == "acp" for call in stub.calls)
-    assert log.messages == [
-        "Qwen Code needs setup: install Qwen Code, then run `qwen auth`"
-    ]
+    assert log.messages == ["Qwen Code needs setup: install Qwen Code, then run `qwen auth`"]
 
 
 def test_dispatch_copilot_routes_to_sdk_runtime(_dispatch):
