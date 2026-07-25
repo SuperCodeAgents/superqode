@@ -1,15 +1,16 @@
 <p align="center">
-  <img src="assets/superqode-banner.png" alt="SuperQode" width="100%">
+  <img src="assets/superqode-banner.png" alt="SuperQode" width="820">
 </p>
 
 <h1 align="center">SuperQode</h1>
 
 <p align="center">
-  <img src="assets/superqode-logo.png" alt="SuperQode logo" width="180">
+  <img src="assets/superqode-logo.png" alt="SuperQode logo" width="88">
 </p>
 
+<h3 align="center">Agent engineering for your code factory.</h3>
+
 <p align="center">
-  <strong>Agent engineering for your code factory.</strong><br>
   Build your own coding-agent harnesses or connect the agents you already use.
 </p>
 
@@ -19,9 +20,6 @@
   <a href="https://pypi.org/project/superqode/"><img src="https://img.shields.io/pypi/v/superqode?style=flat-square&color=blue" alt="PyPI"></a>
   <a href="https://pypi.org/project/superqode/"><img src="https://img.shields.io/pypi/pyversions/superqode?style=flat-square" alt="Python"></a>
   <a href="https://github.com/SuperagenticAI/superqode/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-green?style=flat-square" alt="License"></a>
-</p>
-
-<p align="center">
   <a href="https://github.com/SuperagenticAI/superqode/stargazers"><img src="https://img.shields.io/github/stars/SuperagenticAI/superqode?style=flat-square" alt="Stars"></a>
   <a href="https://github.com/SuperagenticAI/superqode/network/members"><img src="https://img.shields.io/github/forks/SuperagenticAI/superqode?style=flat-square" alt="Forks"></a>
   <a href="https://github.com/SuperagenticAI/superqode/issues"><img src="https://img.shields.io/github/issues/SuperagenticAI/superqode?style=flat-square" alt="Issues"></a>
@@ -29,14 +27,12 @@
 </p>
 
 <p align="center">
-  <a href="https://superagenticai.github.io/superqode/">Documentation</a> ·
-  <a href="https://github.com/SuperagenticAI/superqode/issues">Issues</a> ·
+  <a href="https://superagenticai.github.io/superqode/"><strong>📚 Documentation</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://superagenticai.github.io/superqode/getting-started/quickstart/"><strong>Quick Start</strong></a>
+  &nbsp;·&nbsp;
   <a href="https://github.com/SuperagenticAI/superqode/discussions">Discussions</a>
 </p>
-
-<h3 align="center">
-  <a href="https://superagenticai.github.io/superqode/">📚 Read the Full Documentation →</a>
-</h3>
 
 ## What is SuperQode?
 
