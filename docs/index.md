@@ -28,7 +28,7 @@ hide:
 [Optimize Local Models](local-agentic-coding.md){ .md-button }
 [Read Harness Engineering](harness-engineering.md){ .md-button }
 
-<img src="assets/superqode-code-factory.svg" alt="SuperQode Agent Engineering terminal workbench" class="sq-hero-image" />
+<img src="assets/superqode-hero.png" alt="SuperQode Agent Engineering terminal workbench" class="sq-hero-image" />
 
 </div>
 

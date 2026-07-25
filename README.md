@@ -30,6 +30,20 @@
   <a href="https://github.com/SuperagenticAI/superqode/discussions">Discussions</a>
 </p>
 
+<h3 align="center">
+  <a href="https://superagenticai.github.io/superqode/">📚 Read the Full Documentation →</a>
+</h3>
+
+## What is SuperQode?
+
+SuperQode is an open-source, terminal-first Agent Engineering framework for
+building, connecting, orchestrating, evaluating, and governing coding-agent
+harnesses across your repositories.
+
+Run local or hosted models and the coding agents you already use through one
+inspectable, portable HarnessSpec while keeping tools, policies, sessions, and
+evidence under your control.
+
 ## Install
 
 ```bash
@@ -105,7 +119,7 @@ That lets you:
 - **Optimize** model routes and harness candidates using recorded evidence.
 
 <p align="center">
-  <img src="assets/superqode-code-factory.svg" alt="SuperQode Agent Engineering terminal workbench" width="920">
+  <img src="assets/superqode-hero.png" alt="SuperQode Agent Engineering terminal workbench" width="920">
 </p>
 
 ## Why Own the Harness?
@@ -293,28 +307,6 @@ hosted providers when a machine is constrained.
 | `harness.yaml` | Portable agent run contract | `:harness wizard` or `superqode harness init` |
 | `superqode.local.yaml` | Local-first HarnessSpec generated for this machine | `:local init` or `superqode local init --repo .` |
 | `superqode.airplane.yaml` | Strict no-network HarnessSpec for offline work | `:local airplane prepare` |
-
-### Poolside Laguna S 2.1 on Apple Silicon
-
-SuperQode can run Poolside's 118B Laguna S 2.1 GGUF on a 128 GB Apple Silicon
-Mac through DwarfStar or a Laguna-capable llama.cpp build:
-
-```bash
-hf download \
-  poolside/Laguna-S-2.1-GGUF \
-  laguna-s-2.1-Q4_K_M.gguf
-
-superqode local serve ds4 --model laguna-s-2.1 --ctx 32768 --build
-superqode local stop ds4
-
-superqode local serve llama.cpp --model laguna-s-2.1 --ctx 32768
-```
-
-SuperQode does not store a user-specific model path. `HF_HOME`,
-`HF_HUB_CACHE`, `SUPERQODE_LAGUNA_GGUF`, and explicit GGUF paths remain
-available for custom layouts. See the
-[local provider guide](docs/providers/local.md#dwarfstar-ds4) for engine
-prerequisites, testing, and recovery.
 
 ## Code Factory Workflows
 
@@ -509,3 +501,12 @@ uv run pytest
 
 [Apache-2.0](LICENSE) - built by
 [Superagentic AI](https://super-agentic.ai/).
+
+---
+
+<p align="center">
+  <strong>Build a coding-agent harness you can inspect, govern, and improve.</strong><br>
+  <a href="https://superagenticai.github.io/superqode/"><strong>📚 Explore the Full Documentation →</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://superagenticai.github.io/superqode/getting-started/quickstart/"><strong>Get Started</strong></a>
+</p>
