@@ -14,7 +14,15 @@ uv tool install "superqode[tau]"
 
 In the TUI, open `:harness` and select **Tau (Hugging Face)**. The entry remains
 visible when the extra is missing and shows an installation command appropriate
-for the environment running SuperQode.
+for the environment running SuperQode. Tau appears on the first harness page,
+and setup-aware completion works before installation:
+
+```text
+:harness ta
+:harness switch ta
+```
+
+From the root `:connect` picker, press `H` to open the harness catalog.
 
 Tau uses its own provider catalog and credentials. Configure those with Tau
 before selecting the harness:

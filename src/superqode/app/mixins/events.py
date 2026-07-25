@@ -483,6 +483,10 @@ class EventHandlerMixin:
 
             profiles = list_connection_profiles()
             choice = text.strip().lower()
+            if choice in {"h", "harness", "harnesses"}:
+                event.input.value = ""
+                self.action_browse_harnesses_from_connect()
+                return
             profile = None
             if choice.isdigit() and 1 <= int(choice) <= len(profiles):
                 profile = profiles[int(choice) - 1]

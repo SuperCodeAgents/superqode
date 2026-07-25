@@ -19,8 +19,7 @@ COMPACT_LOGO = """ ____  _   _ ____  _____ ____   ___    ___  ____  _____
 TAGLINE_PART1 = "Agent Engineering for Your Code Factory"
 TAGLINE_PART2 = "Terminal-first · Any agent or model · Local or cloud"
 
-# First-page order for the product-level connection choices. The root plus
-# these eight profiles fit exactly in the nine-row prompt completion page.
+# First-page order for the product-level connection choices.
 CONNECT_COMPLETION_COMMANDS = (
     ":connect",
     ":connect acp",
@@ -31,6 +30,8 @@ CONNECT_COMPLETION_COMMANDS = (
     ":connect codex",
     ":connect claude",
     ":connect zai",
+    ":connect other-harnesses",
+    ":connect copilot",
 )
 
 # Normal purple → pink → orange gradient for ASCII logo

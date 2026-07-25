@@ -211,11 +211,11 @@ def test_every_connection_profile_has_a_sidebar_page():
         "acp": "providers/acp.md",
         "codex": "providers/codex.md",
         "copilot": "providers/github-copilot.md",
-        "copilot-acp": "providers/github-copilot.md",
         "claude": "providers/anthropic-claude.md",
         "antigravity": "providers/antigravity.md",
         "grok": "providers/grok.md",
         "zai": "providers/zai.md",
+        "other-harnesses": "cli-reference/harness-commands.md",
     }
 
     assert set(profile_pages) == set(connection_profile_ids())

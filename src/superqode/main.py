@@ -643,9 +643,10 @@ class SuperQodeGroup(click.Group):
     "--connect",
     "connect_name",
     default=None,
-    type=click.Choice(connection_profile_ids()),
+    type=click.Choice(connection_profile_ids(include_legacy=True)),
+    show_choices=False,
     help=(
-        "Connection source to start with: codex / copilot / copilot-acp / claude / "
+        "Connection source to start with: codex / copilot / claude / "
         "antigravity / grok / byok / local / acp."
     ),
 )

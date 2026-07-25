@@ -64,6 +64,7 @@ from .catalog import (
     HarnessDefinition,
     builtin_harnesses,
     list_harnesses,
+    optional_harnesses,
     recommended_harnesses,
     resolve_harness,
 )
@@ -478,6 +479,8 @@ __all__ = [
     "get_harness_template",
     "builtin_harnesses",
     "list_harnesses",
+    "optional_harnesses",
+    "recommended_harnesses",
     "resolve_harness",
     "get_workflow_preset",
     "get_sandbox_capabilities",

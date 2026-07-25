@@ -1,13 +1,12 @@
 # GitHub Copilot
 
-SuperQode supports GitHub Copilot through two official integration paths. Both
-use the models and quota available to the signed-in Copilot account. They do
-not turn a Copilot licence into an OpenAI API credential.
+SuperQode presents one primary GitHub Copilot integration in the Connect
+picker. It uses the models and quota available to the signed-in Copilot
+account. It does not turn a Copilot licence into an OpenAI API credential.
 
-| Path | SuperQode command | Integration | Use when |
-| --- | --- | --- | --- |
-| Copilot SDK | `:connect copilot` | Official `github-copilot-sdk` Python package | You want Copilot inside the SuperQode runtime with normalized events, model selection, permission checks, evaluation, and resumable sessions |
-| Copilot ACP | `:connect copilot-acp` | Official `copilot --acp --stdio` server | You want the standard Copilot CLI agent exposed through ACP |
+| Primary path | SuperQode command | Integration |
+| --- | --- | --- |
+| Copilot SDK | `:connect copilot` | Official `github-copilot-sdk` Python package with normalized events, model selection, permission checks, evaluation, and resumable sessions |
 
 GitHub Copilot owns the inner agent loop in both paths. SuperQode owns the
 terminal experience and the surrounding HarnessSpec, policy, evidence,
@@ -85,18 +84,16 @@ npm install -g @github/copilot
 copilot login
 ```
 
-Connect from the TUI:
-
-```text
-:connect copilot-acp
-```
-
-The equivalent command is also available through the general ACP catalog:
+The ACP route is deliberately kept in the general ACP catalog instead of
+appearing as a second GitHub Copilot entry in the root Connect picker:
 
 ```text
 :connect acp copilot
 :copilot acp
 ```
+
+The old `:connect copilot-acp` shortcut remains accepted for compatibility and
+prints guidance toward one of the commands above.
 
 SuperQode starts `copilot --acp --stdio`, creates an ACP session for the
 current repository, and renders the events in the standard SuperQode terminal

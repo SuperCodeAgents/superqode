@@ -131,6 +131,33 @@ class ConnectMixin:
         log.auto_scroll = True
         self._dispatch_connection_profile(profiles[idx], log)
 
+    def action_browse_harnesses_from_connect(self) -> None:
+        """Leave the connection picker and open optional non-ACP harnesses."""
+        if not getattr(self, "_awaiting_connect_type", False):
+            return
+        self._awaiting_connect_type = False
+        log = self.query_one("#log", ConversationLog)
+        log.clear()
+        self._show_other_harnesses(log, clear_log=False)
+
+    def _show_other_harnesses(self, log: ConversationLog, *, clear_log: bool = True) -> None:
+        """Open the focused picker for harness integrations outside ACP."""
+        from pathlib import Path
+
+        from superqode.harness import optional_harnesses
+
+        entries = optional_harnesses(Path.cwd())
+        if not entries:
+            log.add_error("No optional non-ACP harness integrations are available.")
+            return
+        self._show_harness_picker(
+            log,
+            include_all=False,
+            clear_log=clear_log,
+            catalog_entries=entries,
+            subtitle="Optional non-ACP harness integrations",
+        )
+
     def _reset_connect_selection_states(self) -> None:
         """Clear transient connect-flow selection state so flows don't interfere."""
         self._awaiting_connect_type = False
@@ -163,6 +190,12 @@ class ConnectMixin:
         """
         self._reset_connect_selection_states()
         conn = profile.connector
+        if getattr(profile, "id", "") == "copilot-acp" and log is not None:
+            log.add_info(
+                "`:connect copilot-acp` is now an advanced compatibility route. "
+                "Use `:connect copilot` for the recommended SDK integration or "
+                "`:connect acp copilot` for ACP."
+            )
         if conn == "runtime":
             # Self-contained runtime (e.g. Codex) — auto-connects in _runtime_cmd.
             self._runtime_cmd(profile.runtime or "", log)
@@ -185,6 +218,8 @@ class ConnectMixin:
             self._show_local_provider_picker(log)
         elif conn == "acp-picker":
             self._show_agents(log)
+        elif conn == "harness-picker":
+            self._show_other_harnesses(log)
         elif conn == "external-cli":
             if getattr(profile, "id", "") == "antigravity":
                 self._antigravity_cmd("connect", log)
@@ -304,11 +339,11 @@ class ConnectMixin:
     def _byok_provider_ids() -> list[str]:
         try:
             from superqode.providers.registry import ProviderCategory
-            from superqode.providers.dynamic import all_provider_ids, resolve_provider_def
+            from superqode.providers.dynamic import connect_provider_ids, resolve_provider_def
 
             return [
                 provider_id
-                for provider_id in all_provider_ids()
+                for provider_id in connect_provider_ids()
                 if (provider := resolve_provider_def(provider_id)) is not None
                 and provider.category != ProviderCategory.LOCAL
             ]
@@ -1085,6 +1120,13 @@ class ConnectMixin:
 
         # :connect <provider>[/<model>] (direct connect with / separator)
         if args:
+            legacy_provider = args.split("/", 1)[0].split(maxsplit=1)[0]
+            if normalize_provider_id(legacy_provider) == "github-copilot":
+                log.add_info(
+                    "The legacy GitHub Copilot BYOK route is hidden from discovery. "
+                    "Use `:connect copilot` for the maintained SDK integration."
+                )
+
             # Prevent "byok", "acp", "local" from being treated as provider names
             # These are subcommands, not providers
             if args.lower().strip() in ("byok", "acp", "local"):
@@ -1259,7 +1301,9 @@ class ConnectMixin:
         t.append("↑↓", style=THEME["cyan"])
         t.append(" navigate  ", style=THEME["dim"])
         t.append("Enter", style=THEME["cyan"])
-        t.append(" select  •  or type a number or name, e.g. ", style=THEME["dim"])
+        t.append(" select  ", style=THEME["dim"])
+        t.append("H", style=THEME["purple"])
+        t.append(" other harnesses  •  or type a number or name, e.g. ", style=THEME["dim"])
         t.append(":connect codex", style=THEME["cyan"])
         t.append("\n", style="")
 
@@ -1313,7 +1357,7 @@ class ConnectMixin:
     def _show_connect_picker(self, log: ConversationLog, clear_log: bool = True):
         """Show interactive provider picker with model counts and API key guidance."""
         from superqode.providers.registry import PROVIDERS, ProviderCategory, get_free_providers
-        from superqode.providers.dynamic import all_provider_ids, resolve_provider_def
+        from superqode.providers.dynamic import connect_provider_ids, resolve_provider_def
         from superqode.providers.models import get_models_for_provider, get_data_source
         import os
 
@@ -1357,7 +1401,8 @@ class ConnectMixin:
 
         # Get providers with free models
         free_providers = get_free_providers()
-        free_provider_ids = set(free_providers.keys())
+        visible_provider_ids = set(connect_provider_ids())
+        free_provider_ids = set(free_providers.keys()) & visible_provider_ids
 
         # Helper function to get provider info
         def get_provider_info(pid, pdef):
@@ -1391,7 +1436,7 @@ class ConnectMixin:
         }
 
         providers_by_category = {}
-        for pid in all_provider_ids():
+        for pid in connect_provider_ids():
             pdef = resolve_provider_def(pid)
             if pdef is None:
                 continue

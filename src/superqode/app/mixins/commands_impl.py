@@ -2488,6 +2488,8 @@ class CommandImplMixin:
         *,
         include_all: bool = False,
         clear_log: bool = True,
+        catalog_entries=None,
+        subtitle: str | None = None,
     ) -> None:
         """Render the keyboard-driven harness switcher."""
         from superqode.harness import list_harnesses, recommended_harnesses
@@ -2502,7 +2504,11 @@ class CommandImplMixin:
         ):
             setattr(self, flag, False)
 
-        entries = list_harnesses(Path.cwd()) if include_all else recommended_harnesses(Path.cwd())
+        entries = (
+            list(catalog_entries)
+            if catalog_entries is not None
+            else (list_harnesses(Path.cwd()) if include_all else recommended_harnesses(Path.cwd()))
+        )
         if not entries:
             log.add_error("No harnesses are available. Use :harness wizard to create one.")
             return
@@ -2525,6 +2531,7 @@ class CommandImplMixin:
         self._harness_selection_list = entries
         self._harness_highlighted_index = selected_index
         self._harness_include_all = include_all
+        self._harness_picker_subtitle = subtitle
         self._awaiting_harness_selection = True
         self._awaiting_harness_confirmation = False
         try:
@@ -2537,7 +2544,15 @@ class CommandImplMixin:
         text = Text()
         text.append("\n  ◈ Select Harness\n", style=f"bold {THEME['purple']}")
         text.append(
-            "  Complete catalog\n\n" if include_all else "  Recommended and project harnesses\n\n",
+            (
+                f"  {subtitle}\n\n"
+                if subtitle
+                else (
+                    "  Complete catalog\n\n"
+                    if include_all
+                    else "  Recommended and project harnesses\n\n"
+                )
+            ),
             style=THEME["muted"],
         )
 
@@ -2598,6 +2613,8 @@ class CommandImplMixin:
         text.append(" inspect  ", style=THEME["dim"])
         text.append("A", style=THEME["cyan"])
         text.append(" all  ", style=THEME["dim"])
+        text.append("L", style=THEME["cyan"])
+        text.append(" catalog  ", style=THEME["dim"])
         text.append("Esc", style=THEME["cyan"])
         text.append(" cancel\n", style=THEME["dim"])
 
@@ -2633,6 +2650,8 @@ class CommandImplMixin:
             self.query_one("#log", ConversationLog),
             include_all=bool(getattr(self, "_harness_include_all", False)),
             clear_log=True,
+            catalog_entries=entries,
+            subtitle=getattr(self, "_harness_picker_subtitle", None),
         )
 
     def action_select_highlighted_harness(self, *, fork: bool = False) -> None:
@@ -2725,6 +2744,16 @@ class CommandImplMixin:
         log = self.query_one("#log", ConversationLog)
         log.clear()
         self._harness_cmd(f"show {shlex.quote(entry.id)}", log)
+
+    def action_show_complete_harness_catalog(self) -> None:
+        """Show every HarnessSpec and installed Python adapter from the picker."""
+        if not getattr(self, "_awaiting_harness_selection", False):
+            return
+        self._awaiting_harness_selection = False
+        log = self.query_one("#log", ConversationLog)
+        log.clear()
+        self._show_harness_catalog(log, open_picker=False, include_all=True)
+        log.add_info("Run :harness to return to the interactive switcher.")
 
     def action_cancel_harness_selection(self) -> None:
         """Close the harness picker or fresh-session confirmation."""

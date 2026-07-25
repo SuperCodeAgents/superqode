@@ -1800,11 +1800,12 @@ def test_tui_harness_commands_open_native_switcher(tmp_path, monkeypatch):
 
     assert app._awaiting_harness_selection is True
     picker_ids = [entry.id for entry in app._harness_selection_list]
-    assert picker_ids[:4] == ["core", "workbench", "no-tool", "kimi-coding"]
+    assert picker_ids[:4] == ["core", "workbench", "no-tool", "tau"]
     rendered = render_plain(log.items[-1])
     assert "Select Harness" in rendered
     assert "Enter switch" in rendered
     assert "F fork" in rendered
+    assert "L catalog" in rendered
     assert "Usage: :harness" not in rendered
 
     app._harness_cmd("switch", log)
@@ -3245,6 +3246,22 @@ def test_prompt_completion_lists_harness_catalogue():
     ]
 
 
+def test_prompt_completion_discovers_unavailable_tau_harness(monkeypatch):
+    monkeypatch.setattr(
+        "superqode.harness.tau_adapter.tau_installation_status",
+        lambda: (False, 'install with uv tool install "superqode[tau]"'),
+    )
+    app = make_app()
+
+    switch = app._prompt_completion_candidates_for(":harness switch ta")
+    direct = app._prompt_completion_candidates_for(":harness ta")
+
+    assert [candidate.value for candidate in switch] == [":harness switch tau"]
+    assert [candidate.value for candidate in direct] == [":harness tau"]
+    assert "needs setup" in switch[0].description
+    assert "superqode[tau]" in switch[0].description
+
+
 def test_prompt_completion_prioritizes_full_connect_and_quit_commands():
     app = make_app()
 
@@ -3270,7 +3287,7 @@ def test_prompt_completion_prioritizes_full_connect_and_quit_commands():
         ":connect byok",
         ":connect local",
     ]
-    assert connect_values[:9] == [
+    assert connect_values[:10] == [
         ":connect",
         ":connect acp",
         ":connect antigravity",
@@ -3280,7 +3297,9 @@ def test_prompt_completion_prioritizes_full_connect_and_quit_commands():
         ":connect codex",
         ":connect claude",
         ":connect zai",
+        ":connect other-harnesses",
     ]
+    assert connect_values[10] == ":connect copilot"
     assert ":connect setup" in connect_values
     assert quit_values[0] == ":quit"
     assert all(not value.startswith(":qe") for value in quit_values)
@@ -5283,6 +5302,59 @@ def test_connect_selection_replaces_picker_before_rendering_result():
     assert observed == [(profiles[-1].id, [])]
     assert log.items == ["selected result"]
     assert log.scrolled_home is True
+
+
+def test_connect_picker_can_open_harness_catalog():
+    app = make_app()
+    log = FakeLog()
+    app.set_timer = lambda *_args, **_kwargs: None
+    app._scroll_to_highlighted_item = lambda *_args, **_kwargs: None
+    app._show_connect_type_picker(log)
+    rendered = render_plain(log.items[-1])
+    assert "Other harnesses" in rendered
+    assert "[9] Other harnesses" in rendered
+    assert "[10] GitHub Copilot SDK" in rendered
+    assert "H other harnesses" in rendered
+
+    app._awaiting_connect_type = True
+    app.query_one = lambda *args, **kwargs: log
+    calls = []
+    app._show_harness_picker = lambda target_log, **kwargs: calls.append((target_log, kwargs))
+
+    app.action_browse_harnesses_from_connect()
+
+    assert app._awaiting_connect_type is False
+    assert len(calls) == 1
+    target_log, kwargs = calls[0]
+    assert target_log is log
+    assert kwargs["include_all"] is False
+    assert kwargs["clear_log"] is False
+    assert kwargs["subtitle"] == "Optional non-ACP harness integrations"
+    assert [entry.id for entry in kwargs["catalog_entries"]] == ["tau"]
+
+
+def test_other_harnesses_profile_dispatch_opens_focused_tau_picker():
+    from superqode.providers.connection_profiles import get_connection_profile
+
+    app = make_app()
+    log = FakeLog()
+    calls = []
+    app._show_harness_picker = lambda target_log, **kwargs: calls.append((target_log, kwargs))
+
+    app._dispatch_connection_profile(get_connection_profile("other-harnesses"), log)
+
+    assert len(calls) == 1
+    assert [entry.id for entry in calls[0][1]["catalog_entries"]] == ["tau"]
+    assert calls[0][1]["subtitle"] == "Optional non-ACP harness integrations"
+
+
+def test_byok_completion_hides_legacy_github_copilot_provider():
+    app = make_app()
+
+    values = {candidate.value for candidate in app._provider_completion_candidates(local=False)}
+
+    assert "github-copilot" not in values
+    assert "openai" in values
 
 
 def test_tui_local_smoke_command_renders_mvp_readiness(monkeypatch):

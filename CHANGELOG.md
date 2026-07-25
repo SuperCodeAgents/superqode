@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.39] - 2026-07-25
+
+### Added
+
+- **Discoverable optional harnesses** - Added a visible Other Harnesses entry to the Connect picker, with Hugging Face Tau, live setup status, keyboard access, and command completion.
+- **Complete harness discovery** - Added direct access from Connect and the Harness Switcher to recommended, optional, project, registry, and installed Python harness integrations.
+
+### Changed
+
+- **GitHub Copilot connection** - Made the official Copilot SDK the single primary Copilot entry, retained ACP as an advanced route, and kept legacy shortcuts compatible but hidden.
+- **Connection ordering** - Moved GitHub Copilot to the bottom of the Connect picker and placed Other Harnesses immediately above it.
+- **README presentation** - Improved the opening banner, product introduction, documentation calls to action, badges, and installation visibility.
+- **Release metadata** - Bumped package, lockfile, ACP registry, installer example, and package checks to `0.2.39`.
+
 ## [0.2.38] - 2026-07-25
 
 ### Added

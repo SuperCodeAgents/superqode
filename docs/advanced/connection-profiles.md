@@ -6,55 +6,64 @@ availability check.
 
 ## Connection Profiles
 
-### 1. ACP Agent (connector: acp-picker)
+### 1. Local Model (connector: local, runtime: builtin)
 
-Opens an interactive picker showing all discovered ACP agents (OpenCode, Claude Code, Gemini CLI, Codex CLI, OpenHands, etc.). Always available. No model auth setup needed.
+Connects to local/self-hosted model servers. Opens a local provider picker (Ollama, MLX, LM Studio, vLLM, SGLang, TGI, DS4). Always available.
 
 ### 2. BYOK Provider (connector: byok, runtime: builtin)
 
-Brings your own API key. Opens a cloud provider picker, then model selector. Uses builtin runtime. detect() checks for any of 7 API key env vars (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.).
+Brings your own API key. Opens a cloud provider picker, then model selector. Uses builtin runtime. detect() checks for configured provider credentials.
 
-### 3. Local Model (connector: local, runtime: builtin)
+### 3. ACP Agent (connector: acp-picker)
 
-Connects to local/self-hosted model servers. Opens a local provider picker (Ollama, MLX, LM Studio, vLLM, SGLang, TGI, DS4). Always available.
+Opens an interactive picker showing all discovered ACP agents. Always available. No model auth setup is needed before browsing the catalog.
 
 ### 4. Codex Subscription (connector: runtime, runtime: codex-sdk)
 
 Self-contained: brings its own model and auth via Codex login. Requires openai_codex package and ~/.codex/auth.json. Auto-connects on selection.
 
-### 5. GitHub Copilot SDK (connector: runtime, runtime: copilot-sdk)
-
-Uses the official GitHub Copilot SDK with the signed-in Copilot account or an
-explicit GitHub token. Requires the optional `copilot-sdk` extra.
-
-### 6. GitHub Copilot ACP (connector: acp, agent: copilot)
-
-Runs the official GitHub Copilot CLI agent over `copilot --acp --stdio`.
-Requires the Copilot CLI on `PATH` and an authenticated Copilot account.
-
-### 7. Claude Agent SDK (connector: runtime, runtime: claude-agent-sdk)
+### 5. Claude Agent SDK (connector: runtime, runtime: claude-agent-sdk)
 
 Self-contained: uses Anthropic API key directly. Requires claude_agent_sdk package and ANTHROPIC_API_KEY. Auto-connects on selection.
 
-### 8. Antigravity CLI (connector: runtime)
+### 6. Antigravity CLI (connector: runtime)
 
 Handoff profile: shows the command to run `agy` in a terminal. Does not connect SuperQode's own loop. Requires agy binary on PATH.
 
-### 9. Grok Subscription (connector: acp, agent: grok)
+### 7. Grok Subscription (connector: acp, agent: grok)
 
 Runs **Grok Build**, xAI's own coding agent, on an eligible SuperGrok or X Premium+ account. This matches the Codex and Claude subscription profiles: the vendor's agent owns the loop. Requires the `grok` binary on PATH and a local `grok login` (`~/.grok/auth.json`). SuperQode starts `grok agent stdio` over ACP.
 
 To run **SuperQode's own harness** on the same subscription instead, use `:grok api [model]`. That imports the CLI session token into SuperQode's auth store and routes through the `grok-cli` provider (CLI chat proxy), so `core`/`workbench` and SuperQode's tools drive Grok 4.5.
 
+### 8. Z.AI GLM API (connector: byok, runtime: builtin)
+
+Uses the Z.AI general API through the builtin SuperQode harness. Requires
+`ZAI_API_KEY`.
+
+### 9. Other Harnesses (connector: harness-picker)
+
+Opens a focused list of optional harness integrations that are neither main
+connection profiles nor ACP agents. Hugging Face Tau appears here with its live
+installation status.
+
+### 10. GitHub Copilot SDK (connector: runtime, runtime: copilot-sdk)
+
+Uses the official GitHub Copilot SDK with the signed-in Copilot account or an
+explicit GitHub token. Requires the optional `copilot-sdk` extra.
+
 ## TUI Usage
 
-In the TUI, use `:connect` to open the type picker. Each profile shows availability status (green "ready" or yellow "needs setup" with guidance). Navigate with arrows or number keys.
+In the TUI, use `:connect` to open the type picker. Each profile shows
+availability status. Navigate with arrows or number keys, or press `H` to open
+the Other Harnesses picker.
 
 Direct shortcuts:
 
 - `:connect codex` - connect Codex SDK directly
 - `:connect copilot` - connect through the official GitHub Copilot SDK
-- `:connect copilot-acp` - connect the official Copilot CLI agent over ACP
+- `:connect acp copilot` - advanced Copilot CLI ACP compatibility path
+- `:connect other-harnesses` - browse optional non-ACP harnesses such as Tau
 - `:copilot models` - list models available to the signed-in Copilot account
 - `:connect claude` - connect Claude Agent SDK directly
 - `:connect antigravity` - use `agy` headless mode with its Google Sign-In/keyring
@@ -79,7 +88,7 @@ Use `--connect` / `-C` global flag:
 ```bash
 superqode --connect codex --print "review this"
 superqode --connect copilot --print "review this"
-superqode --connect copilot-acp
+superqode --connect acp copilot
 superqode -C claude --print "summarize changes"
 superqode --connect grok
 ```
@@ -97,7 +106,7 @@ superqode connect setup deepseek --json
 
 - Codex profile -> runtime: codex-sdk
 - GitHub Copilot SDK profile -> runtime: copilot-sdk
-- GitHub Copilot ACP profile -> ACP subprocess: copilot --acp --stdio
+- GitHub Copilot ACP compatibility route -> ACP subprocess: copilot --acp --stdio
 - Claude profile -> runtime: claude-agent-sdk
 - BYOK/Local -> runtime: builtin
 - ACP -> no runtime change (ACP subprocess)

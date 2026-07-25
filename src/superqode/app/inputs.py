@@ -214,6 +214,7 @@ class SelectionAwareInput(TextArea):
                 "f": "action_select_highlighted_harness",
                 "i": "action_inspect_highlighted_harness",
                 "a": "action_toggle_all_harnesses",
+                "l": "action_show_complete_harness_catalog",
             }
             action_name = picker_actions.get(token)
             if action_name:
@@ -223,6 +224,16 @@ class SelectionAwareInput(TextArea):
                         action(fork=True)
                     else:
                         action()
+                event.stop()
+                event.prevent_default()
+                return
+
+        if getattr(app, "_awaiting_connect_type", False) and not (self.value or "").strip():
+            token = (getattr(event, "character", None) or event.key or "").lower()
+            if token == "h":
+                action = getattr(app, "action_browse_harnesses_from_connect", None)
+                if callable(action):
+                    action()
                 event.stop()
                 event.prevent_default()
                 return

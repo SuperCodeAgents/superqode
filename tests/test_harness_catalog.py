@@ -4,6 +4,7 @@ from superqode.harness import (
     DEFAULT_HARNESS_ID,
     get_model_family_route,
     list_harnesses,
+    optional_harnesses,
     recommended_harnesses,
     resolve_harness,
 )
@@ -52,6 +53,15 @@ def test_recommended_catalogue_hides_pinned_and_specialized_presets(tmp_path):
 
     # Visibility never changes direct resolution for reproducible configurations.
     assert resolve_harness("kimi-k3-coding", root=tmp_path).id == "kimi-k3-coding"
+
+
+def test_optional_catalogue_contains_tau_without_main_or_acp_harnesses(tmp_path):
+    optional = {entry.id: entry for entry in optional_harnesses(tmp_path)}
+
+    assert list(optional) == ["tau"]
+    assert optional["tau"].source == "optional:tau"
+    assert "core" not in optional
+    assert "copilot" not in optional
 
 
 def test_kimi_family_route_is_curated_and_versioned_preset_stays_pinned(tmp_path):

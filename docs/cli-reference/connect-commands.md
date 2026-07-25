@@ -29,7 +29,6 @@ superqode -C PROFILE [COMMAND]
 |---------|-------------|
 | `codex` | Self-contained. Uses Codex SDK. Auto-sets runtime to `codex-sdk`. Requires `openai_codex` package and `~/.codex/auth.json`. |
 | `copilot` | Self-contained. Uses the official GitHub Copilot SDK. Auto-sets runtime to `copilot-sdk`. Requires the `copilot-sdk` extra and Copilot authentication. |
-| `copilot-acp` | Uses the official GitHub Copilot CLI agent over ACP. Requires `copilot` on `PATH` and `copilot login`. |
 | `claude` | Self-contained. Uses Claude Agent SDK. Auto-sets runtime to `claude-agent-sdk`. Requires `claude_agent_sdk` package and `ANTHROPIC_API_KEY`. |
 | `antigravity` | Self-contained `agy` runtime using Google Sign-In and the OS keyring. |
 | `grok` | Grok Build (xAI's own agent) on your Grok subscription over ACP (`grok agent stdio`). Requires the `grok` binary and `grok login`. To run SuperQode's harness on the same subscription instead, use `:grok api`. |
@@ -59,8 +58,8 @@ superqode --connect codex -p "explain this project"
 # Run a headless task via GitHub Copilot SDK
 superqode --connect copilot -p "review this project"
 
-# Use the official GitHub Copilot CLI agent over ACP
-superqode --connect copilot-acp
+# Advanced compatibility path through the Copilot CLI ACP server
+superqode --connect acp copilot
 
 # Run a headless task via Claude Agent SDK
 superqode --connect claude -p "refactor this module"
@@ -118,9 +117,11 @@ Uses the official GitHub Copilot SDK runtime. Install
 :copilot sessions
 ```
 
-Use `:connect copilot-acp` or `:copilot acp` for the official Copilot CLI ACP
-agent. See [GitHub Copilot](../providers/github-copilot.md) for the ownership
-and capability differences.
+Use `:connect acp copilot` or `:copilot acp` for the advanced Copilot CLI ACP
+compatibility path. The old `:connect copilot-acp` shortcut remains accepted
+for compatibility but is hidden from normal discovery. See
+[GitHub Copilot](../providers/github-copilot.md) for the ownership and
+capability differences.
 
 ### antigravity
 

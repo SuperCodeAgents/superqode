@@ -9,6 +9,7 @@ profile declares a ``connector`` that the TUI/CLI dispatches on:
     byok         the BYOK provider/model picker, optionally pinned to one provider
     local        the local provider/model picker
     acp-picker   the generic "pick any ACP agent" list
+    harness-picker optional non-ACP harness integrations
     external-cli a local vendor TUI that does not expose ACP/headless events yet
 
 This module has no TUI dependencies so it can be unit-tested and reused by both
@@ -35,7 +36,7 @@ class ConnectionProfile:
     id: str
     label: str
     description: str
-    connector: str  # runtime | acp | byok | local | acp-picker | external-cli
+    connector: str  # runtime | acp | byok | local | acp-picker | harness-picker | external-cli
     runtime: Optional[str] = None  # for connector == "runtime"
     acp_agent: Optional[str] = None  # for connector == "acp"
     byok_provider: Optional[str] = None  # for connector == "byok"
@@ -162,31 +163,6 @@ _PROFILES: List[ConnectionProfile] = [
         unavailable_hint=missing_extra_hint("codex-sdk", suffix="then run `codex login`"),
     ),
     ConnectionProfile(
-        id="copilot",
-        label="GitHub Copilot SDK",
-        description=(
-            "Embed GitHub Copilot with your Copilot licence; SuperQode adds "
-            "HarnessSpec context, policy, evidence, evaluation, and session controls"
-        ),
-        connector="runtime",
-        runtime="copilot-sdk",
-        self_contained=True,
-        detect=_copilot_sdk_ready,
-        unavailable_hint=missing_extra_hint(
-            "copilot-sdk",
-            suffix="then run `copilot login` or set COPILOT_GITHUB_TOKEN",
-        ),
-    ),
-    ConnectionProfile(
-        id="copilot-acp",
-        label="GitHub Copilot ACP",
-        description="Use the official Copilot CLI agent over ACP with your Copilot licence",
-        connector="acp",
-        acp_agent="copilot",
-        detect=_copilot_acp_ready,
-        unavailable_hint="install @github/copilot, then run `copilot login`",
-    ),
-    ConnectionProfile(
         id="claude",
         label="Claude Agent SDK",
         description="Use your Anthropic API key via claude-agent-sdk "
@@ -237,9 +213,46 @@ _PROFILES: List[ConnectionProfile] = [
         detect=_zai_ready,
         unavailable_hint=("set ZAI_API_KEY (general API key, not a restricted Coding Plan key)"),
     ),
+    ConnectionProfile(
+        id="other-harnesses",
+        label="Other harnesses",
+        description=("Browse optional non-ACP harness integrations, including Hugging Face Tau"),
+        connector="harness-picker",
+        detect=lambda: True,
+    ),
+    ConnectionProfile(
+        id="copilot",
+        label="GitHub Copilot SDK",
+        description=(
+            "Embed GitHub Copilot with your Copilot licence; SuperQode adds "
+            "HarnessSpec context, policy, evidence, evaluation, and session controls"
+        ),
+        connector="runtime",
+        runtime="copilot-sdk",
+        self_contained=True,
+        detect=_copilot_sdk_ready,
+        unavailable_hint=missing_extra_hint(
+            "copilot-sdk",
+            suffix="then run `copilot login` or set COPILOT_GITHUB_TOKEN",
+        ),
+    ),
 ]
 
-_BY_ID = {p.id: p for p in _PROFILES}
+# Compatibility-only profiles remain directly resolvable without appearing in
+# the root Connect picker or its completion list.
+_LEGACY_PROFILES: List[ConnectionProfile] = [
+    ConnectionProfile(
+        id="copilot-acp",
+        label="GitHub Copilot ACP",
+        description="Legacy shortcut for the Copilot CLI agent in the ACP catalog",
+        connector="acp",
+        acp_agent="copilot",
+        detect=_copilot_acp_ready,
+        unavailable_hint="install @github/copilot, then run `copilot login`",
+    ),
+]
+
+_BY_ID = {p.id: p for p in (*_PROFILES, *_LEGACY_PROFILES)}
 
 
 def list_connection_profiles() -> List[ConnectionProfile]:
@@ -258,9 +271,10 @@ def get_connection_profile(id_or_label: str) -> Optional[ConnectionProfile]:
     return None
 
 
-def connection_profile_ids() -> List[str]:
-    """Profile ids — useful for CLI ``click.Choice`` and completion."""
-    return [p.id for p in _PROFILES]
+def connection_profile_ids(*, include_legacy: bool = False) -> List[str]:
+    """Visible profile ids, optionally including compatibility-only aliases."""
+    profiles = [*_PROFILES, *_LEGACY_PROFILES] if include_legacy else _PROFILES
+    return [p.id for p in profiles]
 
 
 __all__ = [

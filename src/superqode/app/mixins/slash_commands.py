@@ -294,6 +294,7 @@ class SlashCommandMixin:
                     "claude",
                     "antigravity",
                     "grok",
+                    "other-harnesses",
                 ):
                     # Product/runtime connection profiles (Codex, Claude, Grok, …).
                     from superqode.providers.connection_profiles import get_connection_profile

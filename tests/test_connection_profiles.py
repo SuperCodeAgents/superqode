@@ -22,13 +22,14 @@ def test_registry_has_expected_profiles():
         "byok",
         "acp",
         "codex",
-        "copilot",
-        "copilot-acp",
         "claude",
         "antigravity",
         "grok",
         "zai",
+        "other-harnesses",
+        "copilot",
     ]
+    assert "copilot-acp" in connection_profile_ids(include_legacy=True)
 
 
 def test_zai_profile_targets_first_party_byok_provider(monkeypatch):
@@ -60,16 +61,25 @@ def test_claude_profile_is_agent_sdk_runtime():
     assert "anthropic_api_key" in claude.unavailable_hint.lower()
 
 
-def test_copilot_profiles_expose_sdk_and_acp_routes():
+def test_copilot_sdk_is_the_only_visible_headline_route():
     sdk = get_connection_profile("copilot")
     assert sdk.connector == "runtime"
     assert sdk.runtime == "copilot-sdk"
     assert sdk.self_contained is True
     assert "licence" in sdk.description.lower()
 
+    assert "copilot-acp" not in [profile.id for profile in list_connection_profiles()]
     acp = get_connection_profile("copilot-acp")
     assert acp.connector == "acp"
     assert acp.acp_agent == "copilot"
+
+
+def test_other_harnesses_profile_opens_non_acp_harness_picker():
+    profile = get_connection_profile("other-harnesses")
+
+    assert profile.connector == "harness-picker"
+    assert "tau" in profile.description.lower()
+    assert profile.available is True
 
 
 def test_antigravity_profile_is_signed_in_cli_runtime_connector():
@@ -452,15 +462,16 @@ def test_connect_profiles_in_commands_and_completion():
     assert {
         "codex",
         "copilot",
-        "copilot-acp",
         "claude",
         "antigravity",
         "grok",
         "zai",
+        "other-harnesses",
         "byok",
         "local",
         "acp",
     } <= values
+    assert "copilot-acp" not in values
 
 
 def test_no_duplicate_acp_claude_profile():

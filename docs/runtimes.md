@@ -117,14 +117,18 @@ the engine that executes it. The picker is profile-driven and shows live status:
 
 ```text
 :connect
-  [1] ACP agent            Any external ACP agent (incl. your local Claude Code)
+  [1] Local model          Ollama / MLX / vLLM / LM Studio ...
   [2] BYOK provider        Your API key, such as OpenAI, Anthropic, or Gemini
-  [3] Local model          Ollama / MLX / vLLM / LM Studio ...
+  [3] ACP agent            Any external ACP agent (incl. your local Claude Code)
   [4] Codex subscription   Drive OpenAI Codex with your ChatGPT/Codex login (~/.codex)
-  [5] GitHub Copilot SDK   Embed Copilot through the official Python SDK
-  [6] GitHub Copilot ACP   Use the official Copilot CLI agent over ACP
-  [7] Claude Agent SDK     Use your Anthropic API key via claude-agent-sdk
-  [8] Antigravity CLI      Use Google's agent harness with your Google Sign-In
+  [5] Claude Agent SDK     Use your Anthropic API key via claude-agent-sdk
+  [6] Antigravity CLI      Use Google's agent harness with your Google Sign-In
+  [7] Grok subscription    Use Grok Build through the signed-in Grok CLI
+  [8] Z.AI GLM API         Use GLM through Z.AI's general API
+  [9] Other harnesses      Browse optional non-ACP integrations such as Tau
+  [10] GitHub Copilot SDK  Embed Copilot through the official Python SDK
+
+  H   Other harnesses      Open the same optional harness picker
 ```
 
 **Claude** has one headline entry: **Claude Agent SDK** (API key via
@@ -137,8 +141,9 @@ Direct commands and CLI:
 ```bash
 :connect codex            # in the TUI, uses your Codex subscription
 :connect copilot          # official Copilot SDK path
-:connect copilot-acp      # official Copilot CLI ACP path
 :copilot models           # live model catalog for the active Copilot account
+:connect acp copilot      # advanced Copilot CLI ACP compatibility path
+:connect other-harnesses  # optional non-ACP integrations such as Tau
 :connect claude           # use Claude Agent SDK with ANTHROPIC_API_KEY
 :connect antigravity      # signed-in agy CLI (Google OAuth/keyring)
 :antigravity managed      # Google-hosted sandbox (Gemini API key)
@@ -150,7 +155,8 @@ superqode --connect codex --print "summarize this repo"   # headless
 
 Each source maps to a connector internally: **Codex** maps to the `codex-sdk` runtime
 (self-contained, `~/.codex` auth); **GitHub Copilot SDK** maps to the
-`copilot-sdk` runtime; **GitHub Copilot ACP** maps to the `copilot` ACP agent;
+`copilot-sdk` runtime; the advanced Copilot ACP route remains in the generic
+ACP catalog;
 **Claude** maps to the `claude-agent-sdk` runtime
 (`ANTHROPIC_API_KEY`); **Antigravity** → the `antigravity-cli` runtime using
 `agy`'s Google Sign-In/keyring; **BYOK/Local**

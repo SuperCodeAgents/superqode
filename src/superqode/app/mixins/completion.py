@@ -143,6 +143,19 @@ class CompletionMixin:
             return self._harness_candidates_after_prefix(
                 value, ":harness customize ", include_all=True
             )
+        if lowered.startswith(":harness "):
+            command_candidates = self._static_command_candidates(value)
+            harness_candidates = self._harness_candidates_after_prefix(
+                value, ":harness ", include_all=True
+            )
+            seen: set[str] = set()
+            combined: list[PromptCompletionCandidate] = []
+            for candidate in (*command_candidates, *harness_candidates):
+                if candidate.value in seen:
+                    continue
+                seen.add(candidate.value)
+                combined.append(candidate)
+            return combined
         if lowered.startswith(":connect acp "):
             return self._acp_candidates_after_prefix(value)
         context_specs = [
@@ -263,7 +276,7 @@ class CompletionMixin:
         partial = value[len(prefix) :].lower()
         candidates: list[PromptCompletionCandidate] = []
         for entry in entries:
-            if not entry.available or not entry.id.lower().startswith(partial):
+            if not entry.id.lower().startswith(partial):
                 continue
             replacement = prefix + entry.id
             if replacement == value:
@@ -271,11 +284,15 @@ class CompletionMixin:
             route = f"{entry.provider}/{entry.model} · " if entry.provider and entry.model else ""
             source = "project · " if entry.source == "file" else ""
             kind = "project" if entry.source == "file" else entry.category
+            availability = ""
+            if not entry.available:
+                setup = entry.issue or "optional dependency is not installed"
+                availability = f"needs setup: {setup} · "
             candidates.append(
                 PromptCompletionCandidate(
                     value=replacement,
                     label=entry.id,
-                    description=f"{route}{source}{entry.description}",
+                    description=f"{availability}{route}{source}{entry.description}",
                     kind=kind,
                 )
             )
@@ -581,11 +598,11 @@ class CompletionMixin:
     def _provider_completion_candidates(local: bool) -> list[PromptCompletionCandidate]:
         try:
             from superqode.providers.registry import ProviderCategory
-            from superqode.providers.dynamic import all_provider_ids, resolve_provider_def
+            from superqode.providers.dynamic import connect_provider_ids, resolve_provider_def
         except Exception:
             return []
         candidates = []
-        for provider_id in all_provider_ids():
+        for provider_id in connect_provider_ids():
             provider = resolve_provider_def(provider_id)
             if provider is None:
                 continue

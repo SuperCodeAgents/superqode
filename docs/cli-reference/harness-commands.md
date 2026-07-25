@@ -77,8 +77,11 @@ Entering `:harness` or `:harness switch` without a harness name opens the
 interactive Harness Switcher. It shows stable workflows, maintained
 provider/model families, and project or user harnesses. Use the arrow keys and
 Enter to continue the current session, `F` to fork before switching, `I` to
-inspect the selected harness, `A` to show the complete catalog, and Escape to
-cancel. `:harness all` opens the complete picker directly. The CLI keeps
+inspect the selected harness, `A` to show the complete picker, `L` to print all
+HarnessSpecs and installed Python adapters, and Escape to cancel. Select
+`Other harnesses`, press `H`, or run `:connect other-harnesses` from the root
+Connect picker to see optional non-ACP integrations such as Tau. `:harness all`
+opens the complete picker directly. The CLI keeps
 `superqode harness list` complete for scripting compatibility; add
 `--recommended` to match the default TUI view.
 

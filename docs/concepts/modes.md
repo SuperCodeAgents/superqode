@@ -43,8 +43,8 @@ Use a direct product profile:
 :connect antigravity
 :connect grok
 :connect copilot
-:connect copilot-acp
 :connect zai
+:connect other-harnesses
 ```
 
 The root picker is intentionally shorter than the full catalogs. The following
@@ -67,7 +67,7 @@ that matches the account, runtime, and harness ownership required for the task.
 | Anthropic Claude | Claude Agent SDK, Claude Code ACP, Anthropic BYOK | `:connect claude`, `:connect acp claude`, `:connect byok anthropic <model>` |
 | Google Antigravity | Authenticated Antigravity CLI runtime | `:connect antigravity` |
 | Google Gemini | Gemini CLI ACP, Google AI Studio BYOK, Google ADK runtime | `:connect acp gemini`, `:connect byok google <model>`, `:runtime adk` |
-| GitHub Copilot | Copilot SDK, Copilot CLI ACP | `:connect copilot`, `:connect copilot-acp` |
+| GitHub Copilot | Copilot SDK, advanced Copilot CLI ACP | `:connect copilot`, `:connect acp copilot` |
 | xAI Grok | Grok Build ACP, Grok subscription model route, xAI BYOK | `:connect grok`, `:grok api [model]`, `:connect byok xai <model>` |
 | OpenCode | OpenCode ACP, OpenCode Zen BYOK | `:connect acp opencode`, `:connect byok opencode <model>` |
 | Z.AI GLM | Z.AI BYOK, GLM ACP | `:connect zai`, `:connect acp glm` |

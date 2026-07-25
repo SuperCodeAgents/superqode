@@ -220,7 +220,9 @@ def builtin_harnesses() -> tuple[HarnessDefinition, ...]:
         available=tau_available,
         issue=tau_issue,
     )
-    return workflows + tuple(presets) + (tau_entry,)
+    # Keep optional first-party harness integrations on the first picker page.
+    # They remain visible with a setup hint when their dependency is missing.
+    return workflows + (tau_entry,) + tuple(presets)
 
 
 def _candidate_paths(root: Path) -> Iterable[Path]:
@@ -283,6 +285,11 @@ def recommended_harnesses(root: str | Path = ".") -> list[HarnessDefinition]:
     return [entry for entry in list_harnesses(root) if entry.recommended]
 
 
+def optional_harnesses(root: str | Path = ".") -> list[HarnessDefinition]:
+    """Return external harness integrations that are neither profiles nor ACP agents."""
+    return [entry for entry in list_harnesses(root) if entry.source.startswith("optional:")]
+
+
 def resolve_harness(
     reference: str | Path | None = None, *, root: str | Path = "."
 ) -> HarnessDefinition:
@@ -319,6 +326,7 @@ __all__ = [
     "HarnessDefinition",
     "builtin_harnesses",
     "list_harnesses",
+    "optional_harnesses",
     "recommended_harnesses",
     "resolve_harness",
 ]

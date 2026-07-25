@@ -129,6 +129,16 @@ def all_provider_ids() -> List[str]:
     return list(ids)
 
 
+def connect_provider_ids() -> List[str]:
+    """Provider ids shown in interactive connection discovery.
+
+    Legacy direct routes remain resolvable for saved configuration, but they
+    should not compete with a maintained first-party connection profile.
+    """
+    hidden = {"github-copilot"}
+    return [provider_id for provider_id in all_provider_ids() if provider_id not in hidden]
+
+
 def is_curated_provider(provider_id: str) -> bool:
     """True when ``provider_id`` is a first-class (hand-tuned) registry entry."""
     return provider_id in PROVIDERS
@@ -140,5 +150,6 @@ __all__ = [
     "provider_api_key",
     "resolve_base_url",
     "all_provider_ids",
+    "connect_provider_ids",
     "is_curated_provider",
 ]

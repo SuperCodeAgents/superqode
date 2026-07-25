@@ -393,7 +393,6 @@ Inside the TUI, start with `:help`. Common commands include:
 ```text
 :connect codex        # Codex SDK with local Codex login
 :connect copilot      # GitHub Copilot SDK
-:connect copilot-acp  # official Copilot CLI agent over ACP
 :connect claude       # Claude Agent SDK
 :connect antigravity  # signed-in Antigravity CLI
 :connect byok         # hosted provider or API-key path

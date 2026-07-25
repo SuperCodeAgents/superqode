@@ -85,7 +85,11 @@ class ProviderDialog:
         Returns:
             Selected provider ID, or None if cancelled
         """
-        providers = self.manager.list_providers()
+        providers = [
+            provider
+            for provider in self.manager.list_providers()
+            if provider.id != "github-copilot"
+        ]
 
         if not providers:
             _console.print(
@@ -98,7 +102,7 @@ class ProviderDialog:
         other_providers = []
         chinese_providers = []
 
-        popular_ids = {"ollama", "anthropic", "github-copilot", "openai", "google", "openrouter"}
+        popular_ids = {"ollama", "anthropic", "openai", "google", "openrouter"}
         chinese_ids = {
             "qwen",
             "deepseek",
@@ -421,7 +425,6 @@ class ConnectDialog:
                 "perplexity",
                 "cohere",
                 "opencode",
-                "github-copilot",
                 "azure",
                 "vertex",
                 "cloudflare",
