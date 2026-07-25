@@ -159,7 +159,7 @@ async def test_byok_picker_keyboard_navigation_keeps_selection_visible():
         assert log.scroll_y <= selected_y < log.scroll_y + visible_height
 
 
-async def test_harness_command_opens_native_switcher():
+async def test_harness_command_opens_complete_integration_switcher():
     app = SuperQodeApp()
     async with app.run_test(size=(100, 32)) as pilot:
         log = app.query_one("#log", ConversationLog)
@@ -175,10 +175,12 @@ async def test_harness_command_opens_native_switcher():
         assert app._prompt_completion_visible is False
         assert app._awaiting_harness_selection is True
         ids = [entry.id for entry in app._harness_selection_list]
+        assert ids[:5] == ["core", "workbench", "no-tool", "codex", "claude"]
+        assert app._harness_highlighted_index == 0
         assert "kimi-coding" in ids
-        assert "kimi-k3-coding" not in ids
-        assert "gemma4-coding" not in ids
-        assert "Select Harness" in rendered
+        assert "kimi-k3-coding" in ids
+        assert "gemma4-coding" in ids
+        assert "Select Harness or Coding Agent" in rendered
 
 
 async def test_harness_all_opens_complete_native_switcher():
@@ -200,7 +202,7 @@ async def test_harness_all_opens_complete_native_switcher():
         ids = [entry.id for entry in app._harness_selection_list]
         assert "kimi-k3-coding" in ids
         assert "benchmark-coding" in ids
-        assert "Complete catalog" in rendered
+        assert "All available integrations" in rendered
 
 
 async def test_claude_agent_badge_on_mounted_status_bar():
@@ -423,12 +425,12 @@ async def test_mounted_harness_switcher_toggles_catalog_and_cancels(tmp_path, mo
         prompt.focus()
         await pilot.pause()
 
-        recommended_count = len(app._harness_selection_list)
-        await pilot.press("a")
+        complete_count = len(app._harness_selection_list)
+        await pilot.press("r")
         await pilot.pause()
 
-        assert app._harness_include_all is True
-        assert len(app._harness_selection_list) > recommended_count
+        assert app._harness_include_all is False
+        assert len(app._harness_selection_list) < complete_count
 
         await pilot.press("escape")
         await pilot.pause()

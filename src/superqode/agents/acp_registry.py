@@ -132,21 +132,23 @@ ACP_AGENTS_REGISTRY: dict[str, AgentMetadata] = {
         "requirements": ["python3.10+", "pipx"],
     },
     # =========================================================================
-    # 6. Kimi CLI - Moonshot AI's Agent
+    # 6. Kimi Code - Moonshot AI's Agent
     # =========================================================================
     "kimi.moonshot.cn": {
         "identity": "kimi.moonshot.cn",
-        "name": "Kimi CLI",
+        "name": "Kimi Code",
         "short_name": "kimi",
-        "url": "https://github.com/anthropics/kimi-cli",
+        "url": "https://github.com/MoonshotAI/kimi-code",
         "author_name": "Moonshot AI",
-        "author_url": "https://moonshot.cn/",
-        "description": "CLI AI agent implementing ACP with support for various development workflows.",
+        "author_url": "https://www.kimi.com/",
+        "description": "Moonshot AI's first-party coding agent with native ACP support.",
         "run_command": "kimi acp",
         "status": "available",
-        "installation_command": "npm install -g kimi-cli",
-        "installation_instructions": "Install Kimi CLI via npm. Set MOONSHOT_API_KEY.",
-        "requirements": ["node", "npm", "MOONSHOT_API_KEY"],
+        "installation_command": (
+            "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
+        ),
+        "installation_instructions": "Install Kimi Code, launch `kimi`, and complete `/login`.",
+        "requirements": ["kimi"],
     },
     # =========================================================================
     # 7. OpenCode - Open-Source Coding Agent

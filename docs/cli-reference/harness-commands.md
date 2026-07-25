@@ -74,22 +74,64 @@ superqode harness use workbench
 An explicit `--harness` name or HarnessSpec path takes precedence. In the TUI, the
 equivalent commands are `:harness list` and `:harness use <name-or-path>`.
 Entering `:harness` or `:harness switch` without a harness name opens the
-interactive Harness Switcher. It shows stable workflows, maintained
-provider/model families, and project or user harnesses. Use the arrow keys and
-Enter to continue the current session, `F` to fork before switching, `I` to
-inspect the selected harness, `A` to show the complete picker, `L` to print all
-HarnessSpecs and installed Python adapters, and Escape to cancel. Select
-`Other harnesses`, press `H`, or run `:connect other-harnesses` from the root
-Connect picker to see optional non-ACP integrations such as Tau. `:harness all`
-opens the complete picker directly. The CLI keeps
-`superqode harness list` complete for scripting compatibility; add
-`--recommended` to match the default TUI view.
+interactive Harness Switcher. Its default view starts at item 1 and groups the
+catalog in this order: SuperQode-managed harnesses, vendor coding agents, ACP
+agents, optional integrations, model and task presets, and project harnesses.
+Vendor integrations such as
+Codex, Claude, Kimi Code, Qwen Code, Copilot, Antigravity, and Grok display live readiness alongside
+installed, recent, and featured ACP agents and HarnessSpec entries such as Core,
+Workbench, Tau, Kimi, Qwen, and GLM. The ACP section ends with a Browse All row
+for the complete official registry. Use the arrow keys and Enter to connect or
+switch, `F` to fork a HarnessSpec session, `I` to inspect an entry, `R` to show
+only recommended HarnessSpecs, `A` to return to all entries, `L` to print the
+technical HarnessSpec catalog, and Escape to cancel. The CLI keeps
+`superqode harness list` limited to actual HarnessSpecs for scripting
+compatibility.
+
+When a maintained Python integration such as Tau, Codex SDK, Claude Agent SDK,
+or Copilot SDK is missing, selecting it opens an installation confirmation
+inside the TUI. Press Enter to install and continue. SuperQode targets the exact
+Python interpreter running the TUI, then retries the selected harness without a
+restart. External CLI and local runtime installation remain manual.
+
+The focused optional-integration view remains available through
+`:connect other-harnesses`.
+
+Direct names use the same unified dispatch:
+
+```text
+:harness switch codex
+:harness switch claude
+:harness switch kimi-code
+:harness switch qwen-code
+:harness switch acp:qwen
+:harness switch acp:all
+:harness switch tau
+:harness switch kimi-coding
+```
+
+ACP names use the explicit `acp:<name>` namespace, which prevents an ACP adapter
+from colliding with a native vendor connector or HarnessSpec. Switching to an
+ACP agent starts its own runtime session. SuperQode queues up to 12 recent user
+and agent messages, bounded to 12,000 characters, and prepends that replay to
+the first prompt sent to the new agent. Status notices, errors, and setup output
+are excluded. The transition receipt reports how many messages were queued.
+Native ACP session resumption remains owned by each agent and is separate from
+this cross-agent replay.
+
+Tau has a native SuperQode command family. Use
+`:tau login <provider>/<model>` to configure Tau and connect the route in one
+step, `:tau use` to reconnect its saved default route, and
+`:tau status`, `:tau providers`, `:tau models`, `:tau model`, `:tau sessions`,
+`:tau logout`, or `:tau retry` for ongoing management. Users do not need to
+open Tau's separate TUI or run Tau slash commands.
 
 The list reports each harness runtime, readiness state, and continuity level.
 `superqode harness current` resolves the project default. During an interactive
-TUI session, `:harness switch <name>` changes the harness while retaining the
-session ID and normalized conversation history. Add `--fork` to the switch
-command when the selected harness should receive an independent branch.
+TUI session, `:harness switch <name>` either changes a HarnessSpec while
+retaining normalized history or connects the selected vendor agent through its
+native runtime. Add `--fork` when a HarnessSpec should receive an independent
+branch. Vendor agents retain their own native thread and session controls.
 
 For non-interactive work, combine the top-level session and harness options:
 

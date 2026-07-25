@@ -75,6 +75,7 @@ class HelperVimMixin:
     _VIM_TEXT_ENTRY_FLAGS = (
         "_awaiting_agent_question",
         "_awaiting_harness_wizard",
+        "_awaiting_harness_install",
         "_awaiting_local_dep_install",
         "_awaiting_local_server_start",
         "_awaiting_local_connect_start",

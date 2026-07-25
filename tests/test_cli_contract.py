@@ -10,7 +10,7 @@ from superqode.main import cli_main
 
 
 EXPECTED_COMMAND_COUNT = 260
-EXPECTED_HELP_TREE_SHA256 = "9763708274d09a25fe29972e94be76a551b9f224c16b3cc42b2e4f728771cf95"
+EXPECTED_HELP_TREE_SHA256 = "24afc7c039e4dc613e6a1c82a7b20b7c8c0cea6fb93dd5b7491204551205ce81"
 
 
 def _render_help_tree() -> tuple[int, str]:

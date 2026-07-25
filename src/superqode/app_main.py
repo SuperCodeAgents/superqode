@@ -849,6 +849,11 @@ class SuperQodeApp(
             log = self.query_one("#log", ConversationLog)
             log.add_info("Harness wizard cancelled.")
             return
+        if getattr(self, "_awaiting_harness_install", None):
+            self._awaiting_harness_install = None
+            log = self.query_one("#log", ConversationLog)
+            log.add_info("Harness installation cancelled.")
+            return
 
         # Then check if agent is running (ACP or BYOK)
         log = self.query_one("#log", ConversationLog)

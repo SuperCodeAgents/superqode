@@ -412,6 +412,7 @@ def test_welcome_compacts_for_narrow_terminals():
     assert "Current workspace" not in text
     assert "Build · Connect · Orchestrate · Evaluate · Optimize" not in text
     assert ":connect" in text
+    assert "Return here anytime: :home" in text
 
 
 def test_welcome_uses_one_line_headlines_at_small_widths():
@@ -434,9 +435,15 @@ def test_hints_bar_surfaces_mode_switcher():
     assert ":work" in text
     assert ":memory" in text
     assert ":help" in text
-    assert ":home" not in text
+    assert ":home" in text
     assert ":exit" not in text
-    assert "🔌" not in text
+    assert "🏠 :home" in text
+    assert "🔌 :connect" in text
+    assert "🎛 :mode" in text
+    assert "◈ :harness" in text
+    assert "📋 :work" in text
+    assert "🧠 :memory" in text
+    assert "? :help" in text
 
 
 def test_lmstudio_app_only_prompt_does_not_arm_enter_start(monkeypatch):
@@ -1788,7 +1795,7 @@ def test_tui_harness_customize_creates_safe_editable_copy(tmp_path, monkeypatch)
     assert any("Refusing to overwrite" in str(item) for item in log.items)
 
 
-def test_tui_harness_commands_open_native_switcher(tmp_path, monkeypatch):
+def test_tui_harness_commands_open_complete_integration_switcher(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("SUPERQODE_HARNESS", "core")
     app = make_app()
@@ -1800,19 +1807,248 @@ def test_tui_harness_commands_open_native_switcher(tmp_path, monkeypatch):
 
     assert app._awaiting_harness_selection is True
     picker_ids = [entry.id for entry in app._harness_selection_list]
-    assert picker_ids[:4] == ["core", "workbench", "no-tool", "tau"]
+    assert picker_ids[:5] == ["core", "workbench", "no-tool", "codex", "claude"]
+    assert app._harness_highlighted_index == 0
+    assert {"core", "workbench", "no-tool", "tau", "kimi-k3-coding"} <= set(picker_ids)
     rendered = render_plain(log.items[-1])
-    assert "Select Harness" in rendered
+    assert "Select Harness or Coding Agent" in rendered
+    assert "Coding agents" in rendered
+    assert "SuperQode harnesses" in rendered
+    assert "Model and task presets" in rendered
     assert "Enter switch" in rendered
     assert "F fork" in rendered
     assert "L catalog" in rendered
     assert "Usage: :harness" not in rendered
+    assert rendered.index("SuperQode harnesses") < rendered.index("Coding agents")
+    assert rendered.index("Coding agents") < rendered.index("ACP agents")
+    assert rendered.index("ACP agents") < rendered.index("Model and task presets")
 
     app._harness_cmd("switch", log)
 
     assert app._awaiting_harness_selection is True
-    assert "Select Harness" in render_plain(log.items[-1])
+    assert app._harness_highlighted_index == 0
+    assert "Select Harness or Coding Agent" in render_plain(log.items[-1])
     assert not any("Usage: :harness" in str(item) for item in log.items)
+
+
+def test_harness_switch_vendor_alias_dispatches_connection_profile(monkeypatch):
+    monkeypatch.setattr(
+        "superqode.runtime.list_runtimes",
+        lambda: [SimpleNamespace(name="codex-sdk", installed=True)],
+    )
+    app = make_app()
+    log = FakeLog()
+    dispatched = []
+    app._dispatch_connection_profile = lambda profile, target_log: dispatched.append(
+        (profile.id, target_log)
+    )
+
+    app._harness_cmd("switch codex", log)
+
+    assert dispatched == [("codex", log)]
+
+
+def test_harness_switch_completion_includes_vendor_agents_and_all_presets():
+    app = make_app()
+
+    codex = app._prompt_completion_candidates_for(":harness switch cod")
+    kimi_code = app._prompt_completion_candidates_for(":harness switch kimi-c")
+    qwen_code = app._prompt_completion_candidates_for(":harness switch qwen-c")
+    pinned = app._prompt_completion_candidates_for(":harness switch kimi-k3")
+    registry_agent = app._prompt_completion_candidates_for(":harness switch acp:stak")
+
+    assert [candidate.value for candidate in codex] == [":harness switch codex"]
+    assert ":harness switch kimi-code" in [candidate.value for candidate in kimi_code]
+    assert ":harness switch qwen-code" in [candidate.value for candidate in qwen_code]
+    assert [candidate.value for candidate in pinned] == [":harness switch kimi-k3-coding"]
+    assert [candidate.value for candidate in registry_agent] == [
+        ":harness switch acp:stakpak"
+    ]
+
+
+def test_harness_picker_surfaces_curated_acp_agents_and_registry_browser(monkeypatch):
+    monkeypatch.setattr(
+        "superqode.commands.acp.check_agent_installed",
+        lambda agent: agent.get("short_name") == "pi",
+    )
+    app = make_app()
+    log = FakeLog()
+    app._scroll_to_highlighted_item = lambda *_args, **_kwargs: None
+
+    app._harness_cmd("switch", log)
+
+    picker_ids = [entry.id for entry in app._harness_selection_list]
+    assert "kimi-code" in picker_ids
+    assert "qwen-code" in picker_ids
+    assert "acp:kimi" not in picker_ids
+    assert "acp:qwen" not in picker_ids
+    assert "acp:pi" in picker_ids
+    assert "acp:all" in picker_ids
+    assert "acp:codex" not in picker_ids
+    pi = next(entry for entry in app._harness_selection_list if entry.id == "acp:pi")
+    assert pi.group == "ACP agents"
+    assert pi.available is True
+    assert pi.continuity == "context-replay"
+    rendered = render_plain(log.items[-1])
+    assert "Browse all ACP agents" in rendered
+    assert "context replay" in rendered
+
+
+def test_harness_switch_explicit_acp_agent_queues_context_replay(monkeypatch):
+    monkeypatch.setattr("superqode.commands.acp.check_agent_installed", lambda _agent: True)
+    app = make_app()
+    log = FakeLog()
+    log._messages = [
+        ("user", "Inspect the failing parser.", ""),
+        ("agent", "The tokenizer drops escaped colons.", "Core"),
+        ("info", "Status chrome should not be replayed.", ""),
+    ]
+    app.current_agent = "core"
+    connected = []
+    app._connect_acp_cmd = lambda args, target_log: connected.append((args, target_log))
+
+    app._harness_cmd("switch acp:qwen", log)
+
+    assert connected == [("qwen", log)]
+    pending = app._pending_harness_acp_transition
+    assert pending["from"] == "core"
+    assert pending["message_count"] == 2
+    replayed = app._consume_pending_acp_context_replay("Fix it and run the tests.")
+    assert "[SuperQode context replay]" in replayed
+    assert "Inspect the failing parser." in replayed
+    assert "The tokenizer drops escaped colons." in replayed
+    assert "Status chrome should not be replayed." not in replayed
+    assert replayed.endswith("[Current request]\nFix it and run the tests.")
+    assert app._pending_harness_acp_transition is None
+
+
+def test_harness_picker_browse_all_opens_acp_registry():
+    app = make_app()
+    log = FakeLog()
+    app.query_one = lambda *args, **kwargs: log
+    opened = []
+    app._show_agents = lambda target_log, **kwargs: opened.append((target_log, kwargs))
+    entry = SimpleNamespace(
+        id="acp:all",
+        display_name="Browse all ACP agents",
+        available=True,
+        issue="",
+        continuity="catalog",
+        kind="acp-browser",
+    )
+    app._awaiting_harness_selection = True
+    app._harness_selection_list = [entry]
+    app._harness_highlighted_index = 0
+
+    app.action_select_highlighted_harness()
+
+    assert opened == [(log, {"include_all": True})]
+    assert app._awaiting_harness_selection is False
+
+
+def test_harness_picker_dispatches_vendor_agent_even_when_setup_is_needed(monkeypatch):
+    monkeypatch.setattr(
+        "superqode.runtime.list_runtimes",
+        lambda: [
+            SimpleNamespace(name=name, installed=True)
+            for name in ("codex-sdk", "claude-agent-sdk", "copilot-sdk")
+        ],
+    )
+    app = make_app()
+    log = FakeLog()
+    app.query_one = lambda *args, **kwargs: log
+    app.set_timer = lambda *_args, **_kwargs: None
+    app._scroll_to_highlighted_item = lambda *_args, **_kwargs: None
+    dispatched = []
+    app._dispatch_connection_profile = lambda profile, target_log: dispatched.append(
+        (profile.id, target_log)
+    )
+
+    app._harness_cmd("switch", log)
+    app._harness_highlighted_index = next(
+        index for index, entry in enumerate(app._harness_selection_list) if entry.id == "codex"
+    )
+    app.action_select_highlighted_harness()
+
+    assert dispatched == [("codex", log)]
+    assert app._awaiting_harness_selection is False
+
+
+def test_harness_picker_offers_in_tui_python_extra_install():
+    app = make_app()
+    log = FakeLog()
+    app.query_one = lambda *args, **kwargs: log
+    entry = SimpleNamespace(
+        id="tau",
+        display_name="Tau (Hugging Face)",
+        available=False,
+        issue="missing tau",
+        continuity="exact-resume",
+        kind="harness",
+        install_extra="tau",
+    )
+    app._awaiting_harness_selection = True
+    app._harness_selection_list = [entry]
+    app._harness_highlighted_index = 0
+
+    app.action_select_highlighted_harness()
+
+    pending = app._awaiting_harness_install
+    assert pending["extra"] == "tau"
+    assert pending["resume_command"] == "switch tau"
+    assert "[tau]" in pending["command"]
+    rendered = render_plain(log.items[-1])
+    assert "Install Python integration" in rendered
+    assert "Enter install and continue" in rendered
+    assert f">{pending['command']}" in rendered
+
+
+def test_harness_install_confirmation_runs_worker():
+    app = make_app()
+    log = FakeLog()
+    pending = {
+        "display_name": "Tau",
+        "command": 'uv pip install "superqode[tau]"',
+        "resume_command": "switch tau",
+    }
+    app._awaiting_harness_install = pending
+    workers = []
+
+    def capture_worker(worker):
+        workers.append(worker)
+        worker.close()
+
+    app.run_worker = capture_worker
+
+    assert app._handle_harness_install_input("", log) is True
+    assert app._awaiting_harness_install is None
+    assert len(workers) == 1
+
+
+@pytest.mark.asyncio
+async def test_harness_python_extra_install_resumes_without_restart(monkeypatch):
+    app = make_app()
+    log = FakeLog()
+    completed = subprocess.CompletedProcess(
+        args=["uv", "pip", "install"],
+        returncode=0,
+        stdout="installed",
+        stderr="",
+    )
+    monkeypatch.setattr(subprocess, "run", lambda *_args, **_kwargs: completed)
+    resumed = []
+    app._harness_cmd = lambda command, target_log: resumed.append((command, target_log))
+    pending = {
+        "display_name": "Tau",
+        "command": 'uv pip install "superqode[tau]"',
+        "resume_command": "switch tau",
+    }
+
+    await app._install_harness_extra_then_continue(pending, log)
+
+    assert resumed == [("switch tau", log)]
+    assert "installed" in log.items
+    assert any("Continuing without restarting" in str(item) for item in log.items)
 
 
 def test_tui_harness_picker_navigates_and_switches_same_session(tmp_path, monkeypatch):
@@ -3237,7 +3473,11 @@ def test_prompt_completion_lists_harness_catalogue():
     assert "moonshot/kimi-k3" in candidates[0].description
 
     switch = app._prompt_completion_candidates_for(":harness switch kimi")
-    assert [candidate.value for candidate in switch] == [":harness switch kimi-coding"]
+    assert [candidate.value for candidate in switch] == [
+        ":harness switch kimi-code",
+        ":harness switch kimi-coding",
+        ":harness switch kimi-k3-coding",
+    ]
 
     complete = app._prompt_completion_candidates_for(":harness use-all kimi")
     assert [candidate.value for candidate in complete] == [
@@ -3260,6 +3500,161 @@ def test_prompt_completion_discovers_unavailable_tau_harness(monkeypatch):
     assert [candidate.value for candidate in direct] == [":harness tau"]
     assert "needs setup" in switch[0].description
     assert "superqode[tau]" in switch[0].description
+
+
+def test_tau_command_completion_exposes_native_management_surface():
+    from superqode.app.constants import COMMANDS
+
+    app = make_app()
+    tau_commands = {command for command in COMMANDS if command.startswith(":tau")}
+    completions = {candidate.value for candidate in app._prompt_completion_candidates_for(":tau ")}
+
+    assert {
+        ":tau login",
+        ":tau status",
+        ":tau providers",
+        ":tau models",
+        ":tau model",
+        ":tau sessions",
+        ":tau logout",
+        ":tau retry",
+    } <= tau_commands
+    assert tau_commands - {":tau"} <= completions
+
+
+def test_tau_login_syncs_active_ollama_route_without_tau_tui(monkeypatch):
+    from superqode.harness.tau_management import TauProviderSummary
+
+    app = make_app()
+    log = FakeLog()
+    app._pure_mode = SimpleNamespace(
+        session=SimpleNamespace(
+            provider="ollama",
+            model="qwen3.6:35b-mlx",
+            harness_name="tau",
+        )
+    )
+    captured = {}
+    connected = []
+
+    def fake_configure(**kwargs):
+        captured.update(kwargs)
+        return TauProviderSummary(
+            name=kwargs["provider_name"],
+            display_name=kwargs["display_name"],
+            kind="openai-compatible",
+            base_url=kwargs["base_url"],
+            models=(kwargs["model"],),
+            default_model=kwargs["model"],
+            authenticated=True,
+            is_default=True,
+        )
+
+    monkeypatch.setattr(
+        "superqode.harness.tau_management.configure_tau_provider",
+        fake_configure,
+    )
+    monkeypatch.setattr(
+        app,
+        "_tau_connect_route",
+        lambda provider, model, _log: connected.append((provider, model)) or True,
+    )
+
+    app._tau_cmd("login", log)
+
+    assert captured["provider_name"] == "ollama"
+    assert captured["model"] == "qwen3.6:35b-mlx"
+    assert captured["base_url"] == "http://localhost:11434/v1"
+    assert captured["credential"] == "ollama"
+    assert connected == [("ollama", "qwen3.6:35b-mlx")]
+    rendered = "\n".join(render_plain(item) for item in log.items)
+    assert "Send a message now" in rendered
+    assert ":tau retry" in rendered
+
+
+def test_tau_connect_route_selects_harness_and_connects_superqode(monkeypatch):
+    app = make_app()
+    log = FakeLog()
+    session = SimpleNamespace(
+        connected=False,
+        provider="",
+        model="",
+        harness_name="core",
+    )
+    selected_harnesses = []
+    pure = SimpleNamespace(
+        session=session,
+        get_current_session_id=lambda: "session-1",
+    )
+
+    def select_harness(reference):
+        selected_harnesses.append(reference)
+        session.harness_name = "tau"
+
+    pure.select_harness = select_harness
+    app._ensure_pure_mode = lambda: pure
+    app._refresh_harness_panel = lambda: None
+    connect_calls = []
+
+    def connect(provider, model, _log, *, session_id=None):
+        connect_calls.append((provider, model, session_id))
+        session.connected = True
+        session.provider = provider
+        session.model = model
+
+    app._connect_byok_mode = connect
+    monkeypatch.setenv("SUPERQODE_HARNESS", "core")
+    monkeypatch.setattr(
+        "superqode.harness.resolve_harness",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            id="tau",
+            path=None,
+            available=True,
+            issue="",
+        ),
+    )
+    monkeypatch.setattr(
+        "superqode.providers.dynamic.resolve_provider_def",
+        lambda provider: SimpleNamespace(id=provider),
+    )
+
+    assert app._tau_connect_route("ollama", "qwen3.6:35b-mlx", log) is True
+    assert selected_harnesses == ["tau"]
+    assert connect_calls == [("ollama", "qwen3.6:35b-mlx", "session-1")]
+    assert session.harness_name == "tau"
+    assert session.connected is True
+
+
+def test_tau_use_connects_saved_default_route(monkeypatch):
+    from superqode.harness.tau_management import TauProviderSummary
+
+    app = make_app()
+    log = FakeLog()
+    connected = []
+    monkeypatch.setattr(
+        "superqode.harness.tau_management.list_tau_providers",
+        lambda: [
+            TauProviderSummary(
+                name="ollama",
+                display_name="Ollama",
+                kind="openai-compatible",
+                base_url="http://localhost:11434/v1",
+                models=("qwen3.6:35b-mlx",),
+                default_model="qwen3.6:35b-mlx",
+                authenticated=True,
+                is_default=True,
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        app,
+        "_tau_connect_route",
+        lambda provider, model, _log: connected.append((provider, model)) or True,
+    )
+
+    app._tau_cmd("use", log)
+
+    assert connected == [("ollama", "qwen3.6:35b-mlx")]
 
 
 def test_prompt_completion_prioritizes_full_connect_and_quit_commands():
@@ -5312,8 +5707,19 @@ def test_connect_picker_can_open_harness_catalog():
     app._show_connect_type_picker(log)
     rendered = render_plain(log.items[-1])
     assert "Other harnesses" in rendered
-    assert "[9] Other harnesses" in rendered
-    assert "[10] GitHub Copilot SDK" in rendered
+    assert "[8] GitHub Copilot SDK" in rendered
+    assert "[10] Qwen Code" in rendered
+    assert "[11] Kimi Code" in rendered
+    assert "[12] Other harnesses" in rendered
+    assert rendered.index("Connection methods") < rendered.index("US Coding Agents")
+    assert rendered.index("US Coding Agents") < rendered.index("China Coding Agents")
+    assert rendered.index("China Coding Agents") < rendered.index("Other integrations")
+    assert rendered.index("[4] Codex subscription") < rendered.index("[5] Claude Agent SDK")
+    assert rendered.index("[5] Claude Agent SDK") < rendered.index("[6] Antigravity CLI")
+    assert rendered.index("[6] Antigravity CLI") < rendered.index("[7] Grok subscription")
+    assert rendered.index("[7] Grok subscription") < rendered.index("[8] GitHub Copilot SDK")
+    assert rendered.index("[9] Z.AI GLM API") < rendered.index("[10] Qwen Code")
+    assert rendered.index("[10] Qwen Code") < rendered.index("[11] Kimi Code")
     assert "H other harnesses" in rendered
 
     app._awaiting_connect_type = True

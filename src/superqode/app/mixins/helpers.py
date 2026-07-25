@@ -370,6 +370,7 @@ class HelpersMixin(
                 "_awaiting_mode_selection",
                 "_awaiting_harness_selection",
                 "_awaiting_harness_confirmation",
+                "_awaiting_harness_install",
             )
         )
 

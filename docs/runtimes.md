@@ -117,16 +117,25 @@ the engine that executes it. The picker is profile-driven and shows live status:
 
 ```text
 :connect
+  Connection methods
   [1] Local model          Ollama / MLX / vLLM / LM Studio ...
   [2] BYOK provider        Your API key, such as OpenAI, Anthropic, or Gemini
   [3] ACP agent            Any external ACP agent (incl. your local Claude Code)
+
+  US Coding Agents
   [4] Codex subscription   Drive OpenAI Codex with your ChatGPT/Codex login (~/.codex)
   [5] Claude Agent SDK     Use your Anthropic API key via claude-agent-sdk
   [6] Antigravity CLI      Use Google's agent harness with your Google Sign-In
   [7] Grok subscription    Use Grok Build through the signed-in Grok CLI
-  [8] Z.AI GLM API         Use GLM through Z.AI's general API
-  [9] Other harnesses      Browse optional non-ACP integrations such as Tau
-  [10] GitHub Copilot SDK  Embed Copilot through the official Python SDK
+  [8] GitHub Copilot SDK   Embed Copilot through the official Python SDK
+
+  China Coding Agents
+  [9] Z.AI GLM API         Use GLM through Z.AI's general API
+  [10] Qwen Code           Use QwenLM's first-party agent through qwen --acp
+  [11] Kimi Code           Use Moonshot AI's first-party agent through kimi acp
+
+  Other integrations
+  [12] Other harnesses     Browse optional non-ACP integrations such as Tau
 
   H   Other harnesses      Open the same optional harness picker
 ```
@@ -140,6 +149,8 @@ Direct commands and CLI:
 
 ```bash
 :connect codex            # in the TUI, uses your Codex subscription
+:connect kimi-code        # Moonshot AI Kimi Code through its official ACP server
+:connect qwen-code        # Qwen Code through its stable ACP server
 :connect copilot          # official Copilot SDK path
 :copilot models           # live model catalog for the active Copilot account
 :connect acp copilot      # advanced Copilot CLI ACP compatibility path
@@ -152,6 +163,35 @@ Direct commands and CLI:
 superqode --connect codex # launch already on Codex
 superqode --connect codex --print "summarize this repo"   # headless
 ```
+
+Kimi Code and Qwen Code are first-party agent connections. SuperQode uses their
+official ACP servers instead of replacing their native agent loops. Install and
+authenticate the vendor CLI once, then select the named connection:
+
+```bash
+curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
+kimi
+# Complete /login, then exit Kimi Code and run :connect kimi-code in SuperQode.
+
+npm install -g @qwen-code/qwen-code
+qwen auth
+# Then run :connect qwen-code in SuperQode.
+```
+
+The same entries appear in `:harness` and can be selected directly with
+`:harness switch kimi-code` or `:harness switch qwen-code`. Their explicit ACP
+aliases, `acp:kimi` and `acp:qwen`, remain available for scripts and advanced
+catalog workflows.
+
+Tau can be selected and configured entirely inside SuperQode:
+
+```text
+:tau login ollama/qwen3.6:35b-mlx
+```
+
+Use `:tau help` to see its provider, model, session, logout, and retry
+subcommands. The command selects Tau and connects the route, so a separate
+`:connect`, Tau TUI, or `/login` command is not required.
 
 Each source maps to a connector internally: **Codex** maps to the `codex-sdk` runtime
 (self-contained, `~/.codex` auth); **GitHub Copilot SDK** maps to the

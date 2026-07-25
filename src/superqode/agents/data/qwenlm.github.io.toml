@@ -10,7 +10,7 @@ publisher_url = "https://github.com/QwenLM"
 type = "coding"
 description = "AI coding agent by QwenLM with ACP support."
 tags = ["open-source", "coding", "qwen", "acp"]
-run_command."*" = "qwen --acp --experimental-skills"
+run_command."*" = "qwen --acp"
 
 help = '''
 # Qwen Code
@@ -26,7 +26,7 @@ npm install -g @qwen-code/qwen-code
 For ACP mode:
 
 ```bash
-qwen --acp --experimental-skills
+qwen --acp
 ```
 
 See https://github.com/QwenLM/qwen-code for details.

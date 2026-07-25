@@ -25,6 +25,7 @@ from superqode.acp.session_store import (
     ACPSessionStore,
     StoredSession,
     default_sessions_db_path,
+    recent_agent_identities,
 )
 
 
@@ -62,6 +63,21 @@ async def test_record_then_get_round_trip(tmp_path):
     assert fetched is not None
     assert fetched.id == rec.id
     assert fetched.name == "My session"
+
+
+@pytest.mark.asyncio
+async def test_recent_agent_identities_are_distinct_and_newest_first(tmp_path, monkeypatch):
+    timestamps = iter((10.0, 20.0, 30.0))
+    monkeypatch.setattr("superqode.acp.session_store.time.time", lambda: next(timestamps))
+    path = tmp_path / "sessions.db"
+    store = ACPSessionStore(path=path)
+    await store.record("first.example", "one", str(tmp_path))
+    await store.record("second.example", "two", str(tmp_path))
+    await store.record("first.example", "three", str(tmp_path))
+
+    assert recent_agent_identities(path=path) == ("first.example", "second.example")
+    assert recent_agent_identities(limit=1, path=path) == ("first.example",)
+    assert recent_agent_identities(path=tmp_path / "missing.db") == ()
 
 
 @pytest.mark.asyncio

@@ -108,6 +108,8 @@ class SlashCommandMixin:
             self._codex_cmd(args, log)
         elif c == "copilot":
             self._copilot_cmd(args, log)
+        elif c == "tau":
+            self._tau_cmd(args, log)
         elif c == "claude":
             self._claude_cmd(args, log)
         elif c in ("grok", "xai-grok"):
@@ -1506,6 +1508,9 @@ class SlashCommandMixin:
                     "Do not edit files, run commands that modify state, or make changes.\n\n"
                     f"{text}"
                 )
+            consume_context = getattr(self, "_consume_pending_acp_context_replay", None)
+            if callable(consume_context):
+                text = consume_context(text)
             # Use standard subprocess approach (ACP requires separate adapter)
             self._send_to_agent(text, name, log)
         else:

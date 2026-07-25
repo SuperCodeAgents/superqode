@@ -12,30 +12,63 @@ store.
 uv tool install "superqode[tau]"
 ```
 
-In the TUI, open `:harness` and select **Tau (Hugging Face)**. The entry remains
-visible when the extra is missing and shows an installation command appropriate
-for the environment running SuperQode. Tau appears on the first harness page,
-and setup-aware completion works before installation:
+In the TUI, run `:tau use`, or open `:connect`, select **Other harnesses**, then
+select **Tau (Hugging Face)**. The entry remains visible when the extra is
+missing and shows an installation command appropriate for the environment
+running SuperQode.
 
 ```text
-:harness ta
-:harness switch ta
+:tau use
+:harness switch tau
 ```
 
-From the root `:connect` picker, press `H` to open the harness catalog.
+From the root `:connect` picker, press `H` to open Other Harnesses.
 
-Tau uses its own provider catalog and credentials. Configure those with Tau
-before selecting the harness:
+## Native Tau commands
 
-```bash
-tau
-/login
-/model
+SuperQode manages Tau without requiring Tau's TUI or `/login` command:
+
+```text
+:tau help
+:tau login
+:tau status
+:tau providers
+:tau models [provider]
+:tau model <provider>/<model>
+:tau sessions
+:tau logout <provider>
+:tau retry
 ```
 
-The selected SuperQode provider/model must also be a valid Tau provider/model
-pair. Tau's saved credentials take precedence over its provider environment
-variable.
+`:tau login` registers or updates the route in Tau, copies the credential from
+SuperQode's local auth store, selects the Tau harness, and connects the session.
+It does not require a separate `:connect` command when the route is supplied.
+For unauthenticated local providers such as Ollama, SuperQode stores a harmless
+local placeholder because Tau requires a non-empty credential value.
+
+For example:
+
+```text
+:tau login ollama/qwen3.6:35b-mlx
+```
+
+Then send a message normally. If a Tau request previously failed with
+`Unknown provider: ollama`, finish with:
+
+```text
+:tau retry
+```
+
+Bare `:tau login` reuses the active SuperQode route when one already exists:
+
+```text
+:connect local ollama/qwen3.6:35b-mlx
+:tau login
+```
+
+Ollama is registered through its OpenAI-compatible endpoint at
+`http://localhost:11434/v1`, respecting `OLLAMA_HOST` when it is set.
+After initial setup, `:tau use` reconnects Tau's configured default route.
 
 ## Current safety boundary
 

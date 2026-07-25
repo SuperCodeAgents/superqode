@@ -7,17 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.40] - 2026-07-25
+
+### Added
+
+- **One place for coding agents** - Discover and switch between SuperQode harnesses, vendor agents, ACP agents, optional integrations, and model presets from the unified TUI.
+- **Kimi Code and Qwen Code** - Connect to both first-party coding agents directly, alongside Codex, Claude, Antigravity, Grok, GitHub Copilot, and Z.AI.
+- **Broader model access** - Added first-class NVIDIA and Poolside BYOK routes while retaining the complete models.dev provider catalog.
+
+### Changed
+
+- **Clearer agent discovery** - Organized the Connect experience into US Coding Agents, China Coding Agents, and Other Integrations, with improved navigation and session continuity.
+
 ## [0.2.39] - 2026-07-25
 
 ### Added
 
 - **Discoverable optional harnesses** - Added a visible Other Harnesses entry to the Connect picker, with Hugging Face Tau, live setup status, keyboard access, and command completion.
 - **Complete harness discovery** - Added direct access from Connect and the Harness Switcher to recommended, optional, project, registry, and installed Python harness integrations.
+- **Native Tau commands** - Added `:tau login`, `:tau use`, status, provider, model, session, logout, and retry commands so SuperQode users can configure, connect, and operate Tau without leaving the TUI.
 
 ### Changed
 
 - **GitHub Copilot connection** - Made the official Copilot SDK the single primary Copilot entry, retained ACP as an advanced route, and kept legacy shortcuts compatible but hidden.
 - **Connection ordering** - Moved GitHub Copilot to the bottom of the Connect picker and placed Other Harnesses immediately above it.
+- **Unified harness picker** - Made `:harness` and `:harness switch` open the complete keyboard-driven inventory of vendor coding agents, HarnessSpecs, optional integrations, model presets, and project harnesses, with direct aliases such as `:harness switch codex`.
 - **README presentation** - Improved the opening banner, product introduction, documentation calls to action, badges, and installation visibility.
 - **Release metadata** - Bumped package, lockfile, ACP registry, installer example, and package checks to `0.2.39`.
 

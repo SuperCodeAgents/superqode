@@ -53,6 +53,13 @@ superqode connect byok anthropic <anthropic-model>
 
 ## Supported Providers
 
+The picker combines SuperQode's first-class provider definitions with every
+provider in the cached models.dev catalog. New long-tail providers therefore
+appear without a SuperQode release when models.dev publishes an API endpoint,
+key variable, and model inventory. Run `:connect byok` and press `R` to refresh
+the catalog. First-class entries add tested routing, clearer grouping, and
+provider-specific setup guidance.
+
 ### Tier 1 (First-Class Support)
 
 Full optimization and testing:
@@ -129,6 +136,34 @@ appear automatically. In the TUI, `:connect muse-spark-1.1` resolves the
 provider from the catalog.
 
 **Documentation**: [dev.meta.ai/docs](https://dev.meta.ai/docs)
+
+#### NVIDIA API Catalog
+
+```bash
+export NVIDIA_API_KEY=...
+superqode connect byok nvidia nvidia/nemotron-3-super-120b-a12b
+```
+
+NVIDIA uses its OpenAI-compatible NIM endpoint at
+`https://integrate.api.nvidia.com/v1`. Override it with `NVIDIA_BASE_URL` when
+using another compatible NVIDIA deployment. The model picker follows
+models.dev, so current Nemotron, Qwen, DeepSeek, and GLM routes appear without a
+manual SuperQode model-list update.
+
+**Documentation**: [NVIDIA API documentation](https://docs.api.nvidia.com/nim/)
+
+#### Poolside
+
+```bash
+export POOLSIDE_API_KEY=...
+superqode connect byok poolside poolside/laguna-m.1
+```
+
+Poolside uses its first-party OpenAI-compatible endpoint at
+`https://inference.poolside.ai/v1`. Override it with `POOLSIDE_BASE_URL`.
+The hosted API route is separate from SuperQode's local Laguna GGUF support.
+
+**Documentation**: [Poolside platform](https://platform.poolside.ai)
 
 #### Moonshot AI (Kimi K3)
 

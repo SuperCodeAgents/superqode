@@ -37,6 +37,7 @@ class ConnectionProfile:
     label: str
     description: str
     connector: str  # runtime | acp | byok | local | acp-picker | harness-picker | external-cli
+    group: str = "Connection methods"
     runtime: Optional[str] = None  # for connector == "runtime"
     acp_agent: Optional[str] = None  # for connector == "acp"
     byok_provider: Optional[str] = None  # for connector == "byok"
@@ -86,6 +87,16 @@ def _claude_agent_ready() -> bool:
     return bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 
+def _kimi_code_ready() -> bool:
+    """Moonshot AI's official Kimi Code CLI is available for ACP."""
+    return shutil.which("kimi") is not None
+
+
+def _qwen_code_ready() -> bool:
+    """QwenLM's official Qwen Code CLI is available for ACP."""
+    return shutil.which("qwen") is not None
+
+
 def _antigravity_cli_ready() -> bool:
     """The CLI exists and meets the minimum safe subprocess version."""
     from superqode.runtime.antigravity_status import probe_antigravity_cli
@@ -131,7 +142,7 @@ _PROFILES: List[ConnectionProfile] = [
     ConnectionProfile(
         id="local",
         label="Local model",
-        description="Local/self-hosted — Ollama / MLX / vLLM / LM Studio …",
+        description="Local/self-hosted: Ollama / MLX / vLLM / LM Studio …",
         connector="local",
         runtime="builtin",
         detect=lambda: True,
@@ -139,11 +150,11 @@ _PROFILES: List[ConnectionProfile] = [
     ConnectionProfile(
         id="byok",
         label="BYOK provider",
-        description="Bring your own API key — OpenAI / Anthropic / Gemini / …",
+        description="Bring your own API key: OpenAI / Anthropic / Gemini / …",
         connector="byok",
         runtime="builtin",
         detect=_byok_ready,
-        unavailable_hint="set a provider API key (e.g. OPENAI_API_KEY) — or pick one to see setup",
+        unavailable_hint="set a provider API key (e.g. OPENAI_API_KEY), or pick one to see setup",
     ),
     ConnectionProfile(
         id="acp",
@@ -157,6 +168,7 @@ _PROFILES: List[ConnectionProfile] = [
         label="Codex subscription",
         description="Drive OpenAI Codex with your ChatGPT/Codex login (~/.codex)",
         connector="runtime",
+        group="US Coding Agents",
         runtime="codex-sdk",
         self_contained=True,
         detect=_codex_ready,
@@ -168,6 +180,7 @@ _PROFILES: List[ConnectionProfile] = [
         description="Use your Anthropic API key via claude-agent-sdk "
         "(local Claude Code over ACP is available under 'ACP agent')",
         connector="runtime",
+        group="US Coding Agents",
         runtime="claude-agent-sdk",
         self_contained=True,
         detect=_claude_agent_ready,
@@ -180,6 +193,7 @@ _PROFILES: List[ConnectionProfile] = [
         label="Antigravity CLI",
         description="Use Google's Antigravity agent with your Google Sign-In",
         connector="runtime",
+        group="US Coding Agents",
         runtime="antigravity-cli",
         self_contained=True,
         detect=_antigravity_cli_ready,
@@ -199,26 +213,10 @@ _PROFILES: List[ConnectionProfile] = [
         # and Claude profiles. Running SuperQode's harness on this plan is the
         # explicit opt-in `:grok api [model]` (grok-cli provider).
         connector="acp",
+        group="US Coding Agents",
         acp_agent="grok",
         detect=_grok_cli_ready,
         unavailable_hint="install the Grok CLI, then run `grok login` (or `grok login --device-auth`)",
-    ),
-    ConnectionProfile(
-        id="zai",
-        label="Z.AI GLM API",
-        description="GLM-5.2/5.x with the SuperQode harness via Z.AI's general API",
-        connector="byok",
-        runtime="builtin",
-        byok_provider="zai",
-        detect=_zai_ready,
-        unavailable_hint=("set ZAI_API_KEY (general API key, not a restricted Coding Plan key)"),
-    ),
-    ConnectionProfile(
-        id="other-harnesses",
-        label="Other harnesses",
-        description=("Browse optional non-ACP harness integrations, including Hugging Face Tau"),
-        connector="harness-picker",
-        detect=lambda: True,
     ),
     ConnectionProfile(
         id="copilot",
@@ -228,6 +226,7 @@ _PROFILES: List[ConnectionProfile] = [
             "HarnessSpec context, policy, evidence, evaluation, and session controls"
         ),
         connector="runtime",
+        group="US Coding Agents",
         runtime="copilot-sdk",
         self_contained=True,
         detect=_copilot_sdk_ready,
@@ -235,6 +234,56 @@ _PROFILES: List[ConnectionProfile] = [
             "copilot-sdk",
             suffix="then run `copilot login` or set COPILOT_GITHUB_TOKEN",
         ),
+    ),
+    ConnectionProfile(
+        id="zai",
+        label="Z.AI GLM API",
+        description="GLM-5.2/5.x with the SuperQode harness via Z.AI's general API",
+        connector="byok",
+        group="China Coding Agents",
+        runtime="builtin",
+        byok_provider="zai",
+        detect=_zai_ready,
+        unavailable_hint=("set ZAI_API_KEY (general API key, not a restricted Coding Plan key)"),
+    ),
+    ConnectionProfile(
+        id="qwen-code",
+        label="Qwen Code",
+        description=(
+            "QwenLM's first-party open-source coding agent through its stable ACP mode"
+        ),
+        connector="acp",
+        group="China Coding Agents",
+        acp_agent="qwen",
+        self_contained=True,
+        detect=_qwen_code_ready,
+        unavailable_hint=(
+            "run `npm install -g @qwen-code/qwen-code`, then run `qwen auth`"
+        ),
+    ),
+    ConnectionProfile(
+        id="kimi-code",
+        label="Kimi Code",
+        description=(
+            "Moonshot AI's first-party coding agent through its official ACP server"
+        ),
+        connector="acp",
+        group="China Coding Agents",
+        acp_agent="kimi",
+        self_contained=True,
+        detect=_kimi_code_ready,
+        unavailable_hint=(
+            "run `curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash`, "
+            "then run `kimi` and complete `/login`"
+        ),
+    ),
+    ConnectionProfile(
+        id="other-harnesses",
+        label="Other harnesses",
+        description=("Browse optional non-ACP harness integrations, including Hugging Face Tau"),
+        connector="harness-picker",
+        group="Other integrations",
+        detect=lambda: True,
     ),
 ]
 
@@ -256,7 +305,7 @@ _BY_ID = {p.id: p for p in (*_PROFILES, *_LEGACY_PROFILES)}
 
 
 def list_connection_profiles() -> List[ConnectionProfile]:
-    """All connection profiles, in local-first display order (Local, BYOK, ACP, Codex, …)."""
+    """All connection profiles in grouped, local-first display order."""
     return list(_PROFILES)
 
 

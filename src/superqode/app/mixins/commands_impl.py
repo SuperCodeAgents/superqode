@@ -1209,6 +1209,461 @@ class CommandImplMixin:
                 "Next message will reconnect with the new backend."
             )
 
+    # ---- Hugging Face Tau harness command surface -------------------------
+    @staticmethod
+    def _tau_subcommand_completion_candidates(value: str) -> list[PromptCompletionCandidate]:
+        """Complete the native Tau management command tree."""
+        prefix = ":tau "
+        partial = value[len(prefix) :].lower()
+        subcommands = (
+            ("help", "Show all Tau commands available through SuperQode"),
+            ("use", "Connect Tau's configured default provider and model"),
+            ("login", "Configure, select, and connect a provider/model route"),
+            ("status", "Show Tau installation, harness, provider, and model status"),
+            ("providers", "List providers configured for Tau"),
+            ("models", "List models configured for a Tau provider"),
+            ("model", "Select a configured Tau provider and model"),
+            ("sessions", "List Tau sessions stored for this project"),
+            ("logout", "Remove a Tau credential without changing SuperQode auth"),
+            ("retry", "Retry the last SuperQode request through Tau"),
+        )
+        return [
+            PromptCompletionCandidate(
+                value=f"{prefix}{command}",
+                label=command,
+                description=description,
+                kind="tau",
+            )
+            for command, description in subcommands
+            if command.startswith(partial) and f"{prefix}{command}" != value
+        ]
+
+    def _tau_cmd(self, args: str, log) -> None:
+        """Manage Tau entirely through SuperQode's command surface."""
+        parts = (args or "").split(maxsplit=1)
+        sub = parts[0].strip().lower() if parts and parts[0].strip() else "help"
+        rest = parts[1].strip() if len(parts) > 1 else ""
+
+        if sub in {"help", "?"}:
+            self._show_tau_help(log)
+        elif sub in {"use", "connect", "start"}:
+            self._tau_use_cmd(log)
+        elif sub in {"login", "setup", "auth"}:
+            self._tau_login_cmd(rest, log)
+        elif sub in {"status", "doctor"}:
+            self._tau_status(log)
+        elif sub in {"providers", "ls"}:
+            self._tau_providers_cmd(log)
+        elif sub == "models":
+            self._tau_models_cmd(rest, log)
+        elif sub == "model":
+            self._tau_model_cmd(rest, log)
+        elif sub in {"sessions", "history"}:
+            self._tau_sessions_cmd(log)
+        elif sub == "logout":
+            self._tau_logout_cmd(rest, log)
+        elif sub == "retry":
+            self._retry_last_message(log)
+        else:
+            log.add_error(f"Unknown Tau command: {sub}")
+            log.add_info("Use :tau help to see the complete command catalog.")
+
+    @staticmethod
+    def _tau_route_reference(value: str) -> tuple[str, str]:
+        """Parse ``provider/model`` or ``provider model`` Tau route syntax."""
+        try:
+            tokens = shlex.split(value or "")
+        except ValueError as exc:
+            raise ValueError(f"Could not parse Tau route: {exc}") from exc
+        if not tokens:
+            return "", ""
+        if "/" in tokens[0]:
+            provider, model = tokens[0].split("/", 1)
+            return provider.strip(), model.strip()
+        return tokens[0].strip(), (tokens[1].strip() if len(tokens) > 1 else "")
+
+    def _active_tau_route(self) -> tuple[str, str]:
+        pure = getattr(self, "_pure_mode", None)
+        session = getattr(pure, "session", None)
+        provider = str(
+            getattr(session, "provider", "") or getattr(self, "current_provider", "") or ""
+        ).strip()
+        model = str(
+            getattr(session, "model", "") or getattr(self, "current_model", "") or ""
+        ).strip()
+        return provider, model
+
+    @staticmethod
+    def _tau_openai_base_url(provider: str, base_url: str | None) -> str | None:
+        endpoint = str(base_url or "").strip().rstrip("/")
+        if provider == "ollama" and endpoint and not endpoint.endswith("/v1"):
+            endpoint += "/v1"
+        return endpoint or None
+
+    def _tau_connect_route(self, provider: str, model: str, log) -> bool:
+        """Select Tau and connect SuperQode to its provider/model route."""
+        from superqode.harness import resolve_harness
+        from superqode.providers.dynamic import resolve_provider_def
+
+        entry = resolve_harness("tau", root=Path.cwd())
+        if not entry.available:
+            log.add_error(f"Tau needs setup: {entry.issue}")
+            return False
+        if resolve_provider_def(provider) is None:
+            log.add_error(
+                f"Tau provider {provider!r} is not available through SuperQode's provider catalog."
+            )
+            log.add_info(f"Use :tau login <provider>/{model} with a SuperQode provider.")
+            return False
+
+        pure = self._ensure_pure_mode()
+        session_id = pure.get_current_session_id()
+        os.environ["SUPERQODE_HARNESS"] = str(entry.path or entry.id)
+        pure.select_harness(str(entry.path or entry.id))
+        self._refresh_harness_panel()
+        try:
+            self._connect_byok_mode(
+                provider,
+                model,
+                log,
+                session_id=session_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.add_error(f"Tau was configured, but the route could not connect: {exc}")
+            return False
+
+        session = getattr(pure, "session", None)
+        connected = bool(
+            getattr(session, "connected", False)
+            and str(getattr(session, "provider", "") or "") == provider
+            and str(getattr(session, "model", "") or "") == model
+            and str(getattr(session, "harness_name", "") or "") == "tau"
+        )
+        if connected:
+            log.add_success(f"Tau ready: {provider}/{model}")
+        return connected
+
+    def _tau_use_cmd(self, log) -> None:
+        """Select Tau and connect its configured default route."""
+        try:
+            from superqode.harness.tau_management import list_tau_providers
+
+            providers = list_tau_providers()
+        except Exception as exc:  # noqa: BLE001
+            log.add_error(f"Could not load Tau configuration: {exc}")
+            return
+
+        active_provider, active_model = self._active_tau_route()
+        selected = next(
+            (
+                provider
+                for provider in providers
+                if provider.name == active_provider and active_model in provider.models
+            ),
+            None,
+        )
+        selected = selected or next(
+            (provider for provider in providers if provider.is_default),
+            None,
+        )
+        if selected is None or not selected.default_model:
+            log.add_error("Tau has no configured default route.")
+            log.add_info("Run :tau login <provider>/<model> to configure and connect one.")
+            return
+        if not selected.authenticated:
+            log.add_error(f"Tau provider {selected.name} needs a credential.")
+            log.add_info(
+                f"Run :tau login {selected.name}/{selected.default_model} to sync and connect it."
+            )
+            return
+        model = (
+            active_model
+            if selected.name == active_provider and active_model in selected.models
+            else selected.default_model
+        )
+        self._tau_connect_route(selected.name, model, log)
+
+    def _tau_login_cmd(self, reference: str, log) -> None:
+        """Sync a SuperQode provider/model route and credential into Tau."""
+        from superqode.providers.credentials import provider_api_key
+        from superqode.providers.dynamic import resolve_base_url, resolve_provider_def
+        from superqode.providers.registry import ProviderCategory
+
+        try:
+            provider, model = self._tau_route_reference(reference)
+        except ValueError as exc:
+            log.add_error(str(exc))
+            return
+        active_provider, active_model = self._active_tau_route()
+        provider = provider or active_provider
+        if not model and provider == active_provider:
+            model = active_model
+        if not provider or not model:
+            log.add_error("Tau login needs a provider/model route.")
+            log.add_info(
+                "Run :tau login <provider>/<model>. Bare :tau login reuses an active route."
+            )
+            return
+
+        provider_def = resolve_provider_def(provider)
+        if provider_def is None:
+            log.add_error(f"SuperQode does not recognize provider {provider!r}.")
+            return
+        base_url = self._tau_openai_base_url(provider, resolve_base_url(provider_def))
+        api_key_env = (
+            provider_def.env_vars[0]
+            if provider_def.env_vars
+            else f"{provider.upper().replace('-', '_')}_API_KEY"
+        )
+        credential = provider_api_key(provider_def)
+        if (
+            not credential
+            and provider_def.category == ProviderCategory.LOCAL
+            and not provider_def.env_vars
+        ):
+            credential = provider
+        if not credential:
+            log.add_error(f"No SuperQode credential is available for {provider_def.name}.")
+            log.add_info(
+                f"Store it with `superqode auth login {provider}`, reconnect, "
+                "then run :tau login again."
+            )
+            return
+
+        try:
+            from superqode.harness.tau_management import configure_tau_provider
+
+            configured = configure_tau_provider(
+                provider_name=provider,
+                display_name=provider_def.name,
+                model=model,
+                base_url=base_url,
+                api_key_env=api_key_env,
+                credential=credential,
+                docs_url=provider_def.docs_url,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.add_error(f"Could not configure Tau provider: {exc}")
+            return
+
+        if not self._tau_connect_route(configured.name, configured.default_model, log):
+            log.add_warning(
+                f"Tau configuration was saved for {configured.name}/{configured.default_model}."
+            )
+            return
+        if configured.base_url:
+            log.add_meta(f"Endpoint: {configured.base_url}")
+        log.add_info("Send a message now, or run :tau retry to retry the failed request.")
+
+    def _tau_status(self, log) -> None:
+        from superqode.harness.tau_adapter import tau_installation_status
+
+        available, issue = tau_installation_status()
+        text = Text()
+        text.append("\n  Hugging Face Tau status\n\n", style=f"bold {THEME['cyan']}")
+        text.append("  Package      ", style=THEME["muted"])
+        text.append(
+            "ready\n" if available else "needs setup\n",
+            style=THEME["success" if available else "warning"],
+        )
+        if not available:
+            text.append("  Setup        ", style=THEME["muted"])
+            text.append(f"{issue}\n", style=THEME["cyan"])
+            log.write(text)
+            return
+
+        try:
+            from superqode.harness.tau_management import list_tau_providers
+
+            providers = list_tau_providers()
+        except Exception as exc:  # noqa: BLE001
+            text.append("  Providers    ", style=THEME["muted"])
+            text.append(f"unavailable: {exc}\n", style=THEME["error"])
+            log.write(text)
+            return
+
+        active_provider, active_model = self._active_tau_route()
+        active_harness = str(
+            getattr(getattr(getattr(self, "_pure_mode", None), "session", None), "harness_name", "")
+            or "core"
+        )
+        text.append("  Harness      ", style=THEME["muted"])
+        text.append(
+            f"{active_harness}\n", style=THEME["success" if active_harness == "tau" else "text"]
+        )
+        text.append("  Route        ", style=THEME["muted"])
+        text.append(
+            f"{active_provider}/{active_model}\n"
+            if active_provider and active_model
+            else "not connected\n",
+            style=THEME["text"],
+        )
+        text.append("  Providers    ", style=THEME["muted"])
+        text.append(f"{len(providers)} configured\n", style=THEME["text"])
+        default = next((provider for provider in providers if provider.is_default), None)
+        if default is not None:
+            text.append("  Tau default  ", style=THEME["muted"])
+            text.append(
+                f"{default.name}/{default.default_model}\n",
+                style=THEME["cyan"],
+            )
+        text.append("\n  Login current route with ", style=THEME["muted"])
+        text.append(":tau login\n", style=THEME["cyan"])
+        log.write(text)
+
+    def _tau_providers_cmd(self, log) -> None:
+        try:
+            from superqode.harness.tau_management import list_tau_providers
+
+            providers = list_tau_providers()
+        except Exception as exc:  # noqa: BLE001
+            log.add_error(f"Could not list Tau providers: {exc}")
+            return
+        text = Text()
+        text.append("\n  Tau providers\n\n", style=f"bold {THEME['text']}")
+        if not providers:
+            text.append("  No Tau providers are configured.\n", style=THEME["muted"])
+        for provider in providers:
+            marker = "▸" if provider.is_default else " "
+            auth = "ready" if provider.authenticated else "needs login"
+            text.append(
+                f"  {marker} ", style=THEME["success"] if provider.is_default else THEME["dim"]
+            )
+            text.append(f"{provider.name:<20}", style=THEME["cyan"])
+            text.append(
+                f"{auth:<13}",
+                style=THEME["success"] if provider.authenticated else THEME["warning"],
+            )
+            text.append(f"{provider.default_model}\n", style=THEME["muted"])
+        text.append("\n  Sync the current SuperQode route with ", style=THEME["muted"])
+        text.append(":tau login\n", style=THEME["cyan"])
+        log.write(text)
+
+    def _tau_models_cmd(self, provider_name: str, log) -> None:
+        try:
+            from superqode.harness.tau_management import list_tau_providers
+
+            providers = list_tau_providers()
+        except Exception as exc:  # noqa: BLE001
+            log.add_error(f"Could not list Tau models: {exc}")
+            return
+        selected = provider_name.strip()
+        provider = next(
+            (
+                item
+                for item in providers
+                if item.name == selected or (not selected and item.is_default)
+            ),
+            None,
+        )
+        if provider is None:
+            log.add_error(f"Unknown Tau provider: {selected or 'no default provider'}")
+            log.add_info("Run :tau providers to see configured providers.")
+            return
+        text = Text()
+        text.append(f"\n  Tau models for {provider.name}\n\n", style=f"bold {THEME['text']}")
+        for model in provider.models:
+            marker = "▸" if model == provider.default_model else " "
+            text.append(f"  {marker} ", style=THEME["success"] if marker.strip() else THEME["dim"])
+            text.append(f"{model}\n", style=THEME["cyan"])
+        text.append("\n  Select with ", style=THEME["muted"])
+        text.append(f":tau model {provider.name}/<model>\n", style=THEME["cyan"])
+        log.write(text)
+
+    def _tau_model_cmd(self, reference: str, log) -> None:
+        if not reference.strip():
+            self._tau_models_cmd("", log)
+            return
+        try:
+            provider, model = self._tau_route_reference(reference)
+        except ValueError as exc:
+            log.add_error(str(exc))
+            return
+        if not model:
+            try:
+                from superqode.harness.tau_management import list_tau_providers
+
+                default = next((item for item in list_tau_providers() if item.is_default), None)
+            except Exception as exc:  # noqa: BLE001
+                log.add_error(f"Could not resolve Tau default provider: {exc}")
+                return
+            if default is None:
+                log.add_error("Tau has no default provider. Run :tau login first.")
+                return
+            provider, model = default.name, provider
+        try:
+            from superqode.harness.tau_management import select_tau_model
+
+            selected = select_tau_model(provider, model)
+        except Exception as exc:  # noqa: BLE001
+            log.add_error(f"Could not select Tau model: {exc}")
+            return
+
+        if not self._tau_connect_route(selected.name, selected.default_model, log):
+            log.add_warning(
+                f"Tau preference was saved for {selected.name}/{selected.default_model}."
+            )
+
+    @staticmethod
+    def _tau_sessions_cmd(log) -> None:
+        session_dir = Path.cwd() / ".superqode" / "tau" / "sessions"
+        sessions = (
+            sorted(session_dir.glob("*.jsonl"), key=lambda path: path.stat().st_mtime, reverse=True)
+            if session_dir.is_dir()
+            else []
+        )
+        text = Text()
+        text.append("\n  Tau sessions\n\n", style=f"bold {THEME['text']}")
+        if not sessions:
+            text.append("  No Tau sessions found for this project.\n", style=THEME["muted"])
+        for path in sessions[:20]:
+            text.append("  • ", style=THEME["dim"])
+            text.append(path.stem, style=THEME["cyan"])
+            text.append(f"  {path}\n", style=THEME["muted"])
+        log.write(text)
+
+    @staticmethod
+    def _tau_logout_cmd(provider_name: str, log) -> None:
+        selected = provider_name.strip()
+        if not selected:
+            log.add_info("Usage: :tau logout <provider>")
+            return
+        try:
+            from superqode.harness.tau_management import delete_tau_credential
+
+            delete_tau_credential(selected)
+        except Exception as exc:  # noqa: BLE001
+            log.add_error(f"Could not remove Tau credential: {exc}")
+            return
+        log.add_success(f"Removed Tau credential for {selected}")
+        log.add_info("SuperQode authentication was not changed.")
+
+    @staticmethod
+    def _show_tau_help(log) -> None:
+        text = Text()
+        text.append("\n  Hugging Face Tau commands\n\n", style=f"bold {THEME['purple']}")
+        commands = (
+            (":tau use", "Connect Tau's configured default route"),
+            (":tau login", "Sync and connect the active SuperQode route"),
+            (":tau login <provider>/<model>", "Configure, select, and connect a route"),
+            (":tau status", "Show Tau installation and route diagnostics"),
+            (":tau providers", "List configured Tau providers"),
+            (":tau models [provider]", "List models configured for Tau"),
+            (":tau model <provider>/<model>", "Select Tau's route"),
+            (":tau sessions", "List project Tau sessions"),
+            (":tau logout <provider>", "Remove only Tau's stored credential"),
+            (":tau retry", "Retry the last request after fixing Tau setup"),
+        )
+        for command, description in commands:
+            text.append(f"  {command:<38}", style=THEME["cyan"])
+            text.append(f"{description}\n", style=THEME["muted"])
+        text.append(
+            "\n  Tau remains read-only inside SuperQode until its mutation tools "
+            "participate in SuperQode approvals.\n",
+            style=THEME["warning"],
+        )
+        log.write(text)
+
     # ---- GitHub Copilot SDK and ACP command surface -----------------------
     def _copilot_cmd(self, args: str, log) -> None:
         """Handle native SDK and official ACP routes for GitHub Copilot."""
@@ -2043,7 +2498,7 @@ class CommandImplMixin:
         import os as _os
 
         if not args.strip():
-            self._show_harness_picker(log, include_all=False)
+            self._show_harness_picker(log, include_all=True)
             return
         parts = args.split(maxsplit=1)
         sub = parts[0].strip() if parts else "status"
@@ -2090,8 +2545,9 @@ class CommandImplMixin:
 
         if sub == "help":
             log.add_info(
-                "Harness commands: :harness opens the switcher; "
-                ":harness switch <name> changes harness; add --fork to branch; "
+                "Harness commands: :harness opens the complete integration switcher; "
+                ":harness switch <name> changes harness or coding agent; add --fork "
+                "to branch a HarnessSpec session; "
                 ":harness list prints the catalog; :harness show <name> inspects a harness."
             )
             log.add_info(
@@ -2102,6 +2558,32 @@ class CommandImplMixin:
         if sub == "show":
             if not subargs:
                 log.add_error("Usage: :harness show <name-or-path>")
+                return
+            from superqode.app.harness_picker import (
+                harness_acp_item,
+                harness_connection_profile,
+            )
+
+            profile = harness_connection_profile(subargs)
+            if profile is not None:
+                status = "ready" if profile.available else "needs setup"
+                log.add_info(f"Coding agent: {profile.label} ({status})")
+                log.add_info(profile.description)
+                if not profile.available and profile.unavailable_hint:
+                    log.add_info(f"Setup: {profile.unavailable_hint}")
+                log.add_info(f"Connect with :harness switch {profile.id}")
+                return
+            acp_item = harness_acp_item(subargs) if subargs.casefold().startswith("acp:") else None
+            if acp_item is not None:
+                if acp_item.kind == "acp-browser":
+                    log.add_info("Use :harness switch acp:all to browse the complete ACP registry.")
+                    return
+                status = "ready" if acp_item.available else "needs setup"
+                log.add_info(f"ACP agent: {acp_item.display_name} ({status})")
+                log.add_info(acp_item.description)
+                if not acp_item.available and acp_item.issue:
+                    log.add_info(f"Setup: {acp_item.issue}")
+                log.add_info(f"Switch with :harness switch {acp_item.id}")
                 return
             try:
                 entry = resolve_harness(subargs, root=Path.cwd())
@@ -2307,7 +2789,7 @@ class CommandImplMixin:
             reference = " ".join(switch_tokens)
             auto_connect = sub in {"use", "use-all", "switch"}
             if not reference and sub in {"use", "use-all", "switch"}:
-                self._show_harness_picker(log, include_all=sub == "use-all")
+                self._show_harness_picker(log, include_all=True)
                 return
         else:
             reference = args.strip()
@@ -2317,9 +2799,53 @@ class CommandImplMixin:
             log.add_info("Open the harness switcher with :harness or use :harness help.")
             return
 
+        from superqode.app.harness_picker import (
+            harness_acp_item,
+            harness_connection_profile,
+        )
+
+        profile = harness_connection_profile(reference)
+        if profile is not None:
+            if fork_session:
+                log.add_error(
+                    f"{profile.label} manages its own threads. Connect first, then use "
+                    f":{profile.id} fork or its session command."
+                )
+                return
+            from superqode.app.harness_picker import harness_picker_items
+
+            profile_entry = next(
+                (
+                    item
+                    for item in harness_picker_items(Path.cwd(), include_all=True)
+                    if item.kind == "connection" and item.id == profile.id
+                ),
+                None,
+            )
+            if profile_entry is not None and profile_entry.install_extra:
+                self._show_harness_install_prompt(
+                    profile_entry,
+                    log,
+                    extra=profile_entry.install_extra,
+                    resume_command=f"switch {shlex.quote(profile.id)}",
+                )
+                return
+            self._dispatch_connection_profile(profile, log)
+            return
+
+        explicit_acp = reference.casefold().startswith("acp:")
+        acp_item = harness_acp_item(reference) if explicit_acp else None
+        if acp_item is not None:
+            self._activate_picker_harness(acp_item, log, fork=fork_session)
+            return
+
         try:
             entry = resolve_harness(reference, root=Path.cwd())
         except Exception as exc:
+            acp_item = harness_acp_item(reference)
+            if acp_item is not None:
+                self._activate_picker_harness(acp_item, log, fork=fork_session)
+                return
             self._announce_transition(
                 title="Harness not loaded",
                 primary=reference,
@@ -2330,6 +2856,14 @@ class CommandImplMixin:
             )
             return
         if not entry.available:
+            if entry.source == "optional:tau":
+                self._show_harness_install_prompt(
+                    entry,
+                    log,
+                    extra="tau",
+                    resume_command=f"switch {shlex.quote(entry.id)}",
+                )
+                return
             self._announce_transition(
                 title="Harness needs setup",
                 primary=entry.display_name,
@@ -2482,17 +3016,58 @@ class CommandImplMixin:
         active = str(getattr(session, "harness_name", "") or "").strip()
         return active or str(os.getenv("SUPERQODE_HARNESS", "core") or "core")
 
+    def _harness_picker_item_is_current(self, item) -> bool:
+        """Match both HarnessSpec and vendor-agent picker items to active state."""
+        kind = str(getattr(item, "kind", "harness") or "harness")
+        if kind == "harness":
+            active = self._active_harness_reference()
+            return active in {item.id, str(getattr(item, "path", "") or "")}
+        if kind == "acp-browser":
+            return False
+        if kind == "acp":
+            from superqode.app.session_state import get_session
+
+            connected_agent = getattr(get_session(), "connected_agent", None) or {}
+            current = str(
+                connected_agent.get("short_name")
+                or connected_agent.get("name")
+                or getattr(self, "current_agent", "")
+                or ""
+            ).casefold()
+            target = getattr(item, "target", None) or {}
+            return current == str(target.get("short_name") or "").casefold()
+        profile = item.target
+        pure = getattr(self, "_pure_mode", None)
+        session = getattr(pure, "session", None)
+        if profile.connector == "runtime":
+            return bool(
+                getattr(session, "connected", False)
+                and str(getattr(pure, "runtime_name", "") or "") == str(profile.runtime or "")
+            )
+        if profile.connector == "acp":
+            from superqode.app.session_state import get_session
+
+            connected_agent = getattr(get_session(), "connected_agent", None) or {}
+            current = str(
+                connected_agent.get("short_name")
+                or connected_agent.get("name")
+                or getattr(self, "current_agent", "")
+                or ""
+            ).lower()
+            return current == str(profile.acp_agent or profile.id).lower()
+        return False
+
     def _show_harness_picker(
         self,
         log,
         *,
-        include_all: bool = False,
+        include_all: bool = True,
         clear_log: bool = True,
         catalog_entries=None,
         subtitle: str | None = None,
     ) -> None:
         """Render the keyboard-driven harness switcher."""
-        from superqode.harness import list_harnesses, recommended_harnesses
+        from superqode.app.harness_picker import harness_picker_items
 
         reset_connect = getattr(self, "_reset_connect_selection_states", None)
         if callable(reset_connect):
@@ -2504,10 +3079,10 @@ class CommandImplMixin:
         ):
             setattr(self, flag, False)
 
-        entries = (
-            list(catalog_entries)
-            if catalog_entries is not None
-            else (list_harnesses(Path.cwd()) if include_all else recommended_harnesses(Path.cwd()))
+        entries = harness_picker_items(
+            Path.cwd(),
+            include_all=include_all,
+            native_entries=catalog_entries,
         )
         if not entries:
             log.add_error("No harnesses are available. Use :harness wizard to create one.")
@@ -2519,14 +3094,14 @@ class CommandImplMixin:
         if previous_entries and 0 <= previous_index < len(previous_entries):
             previous_id = str(previous_entries[previous_index].id)
 
-        active = self._active_harness_reference()
+        # Every newly opened picker starts at item 1. Re-renders caused by
+        # arrow navigation preserve the highlighted item through catalog_entries.
         selected_index = 0
-        for index, entry in enumerate(entries):
-            if entry.id == previous_id:
-                selected_index = index
-                break
-            if active in {entry.id, str(entry.path or "")}:
-                selected_index = index
+        if catalog_entries is not None:
+            for index, entry in enumerate(entries):
+                if entry.id == previous_id:
+                    selected_index = index
+                    break
 
         self._harness_selection_list = entries
         self._harness_highlighted_index = selected_index
@@ -2542,13 +3117,13 @@ class CommandImplMixin:
         width = int(getattr(getattr(self, "size", None), "width", 100) or 100)
         wide = width >= 88
         text = Text()
-        text.append("\n  ◈ Select Harness\n", style=f"bold {THEME['purple']}")
+        text.append("\n  ◈ Select Harness or Coding Agent\n", style=f"bold {THEME['purple']}")
         text.append(
             (
                 f"  {subtitle}\n\n"
                 if subtitle
                 else (
-                    "  Complete catalog\n\n"
+                    "  All available integrations, presets, and project harnesses\n\n"
                     if include_all
                     else "  Recommended and project harnesses\n\n"
                 )
@@ -2556,10 +3131,14 @@ class CommandImplMixin:
             style=THEME["muted"],
         )
 
+        previous_group = ""
         for index, entry in enumerate(entries):
+            if entry.group != previous_group:
+                text.append(f"  {entry.group}\n", style=f"bold {THEME['text']}")
+                previous_group = entry.group
             number = index + 1
             highlighted = index == selected_index
-            current = active in {entry.id, str(entry.path or "")}
+            current = self._harness_picker_item_is_current(entry)
             marker = "▶" if highlighted else " "
             status = "ready" if entry.available else "needs setup"
             style = f"bold {THEME['success']}" if highlighted else THEME["text"]
@@ -2590,6 +3169,8 @@ class CommandImplMixin:
                     f"      {status} · {entry.continuity.replace('-', ' ')} · {entry.runtime}\n",
                     style=THEME["muted"],
                 )
+            if index + 1 == len(entries) or entries[index + 1].group != entry.group:
+                text.append("\n")
 
         selected = entries[selected_index]
         text.append("\n  ", style="")
@@ -2597,22 +3178,28 @@ class CommandImplMixin:
         text.append(f"\n  {selected.description}\n", style=THEME["muted"])
         if not selected.available and selected.issue:
             text.append(f"  Setup: {selected.issue}\n", style=THEME["warning"])
-        if selected.continuity == "fresh-session":
+        if selected.kind != "acp-browser" and selected.continuity == "fresh-session":
             text.append(
                 "  This harness starts a fresh runtime thread. SuperQode session lineage is retained.\n",
                 style=THEME["warning"],
+            )
+        elif selected.kind == "acp":
+            text.append(
+                "  The new ACP session receives a bounded replay of recent conversation context.\n",
+                style=THEME["cyan"],
             )
 
         text.append("\n  ↑↓", style=THEME["cyan"])
         text.append(" navigate  ", style=THEME["dim"])
         text.append("Enter", style=THEME["cyan"])
         text.append(" switch  ", style=THEME["dim"])
-        text.append("F", style=THEME["cyan"])
-        text.append(" fork  ", style=THEME["dim"])
+        if selected.kind == "harness":
+            text.append("F", style=THEME["cyan"])
+            text.append(" fork  ", style=THEME["dim"])
         text.append("I", style=THEME["cyan"])
         text.append(" inspect  ", style=THEME["dim"])
-        text.append("A", style=THEME["cyan"])
-        text.append(" all  ", style=THEME["dim"])
+        text.append("R" if include_all else "A", style=THEME["cyan"])
+        text.append(" recommended  " if include_all else " all  ", style=THEME["dim"])
         text.append("L", style=THEME["cyan"])
         text.append(" catalog  ", style=THEME["dim"])
         text.append("Esc", style=THEME["cyan"])
@@ -2664,16 +3251,24 @@ class CommandImplMixin:
             return
         entry = entries[index]
         log = self.query_one("#log", ConversationLog)
-        if not entry.available:
+        entry_kind = str(getattr(entry, "kind", "harness") or "harness")
+        if not entry.available and entry_kind in {"harness", "acp"}:
+            if entry_kind == "harness" and str(getattr(entry, "install_extra", "") or ""):
+                self._show_harness_install_prompt(
+                    entry,
+                    log,
+                    extra=entry.install_extra,
+                    resume_command=f"switch {shlex.quote(entry.id)}",
+                )
+                return
             log.add_error(f"{entry.display_name} is not ready: {entry.issue or 'check setup'}")
             return
-        active = self._active_harness_reference()
-        if not fork and active in {entry.id, str(getattr(entry, "path", "") or "")}:
+        if not fork and self._harness_picker_item_is_current(entry):
             self._awaiting_harness_selection = False
             log.clear()
-            log.add_info(f"Harness {entry.display_name} is already active.")
+            log.add_info(f"{entry.display_name} is already active.")
             return
-        if entry.continuity == "fresh-session":
+        if entry_kind == "harness" and entry.continuity == "fresh-session":
             self._show_harness_confirmation(entry, log, fork=fork)
             return
         self._activate_picker_harness(entry, log, fork=fork)
@@ -2714,11 +3309,260 @@ class CommandImplMixin:
     def _activate_picker_harness(self, entry, log, *, fork: bool) -> None:
         self._awaiting_harness_selection = False
         self._awaiting_harness_confirmation = False
+        entry_kind = str(getattr(entry, "kind", "harness") or "harness")
+        install_extra = str(getattr(entry, "install_extra", "") or "")
+        if install_extra:
+            self._show_harness_install_prompt(
+                entry,
+                log,
+                extra=install_extra,
+                resume_command=f"switch {shlex.quote(entry.id)}",
+            )
+            return
+        if entry_kind == "acp-browser":
+            log.clear()
+            self._show_agents(log, include_all=True)
+            return
+        if entry_kind == "acp":
+            if fork:
+                log.add_error(
+                    f"{entry.display_name} manages its own ACP sessions. "
+                    "Switch first, then use its supported session commands."
+                )
+                return
+            if not entry.available:
+                self._announce_transition(
+                    title="Agent not installed",
+                    primary=entry.display_name,
+                    detail="The ACP launcher is not available",
+                    severity="warning",
+                    log=log,
+                    guidance=(
+                        f"Install with: {entry.issue}"
+                        if entry.issue
+                        else f"Run :acp install {entry.target.get('short_name', '')}."
+                    ),
+                    dedupe_key=f"agent-missing:{entry.id}",
+                )
+                return
+            self._prepare_acp_harness_switch(entry, log)
+            self._connect_acp_cmd(str(entry.target.get("short_name") or ""), log)
+            return
         log.clear()
+        if entry_kind == "connection":
+            if fork:
+                log.add_error(
+                    f"{entry.display_name} manages its own threads. "
+                    "Connect it first, then use its native session commands."
+                )
+                return
+            self._dispatch_connection_profile(entry.target, log)
+            return
         command = f"switch {shlex.quote(entry.id)}"
         if fork:
             command += " --fork"
         self._harness_cmd(command, log)
+
+    def _show_harness_install_prompt(
+        self,
+        entry,
+        log,
+        *,
+        extra: str,
+        resume_command: str,
+    ) -> None:
+        """Offer an in-TUI install for a controlled SuperQode Python extra."""
+        from superqode.providers.env_introspect import (
+            environment_info,
+            install_command,
+            python_package_install_command,
+            running_context,
+        )
+
+        command = (
+            install_command(extra)
+            if running_context() == "dev-checkout"
+            else python_package_install_command(f"superqode[{extra}]")
+        )
+        env = environment_info()
+        self._awaiting_harness_selection = False
+        self._awaiting_harness_confirmation = False
+        self._awaiting_harness_install = {
+            "id": str(getattr(entry, "id", "") or ""),
+            "display_name": str(
+                getattr(entry, "display_name", "")
+                or getattr(entry, "id", "")
+                or "Harness"
+            ),
+            "extra": extra,
+            "command": command,
+            "resume_command": resume_command,
+        }
+        text = Text()
+        text.append("\n  Install Python integration\n\n", style=f"bold {THEME['purple']}")
+        text.append(
+            f"  {self._awaiting_harness_install['display_name']} needs the ",
+            style=THEME["text"],
+        )
+        text.append(f"superqode[{extra}]", style=f"bold {THEME['cyan']}")
+        text.append(" extra.\n\n", style=THEME["text"])
+        text.append("  Running from  ", style=THEME["muted"])
+        text.append(f"{env.label}\n", style=THEME["text"])
+        text.append("  Python        ", style=THEME["muted"])
+        text.append(f"{env.python}\n", style=THEME["text"])
+        text.append("  Install into  ", style=THEME["muted"])
+        text.append(f"{env.target}\n\n", style=THEME["text"])
+        text.append(f"  {command}\n\n", style=THEME["cyan"])
+        text.append("  Enter", style=f"bold {THEME['cyan']}")
+        text.append(" install and continue  ", style=THEME["dim"])
+        text.append("n", style=f"bold {THEME['cyan']}")
+        text.append(" cancel\n", style=THEME["dim"])
+        text.append("  You can also run it through the shell executor with ", style=THEME["muted"])
+        text.append(f">{command}\n", style=THEME["cyan"])
+        log.clear()
+        log.write(text)
+        log.scroll_home(animate=False)
+        self.set_timer(0.05, self._ensure_input_focus)
+
+    def _handle_harness_install_input(self, text: str, log) -> bool:
+        """Resolve the inline Python-extra installation prompt."""
+        pending = getattr(self, "_awaiting_harness_install", None)
+        if not isinstance(pending, dict):
+            return False
+        choice = text.strip().lower()
+        if choice in {"n", "no", "cancel", "skip", "q"}:
+            self._awaiting_harness_install = None
+            log.add_info("Harness installation cancelled. Run :harness to choose another entry.")
+            return True
+        if choice not in {"", "y", "yes", "install", "ok"}:
+            log.add_error("Press Enter to install the shown Python extra, or type n to cancel.")
+            return True
+        self._awaiting_harness_install = None
+        self.run_worker(self._install_harness_extra_then_continue(pending, log))
+        return True
+
+    async def _install_harness_extra_then_continue(self, pending: dict, log) -> None:
+        """Install a selected Python extra and resume the requested switch."""
+        import importlib
+
+        command = str(pending.get("command") or "")
+        display_name = str(pending.get("display_name") or "Harness")
+        if not command:
+            log.add_error(f"No installation command is available for {display_name}.")
+            return
+        log.add_info(f"Installing {display_name} into SuperQode's current environment...")
+
+        def run_install() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                shlex.split(command),
+                cwd=Path.cwd(),
+                text=True,
+                capture_output=True,
+                timeout=1200,
+                check=False,
+            )
+
+        try:
+            completed = await asyncio.to_thread(run_install)
+        except (OSError, subprocess.SubprocessError) as exc:
+            log.add_error(f"{display_name} installation failed: {exc}")
+            return
+
+        output = "\n".join(
+            part.strip() for part in (completed.stdout, completed.stderr) if part.strip()
+        )
+        if completed.returncode != 0:
+            if hasattr(log, "add_shell"):
+                log.add_shell(command, output or "Installation failed.", False)
+            else:
+                log.add_error(output or "Installation failed.")
+            log.add_error(f"{display_name} installation exited with {completed.returncode}.")
+            return
+
+        importlib.invalidate_caches()
+        if hasattr(log, "add_shell"):
+            log.add_shell(command, output or "Installation completed.", True)
+        else:
+            log.add_info(output or "Installation completed.")
+        log.add_success(f"{display_name} installed. Continuing without restarting the TUI.")
+        self._harness_cmd(str(pending.get("resume_command") or "switch"), log)
+
+    def _prepare_acp_harness_switch(self, entry, log) -> None:
+        """Capture a bounded, user-visible context replay for an ACP switch."""
+        messages = list(getattr(log, "_messages", []) or [])
+        conversation = [
+            (str(role), str(text), str(agent))
+            for role, text, agent in messages
+            if role in {"user", "agent", "assistant"} and str(text).strip()
+        ]
+        selected: list[tuple[str, str, str]] = []
+        used_chars = 0
+        for message in reversed(conversation):
+            message_chars = len(message[1])
+            if selected and (len(selected) >= 12 or used_chars + message_chars > 12_000):
+                break
+            selected.append(message)
+            used_chars += message_chars
+        selected.reverse()
+
+        pure = getattr(self, "_pure_mode", None)
+        pure_session = getattr(pure, "session", None)
+        if pure_session is not None and bool(getattr(pure_session, "connected", False)):
+            previous = str(getattr(pure_session, "harness_name", "") or "core")
+        else:
+            previous = str(getattr(self, "current_agent", "") or "").strip()
+        target_name = str(entry.target.get("short_name") or entry.id)
+        self._pending_harness_acp_transition = {
+            "from": previous or "current session",
+            "to": target_name,
+            "messages": selected,
+            "message_count": len(selected),
+            "character_count": used_chars,
+        }
+
+    def _announce_pending_acp_harness_transition(self, log, agent) -> None:
+        """Show the continuity receipt after the selected ACP agent connects."""
+        pending = getattr(self, "_pending_harness_acp_transition", None)
+        if not isinstance(pending, dict):
+            return
+        count = int(pending.get("message_count") or 0)
+        target = str(agent.get("name") or pending.get("to") or "ACP agent")
+        detail = (
+            f"from {pending.get('from')} · {count} recent conversation "
+            f"message{'s' if count != 1 else ''} queued for first prompt"
+            if count
+            else f"from {pending.get('from')} · fresh ACP session"
+        )
+        self._announce_transition(
+            title="Harness switched",
+            primary=f"{target} via ACP",
+            detail=detail,
+            severity="success",
+            log=log,
+            dedupe_key=f"harness-acp:{pending.get('to')}:{count}",
+        )
+
+    def _consume_pending_acp_context_replay(self, text: str) -> str:
+        """Prepend the captured cross-agent context to the first ACP prompt."""
+        pending = getattr(self, "_pending_harness_acp_transition", None)
+        if not isinstance(pending, dict):
+            return text
+        self._pending_harness_acp_transition = None
+        messages = list(pending.get("messages") or [])
+        if not messages:
+            return text
+        transcript: list[str] = []
+        for role, content, agent in messages:
+            label = "User" if role == "user" else (agent or "Assistant")
+            transcript.append(f"{label}: {content}")
+        return (
+            "[SuperQode context replay]\n"
+            f"You are taking over from {pending.get('from')}. Use this recent conversation "
+            "as context, but follow the current request as authoritative.\n\n"
+            + "\n\n".join(transcript)
+            + "\n\n[Current request]\n"
+            + text
+        )
 
     def action_toggle_all_harnesses(self) -> None:
         """Toggle between recommended and complete harness catalogs."""
@@ -2728,6 +3572,30 @@ class CommandImplMixin:
         self._show_harness_picker(
             log,
             include_all=not bool(getattr(self, "_harness_include_all", False)),
+            clear_log=True,
+        )
+
+    def action_show_all_harnesses(self) -> None:
+        """Expand the picker to every coding agent and harness."""
+        if not getattr(self, "_awaiting_harness_selection", False):
+            return
+        if bool(getattr(self, "_harness_include_all", False)):
+            return
+        self._show_harness_picker(
+            self.query_one("#log", ConversationLog),
+            include_all=True,
+            clear_log=True,
+        )
+
+    def action_show_recommended_harnesses(self) -> None:
+        """Filter the picker to recommended HarnessSpec entries."""
+        if not getattr(self, "_awaiting_harness_selection", False):
+            return
+        if not bool(getattr(self, "_harness_include_all", False)):
+            return
+        self._show_harness_picker(
+            self.query_one("#log", ConversationLog),
+            include_all=False,
             clear_log=True,
         )
 
@@ -2743,6 +3611,14 @@ class CommandImplMixin:
         self._awaiting_harness_selection = False
         log = self.query_one("#log", ConversationLog)
         log.clear()
+        if str(getattr(entry, "kind", "harness") or "harness") == "connection":
+            status = "ready" if entry.available else "needs setup"
+            log.add_info(f"Coding agent: {entry.display_name} ({status})")
+            log.add_info(entry.description)
+            if not entry.available and entry.issue:
+                log.add_info(f"Setup: {entry.issue}")
+            log.add_info(f"Connect with :harness switch {entry.id}")
+            return
         self._harness_cmd(f"show {shlex.quote(entry.id)}", log)
 
     def action_show_complete_harness_catalog(self) -> None:

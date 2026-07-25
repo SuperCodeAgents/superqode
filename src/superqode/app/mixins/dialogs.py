@@ -2814,6 +2814,8 @@ class DialogsMixin:
                     (":connect grok", "Grok Build, xAI's own agent over ACP"),
                     (":grok api", "SuperQode harness on the same subscription (opt-in)"),
                     (":grok status|login", "Check Grok CLI readiness or show login commands"),
+                    (":tau use|login", "Select Tau and sync the active SuperQode route"),
+                    (":tau status|providers|models", "Inspect Tau without leaving SuperQode"),
                 ],
             ),
             (

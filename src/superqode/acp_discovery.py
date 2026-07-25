@@ -262,22 +262,19 @@ KNOWN_AGENTS: List[Dict[str, Any]] = [
         "check_command": ["goose", "--version"],
     },
     # =========================================================================
-    # 6. Kimi CLI - CLI AI Agent with ACP
+    # 6. Kimi Code - Moonshot AI agent with ACP
     # =========================================================================
     {
-        "name": "Kimi CLI",
+        "name": "Kimi Code",
         "short_name": "kimi",
         "command": ["kimi", "acp"],
-        "alt_commands": [
-            ["npx", "-y", "@anthropic-ai/kimi-cli", "--acp"],
-            ["kimi-cli", "--acp"],
-        ],
+        "alt_commands": [],
         "icon": "🌙",
         "color": "#5b21b6",
-        "description": "CLI AI agent implementing ACP with support for various development workflows",
-        "website": "https://github.com/anthropics/kimi-cli",
-        "requires_api_key": True,
-        "api_key_env_vars": ["MOONSHOT_API_KEY", "KIMI_API_KEY"],
+        "description": "Moonshot AI's first-party coding agent with native ACP support",
+        "website": "https://github.com/MoonshotAI/kimi-code",
+        "requires_api_key": False,
+        "api_key_env_vars": [],
         "check_command": ["kimi", "--version"],
     },
     # =========================================================================

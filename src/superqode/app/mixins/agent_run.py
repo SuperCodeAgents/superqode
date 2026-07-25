@@ -251,7 +251,16 @@ class AgentRunMixin:
 
     @work(exclusive=True, thread=True)
     def _run_shell(self, cmd: str, log: ConversationLog):
+        import importlib
         import os
+
+        pending_install = getattr(self, "_awaiting_harness_install", None)
+        resume_harness = (
+            pending_install
+            if isinstance(pending_install, dict)
+            and cmd.strip() == str(pending_install.get("command") or "").strip()
+            else None
+        )
 
         # Analyze command for danger
         project_dir = str(Path.cwd())
@@ -280,7 +289,12 @@ class AgentRunMixin:
 
         try:
             result = subprocess.run(
-                cmd, shell=True, capture_output=True, text=True, cwd=os.getcwd(), timeout=60
+                cmd,
+                shell=True,
+                capture_output=True,
+                text=True,
+                cwd=os.getcwd(),
+                timeout=1200 if resume_harness else 60,
             )
             output = (result.stdout + result.stderr).strip()
             ok = result.returncode == 0
@@ -288,6 +302,19 @@ class AgentRunMixin:
 
             # Record in history
             self._history_manager.append_sync(f">{cmd}", success=ok)
+            if ok and resume_harness:
+                importlib.invalidate_caches()
+                self._call_ui(lambda: setattr(self, "_awaiting_harness_install", None))
+                self._call_ui(
+                    log.add_success,
+                    f"{resume_harness.get('display_name', 'Harness')} installed. "
+                    "Continuing without restarting the TUI.",
+                )
+                self._call_ui(
+                    self._harness_cmd,
+                    str(resume_harness.get("resume_command") or "switch"),
+                    log,
+                )
 
         except subprocess.TimeoutExpired:
             self._call_ui(log.add_shell, cmd, "⏰ Timed out", False)
@@ -922,7 +949,21 @@ class AgentRunMixin:
                     hint=(
                         self._codex_error_hint(error_msg)
                         if getattr(self._pure_mode, "runtime_name", "") == "codex-sdk"
-                        else "Use :retry after fixing the provider or model issue."
+                        else (
+                            "Run :tau login to sync this provider and model, then run :tau retry."
+                            if str(
+                                getattr(
+                                    getattr(self._pure_mode, "session", None), "harness_name", ""
+                                )
+                                or ""
+                            )
+                            == "tau"
+                            and (
+                                "unknown provider" in error_msg.lower()
+                                or "model is not configured" in error_msg.lower()
+                            )
+                            else "Use :retry after fixing the provider or model issue."
+                        )
                     ),
                 )
 
@@ -935,6 +976,14 @@ class AgentRunMixin:
                 # Provider-specific troubleshooting
                 if "ollama" in provider.lower():
                     log.add_info("💡 Ollama Troubleshooting:")
+                    if (
+                        str(
+                            getattr(getattr(self._pure_mode, "session", None), "harness_name", "")
+                            or ""
+                        )
+                        == "tau"
+                    ):
+                        log.add_info("   Tau setup: :tau login")
                     log.add_info("   1. Check Ollama is running: ollama serve")
                     log.add_info(f"   2. Verify model exists: ollama list | grep {model}")
                     log.add_info(f"   3. Pull model if missing: ollama pull {model}")

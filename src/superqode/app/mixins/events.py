@@ -237,7 +237,11 @@ class EventHandlerMixin:
 
         # Handle Enter key (empty input) for selections
         if not text:
-            # Inline local prompts win first: Enter = install / start with defaults.
+            # Inline setup prompts win first: Enter = install / start with defaults.
+            if getattr(self, "_awaiting_harness_install", None):
+                self._handle_harness_install_input("", log)
+                event.input.value = ""
+                return
             if getattr(self, "_awaiting_local_dep_install", None):
                 self._handle_local_dep_install_input("", log)
                 event.input.value = ""
@@ -387,6 +391,7 @@ class EventHandlerMixin:
                 or getattr(self, "_awaiting_harness_wizard", False)
                 or getattr(self, "_awaiting_harness_selection", False)
                 or getattr(self, "_awaiting_harness_confirmation", False)
+                or getattr(self, "_awaiting_harness_install", None)
                 or getattr(self, "_awaiting_subscription_login", None)
             ):
                 # Cancel selection mode
@@ -402,6 +407,7 @@ class EventHandlerMixin:
                 self._awaiting_harness_wizard = False
                 self._awaiting_harness_selection = False
                 self._awaiting_harness_confirmation = False
+                self._awaiting_harness_install = None
                 self._harness_wizard_state = None
                 self._awaiting_local_server_start = None
                 self._awaiting_local_dep_install = None
@@ -445,8 +451,11 @@ class EventHandlerMixin:
                 self._run_shell(cmd, log)
             return
 
-        # Inline local prompts take priority over every other selection handler
+        # Inline setup prompts take priority over every other selection handler
         # so a typed 'n'/options can never be swallowed by a stale picker flag.
+        if getattr(self, "_awaiting_harness_install", None):
+            if self._handle_harness_install_input(text, log):
+                return
         if getattr(self, "_awaiting_local_dep_install", None):
             if self._handle_local_dep_install_input(text, log):
                 return

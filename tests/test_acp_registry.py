@@ -105,7 +105,7 @@ def test_bundled_catalog_uses_current_acp_commands():
         "goose": "goose acp",
         "kimi": "kimi acp",
         "copilot": "copilot --acp --stdio",
-        "qwen": "qwen --acp --experimental-skills",
+        "qwen": "qwen --acp",
         "droid": "droid exec --output-format acp-daemon",
         "cortex": "cortex acp serve",
         "devin": "devin acp",
@@ -137,7 +137,7 @@ def test_registry_converter_preserves_stable_alias_and_tier():
             "distribution": {
                 "npx": {
                     "package": "@qwen-code/qwen-code@0.20.1",
-                    "args": ["--acp", "--experimental-skills"],
+                    "args": ["--acp"],
                 }
             },
         }
@@ -146,7 +146,7 @@ def test_registry_converter_preserves_stable_alias_and_tier():
     assert converted["identity"] == "qwenlm.github.io"
     assert converted["short_name"] == "qwen"
     assert converted["catalog_tier"] == "featured"
-    assert converted["run_command"]["*"] == "qwen --acp --experimental-skills"
+    assert converted["run_command"]["*"] == "qwen --acp"
     assert converted["actions"]["*"]["install"]["command"] == (
         "npm install -g @qwen-code/qwen-code"
     )

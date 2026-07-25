@@ -212,6 +212,8 @@ def test_every_connection_profile_has_a_sidebar_page():
         "codex": "providers/codex.md",
         "copilot": "providers/github-copilot.md",
         "claude": "providers/anthropic-claude.md",
+        "kimi-code": "runtimes.md",
+        "qwen-code": "runtimes.md",
         "antigravity": "providers/antigravity.md",
         "grok": "providers/grok.md",
         "zai": "providers/zai.md",

@@ -72,8 +72,8 @@ that matches the account, runtime, and harness ownership required for the task.
 | OpenCode | OpenCode ACP, OpenCode Zen BYOK | `:connect acp opencode`, `:connect byok opencode <model>` |
 | Z.AI GLM | Z.AI BYOK, GLM ACP | `:connect zai`, `:connect acp glm` |
 | Poolside | Pool CLI ACP, Laguna S 2.1 through DwarfStar or llama.cpp | `:connect acp poolside`, `:connect local ds4 laguna-s-2.1` |
-| Moonshot AI Kimi | Kimi CLI ACP, Moonshot BYOK | `:connect acp kimi`, `:connect byok moonshot kimi-k3` |
-| Alibaba Qwen | Qwen Code ACP, DashScope BYOK, local Qwen models | `:connect acp qwen`, `:connect byok alibaba <model>`, `:connect local ollama qwen3:8b` |
+| Moonshot AI Kimi | Kimi Code ACP, Moonshot BYOK | `:connect kimi-code`, `:connect byok moonshot kimi-k3` |
+| Alibaba Qwen | Qwen Code ACP, DashScope BYOK, local Qwen models | `:connect qwen-code`, `:connect byok alibaba <model>`, `:connect local ollama qwen3:8b` |
 | DeepSeek | DeepSeek BYOK, local DeepSeek and DS4 model paths | `:connect byok deepseek <model>`, `:connect local ds4 <model>` |
 | Mistral AI | Mistral Vibe ACP, Mistral BYOK, local Mistral models | `:connect acp mistral-vibe`, `:connect byok mistral <model>` |
 | MiniMax | MiniMax BYOK, local MiniMax model paths | `:connect byok minimax <model>`, `:connect local <provider> <model>` |
@@ -134,7 +134,7 @@ definitions.
 | Goose | `goose` | Grok Build | `grok` |
 | Harn | `harn` | Hermes Agent | `hermes` |
 | JetBrains Junie | `junie` | Kilo | `kilo` |
-| Kimi CLI | `kimi` | Kiro CLI | `kiro` |
+| Kimi Code | `kimi` | Kiro CLI | `kiro` |
 | LLMling-Agent | `llmlingagent` | Minion Code | `minion` |
 | Mistral Vibe | `mistral-vibe` | OpenClaw | `openclaw` |
 | OpenCode | `opencode` | OpenHands | `openhands` |
@@ -172,7 +172,8 @@ The built-in provider registry contains these hosted routes:
 | --- | --- | --- | --- |
 | Anthropic | `anthropic` | OpenAI | `openai` |
 | Google AI Studio | `google` | Meta | `meta` |
-| xAI | `xai` | Mistral AI | `mistral` |
+| xAI | `xai` | NVIDIA API Catalog | `nvidia` |
+| Poolside | `poolside` | Mistral AI | `mistral` |
 | DeepSeek | `deepseek` | Z.AI general API | `zai` |
 | Zhipu AI | `zhipu` | Alibaba DashScope | `alibaba` |
 | MiniMax | `minimax` | Moonshot AI | `moonshot` |

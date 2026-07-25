@@ -138,7 +138,7 @@ REGISTRY_RUN_COMMANDS: dict[str, str] = {
     "opencode": "opencode acp",
     "pi-acp": "pi-acp",
     "poolside": "pool acp",
-    "qwen-code": "qwen --acp --experimental-skills",
+    "qwen-code": "qwen --acp",
     "stakpak": "stakpak acp",
     "vtcode": "vtcode acp",
 }

@@ -10,6 +10,12 @@ from superqode.harness.backends.tau import TauHarnessBackend
 from superqode.harness.catalog import resolve_harness
 from superqode.harness.protocol import HarnessCreateRequest, HarnessMessage
 from superqode.harness.tau_adapter import TauHarnessProtocolAdapter
+from superqode.harness.tau_management import (
+    configure_tau_provider,
+    delete_tau_credential,
+    list_tau_providers,
+    select_tau_model,
+)
 from superqode.harness.templates import tau_template
 
 
@@ -181,6 +187,40 @@ def test_tau_is_always_visible_in_harness_catalog(tmp_path: Path):
         # `uv pip install -e ".[tau]"`, other contexts get a `superqode[tau]`
         # spec. Assert on the extra itself so the test holds in every context.
         assert "[tau]" in entry.issue
+
+
+def test_tau_management_configures_ollama_without_tau_tui(tmp_path: Path):
+    pytest.importorskip("tau_coding")
+    tau_home = tmp_path / "tau-home"
+
+    configured = configure_tau_provider(
+        provider_name="ollama",
+        display_name="Ollama",
+        model="qwen3.6:35b-mlx",
+        base_url="http://localhost:11434/v1",
+        api_key_env="OLLAMA_API_KEY",
+        credential="ollama",
+        docs_url="https://ollama.com/",
+        tau_home=tau_home,
+    )
+
+    assert configured.name == "ollama"
+    assert configured.default_model == "qwen3.6:35b-mlx"
+    assert configured.authenticated is True
+    providers = {provider.name: provider for provider in list_tau_providers(tau_home=tau_home)}
+    assert providers["ollama"].base_url == "http://localhost:11434/v1"
+    assert providers["ollama"].models == ("qwen3.6:35b-mlx",)
+    assert providers["ollama"].is_default is True
+    assert (tau_home / "catalog.toml").exists()
+    assert (tau_home / "providers.json").exists()
+    assert (tau_home / "credentials.json").stat().st_mode & 0o777 == 0o600
+
+    selected = select_tau_model("ollama", "qwen3.6:35b-mlx", tau_home=tau_home)
+    assert selected.is_default is True
+
+    delete_tau_credential("ollama", tau_home=tau_home)
+    providers = {provider.name: provider for provider in list_tau_providers(tau_home=tau_home)}
+    assert providers["ollama"].authenticated is False
 
 
 @pytest.mark.asyncio

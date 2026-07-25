@@ -25,9 +25,11 @@ def test_registry_has_expected_profiles():
         "claude",
         "antigravity",
         "grok",
-        "zai",
-        "other-harnesses",
         "copilot",
+        "zai",
+        "qwen-code",
+        "kimi-code",
+        "other-harnesses",
     ]
     assert "copilot-acp" in connection_profile_ids(include_legacy=True)
 
@@ -61,11 +63,29 @@ def test_claude_profile_is_agent_sdk_runtime():
     assert "anthropic_api_key" in claude.unavailable_hint.lower()
 
 
+def test_kimi_and_qwen_are_first_party_acp_profiles():
+    kimi = get_connection_profile("kimi-code")
+    qwen = get_connection_profile("qwen-code")
+    zai = get_connection_profile("zai")
+
+    assert kimi.connector == "acp"
+    assert kimi.acp_agent == "kimi"
+    assert "moonshot" in kimi.description.lower()
+    assert "kimi-code/install.sh" in kimi.unavailable_hint
+
+    assert qwen.connector == "acp"
+    assert qwen.acp_agent == "qwen"
+    assert "qwenlm" in qwen.description.lower()
+    assert "@qwen-code/qwen-code" in qwen.unavailable_hint
+    assert zai.group == qwen.group == kimi.group == "China Coding Agents"
+
+
 def test_copilot_sdk_is_the_only_visible_headline_route():
     sdk = get_connection_profile("copilot")
     assert sdk.connector == "runtime"
     assert sdk.runtime == "copilot-sdk"
     assert sdk.self_contained is True
+    assert sdk.group == "US Coding Agents"
     assert "licence" in sdk.description.lower()
 
     assert "copilot-acp" not in [profile.id for profile in list_connection_profiles()]
@@ -236,6 +256,37 @@ def test_dispatch_claude_routes_to_runtime(_dispatch):
     stub = _DispatchStub()
     _dispatch(stub, get_connection_profile("claude"), log=None)
     assert ("runtime", "claude-agent-sdk") in stub.calls
+
+
+def test_dispatch_kimi_and_qwen_route_to_official_acp_agents(_dispatch):
+    stub = _DispatchStub()
+    _dispatch(stub, get_connection_profile("kimi-code"), log=None)
+    _dispatch(stub, get_connection_profile("qwen-code"), log=None)
+
+    assert ("acp", "kimi") in stub.calls
+    assert ("acp", "qwen") in stub.calls
+
+
+def test_dispatch_unavailable_first_party_acp_profile_shows_setup(_dispatch):
+    profile = ConnectionProfile(
+        id="qwen-code",
+        label="Qwen Code",
+        description="First-party agent",
+        connector="acp",
+        acp_agent="qwen",
+        detect=lambda: False,
+        unavailable_hint="install Qwen Code, then run `qwen auth`",
+    )
+    log = SimpleNamespace(messages=[])
+    log.add_info = log.messages.append
+    stub = _DispatchStub()
+
+    _dispatch(stub, profile, log=log)
+
+    assert not any(call[0] == "acp" for call in stub.calls)
+    assert log.messages == [
+        "Qwen Code needs setup: install Qwen Code, then run `qwen auth`"
+    ]
 
 
 def test_dispatch_copilot_routes_to_sdk_runtime(_dispatch):

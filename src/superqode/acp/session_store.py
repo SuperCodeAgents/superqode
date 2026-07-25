@@ -65,6 +65,41 @@ def default_sessions_db_path() -> Path:
     return Path.home() / ".superqode" / "sessions.db"
 
 
+def recent_agent_identities(
+    limit: int = 8,
+    *,
+    path: Optional[Path] = None,
+) -> tuple[str, ...]:
+    """Return recently used ACP agent identities without creating the store.
+
+    Picker construction is synchronous and may run inside Textual's event loop,
+    so it cannot call the async store API. This deliberately small read-only
+    query keeps recent agents discoverable while preserving the store's
+    soft-fail behavior.
+    """
+    db_path = path or default_sessions_db_path()
+    if limit <= 0 or not db_path.exists():
+        return ()
+    try:
+        conn = sqlite3.connect(db_path)
+        try:
+            rows = conn.execute(
+                """
+                SELECT agent_identity, MAX(last_used_at) AS most_recent
+                FROM sessions
+                GROUP BY agent_identity
+                ORDER BY most_recent DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        finally:
+            conn.close()
+    except (OSError, sqlite3.Error):
+        return ()
+    return tuple(str(row[0]) for row in rows if row and row[0])
+
+
 @dataclass
 class StoredSession:
     """A row from the sessions table.

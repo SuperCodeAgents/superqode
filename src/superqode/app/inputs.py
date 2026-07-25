@@ -213,7 +213,8 @@ class SelectionAwareInput(TextArea):
             picker_actions = {
                 "f": "action_select_highlighted_harness",
                 "i": "action_inspect_highlighted_harness",
-                "a": "action_toggle_all_harnesses",
+                "a": "action_show_all_harnesses",
+                "r": "action_show_recommended_harnesses",
                 "l": "action_show_complete_harness_catalog",
             }
             action_name = picker_actions.get(token)

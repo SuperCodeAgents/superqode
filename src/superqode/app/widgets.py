@@ -816,16 +816,18 @@ class HintsBar(Static):
         # t.append("\n", style="")
 
         hints = [
-            (":connect", THEME["pink"]),
-            (":mode", THEME["gold"]),
-            (":harness", THEME["purple"]),
-            (":work", THEME["success"]),
-            (":memory", THEME["cyan"]),
-            (":help", THEME["purple"]),
+            ("🏠", ":home", THEME["cyan"]),
+            ("🔌", ":connect", THEME["pink"]),
+            ("🎛", ":mode", THEME["gold"]),
+            ("◈", ":harness", THEME["purple"]),
+            ("📋", ":work", THEME["success"]),
+            ("🧠", ":memory", THEME["cyan"]),
+            ("?", ":help", THEME["purple"]),
         ]
-        for i, (hint, color) in enumerate(hints):
+        for i, (icon, hint, color) in enumerate(hints):
             if i > 0:
                 t.append("  •  ", style=THEME["dim"])
+            t.append(f"{icon} ", style=color)
             t.append(hint, style=color)
 
         return t

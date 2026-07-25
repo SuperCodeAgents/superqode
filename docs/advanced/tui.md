@@ -126,6 +126,9 @@ notifications limited to state changes that require user awareness.
 Access via Command Palette (`Ctrl+K`) or Command Mode (`:`) in TUI:
 
 - `:connect` - Connect to provider/agent
+- `:home` - Return to the SuperQode home screen from any picker or workflow
+- `:connect kimi-code` - Connect Moonshot AI's first-party Kimi Code ACP server
+- `:connect qwen-code` - Connect QwenLM's first-party Qwen Code ACP server
 - `:connect local` - Open the local provider picker
 - `:connect byok` - Open the BYOK provider picker
 - `:local setup <name>` - TUI-first guide for model download, serving, context, harness, and smoke
@@ -138,13 +141,19 @@ Access via Command Palette (`Ctrl+K`) or Command Mode (`:`) in TUI:
 - `:local labs` - Browse trusted models.dev Labs recommendations
 - `:local warm <engine>` - Warm a local model and show first-token latency
 - `:chat` - Raw direct-to-model chat: no repo/tools, shows TTFT + tok/s (off by default)
-- `:harness` - Open the interactive Harness Switcher
+- `:harness` - Open all coding agents, HarnessSpecs, presets, and project harnesses
 - `:harness switch` - Open the same Harness Switcher
-- `:harness all` - Open the complete picker, including pinned and specialized presets
+- `:harness switch codex` - Connect a vendor coding agent from the same command family
+- `:harness switch kimi-code` - Connect Kimi Code from the unified picker
+- `:harness switch qwen-code` - Connect Qwen Code from the unified picker
+- `:harness switch acp:qwen` - Connect an ACP agent with bounded context replay
+- `:harness switch acp:all` - Browse the complete official ACP registry
+- `:harness all` - Open the complete picker explicitly
 - `:harness <path>` - Load a HarnessSpec
 - `:harness status` - Show the active harness
 - `:harness templates` - List built-in harness templates
 - `:harness off` - Disable the active harness
+- `:tau` - Select, configure, inspect, and retry the optional Tau harness
 - `:runtime list` - Show available runtime backends
 - `:runtime <name>` - Switch runtime where available
 - `:approve` - Approve a pending tool call
@@ -194,7 +203,7 @@ show status, or display its local help where supported.
 | Vendor runtimes | `:codex`, `:copilot`, `:claude`, `:antigravity`, `:agy`, `:grok`, `:xai-grok`, `:runtime` |
 | Agent modes and context | `:chat`, `:build`, `:mode`, `:context`, `:thinking`, `:toggle_thinking`, `:compact`, `:retry`, `:redo`, `:compare`, `:prompt`, `:log` |
 | Files and repositories | `:files`, `:find`, `:open`, `:view`, `:search`, `:workspace`, `:sidebar`, `:home`, `:attach`, `:image`, `:img`, `:paste`, `:copy`, `:select` |
-| Harness and delivery | `:harness`, `:workflow`, `:workflows`, `:factory`, `:work`, `:policy`, `:benchmark`, `:benchmarks` |
+| Harness and delivery | `:harness`, `:tau`, `:workflow`, `:workflows`, `:factory`, `:work`, `:policy`, `:benchmark`, `:benchmarks` |
 | Sessions and history | `:session`, `:sessions`, `:sessions-current`, `:resume`, `:tree`, `:switchboard`, `:sw`, `:share`, `:transcript`, `:timeline`, `:rewind`, `:history`, `:stash`, `:checkpoints`, `:clone`, `:fork`, `:queue` |
 | Execution control | `:approve`, `:reject`, `:permissions`, `:plan`, `:diff`, `:undo`, `:sandbox`, `:trust`, `:tools` |
 | Extensions and protocols | `:plugins`, `:plugin`, `:skills`, `:skillopt`, `:recipes`, `:recipe`, `:mcp`, `:a2a` |
@@ -338,29 +347,46 @@ Open the Harness Switcher with either command:
 :harness switch
 ```
 
-The default view contains recommended, project, and user harnesses. It marks the
-active harness and reports readiness, continuity, and route information. The
-selected row includes its description and any setup or continuity warning.
+The default view is the complete inventory and always starts at item 1. Its
+sections are ordered as SuperQode-managed harnesses, vendor coding agents, ACP
+agents, optional integrations, model and task presets, and project harnesses.
+The ACP section avoids duplicate vendor routes and ends with Browse All ACP
+Agents for the complete registry. Every row reports live readiness, continuity,
+and route or runtime information. The selected row includes its description and
+any setup warning.
+
+Selecting a missing maintained Python integration opens an in-TUI confirmation.
+Press Enter to install its SuperQode extra into the exact Python environment
+running the TUI and continue the switch without restarting. The prompt also
+shows the equivalent `>` shell-executor command. External CLI and local runtime
+installation are left as guided manual steps.
 
 | Key | Action |
 | --- | --- |
-| `Up` or `Down` | Move through harnesses |
-| `Enter` | Continue the current session with the selected harness |
-| `F` | Fork the current session, then switch |
-| `I` | Inspect the selected HarnessSpec |
-| `A` | Toggle the recommended and complete catalogs |
-| `Escape` | Cancel without changing the harness |
+| `Up` or `Down` | Move through agents and harnesses |
+| `Enter` | Connect or switch to the selected entry |
+| `F` | Fork the current HarnessSpec session, then switch |
+| `I` | Inspect the selected integration or HarnessSpec |
+| `R` | Show recommended HarnessSpecs only |
+| `A` | Return to the complete inventory |
+| `L` | Print the technical HarnessSpec catalog |
+| `Escape` | Cancel without changing the active integration |
 
 Vim mode also supports `j` and `k` for navigation. Harnesses that report
 `fresh session` require confirmation because the external runtime cannot
 guarantee native thread resumption. SuperQode still preserves the session
 record and transition lineage.
 
-`:harness switch <name>` keeps the current session ID and activates another
-harness with context replay. Add `--fork` to copy the conversation into a new
-session before changing harnesses. `:sessions switch` opens a picker that labels
-every session with its latest harness. Selecting one restores its harness,
-model, and conversation history.
+`:harness switch <name>` accepts HarnessSpec names, vendor agents, and explicit
+ACP names. A HarnessSpec switch keeps the current session ID and uses its
+declared continuity policy. A vendor name such as `codex` dispatches through
+that agent's native runtime connector. An ACP name such as `acp:qwen` starts the
+agent's ACP session and queues a bounded replay of recent user and agent
+messages for its first prompt. SuperQode reports the replay count in the switch
+receipt. Agent-native session resumption remains separate. Add `--fork` only
+for HarnessSpec entries. `:sessions switch` opens a picker that labels every
+session with its latest harness. Selecting one restores its harness, model, and
+conversation history.
 
 Share artifacts are local/offline `superqode-share-v1` JSON files. They are
 intended for moving a session between machines or teammates without requiring a

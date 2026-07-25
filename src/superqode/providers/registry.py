@@ -173,6 +173,50 @@ PROVIDERS: Dict[str, ProviderDef] = {
         ],
         notes="Grok 4.5 is available with an xAI API key. Use the Grok subscription profile for CLI-managed X/SuperGrok access.",
     ),
+    "nvidia": ProviderDef(
+        id="nvidia",
+        name="NVIDIA API Catalog",
+        tier=ProviderTier.TIER1,
+        category=ProviderCategory.US_LABS,
+        env_vars=["NVIDIA_API_KEY"],
+        litellm_prefix="openai/",
+        base_url_env="NVIDIA_BASE_URL",
+        default_base_url="https://integrate.api.nvidia.com/v1",
+        docs_url="https://docs.api.nvidia.com/nim/",
+        example_models=[
+            "nvidia/nemotron-3-super-120b-a12b",
+            "nvidia/nemotron-3-ultra-550b-a55b",
+            "qwen/qwen3-coder-480b-a35b-instruct",
+            "deepseek-ai/deepseek-v4-pro",
+            "z-ai/glm-5.2",
+        ],
+        notes=(
+            "NVIDIA-hosted NIM API Catalog using its OpenAI-compatible endpoint. "
+            "The live model list follows models.dev."
+        ),
+        dynamic=True,
+    ),
+    "poolside": ProviderDef(
+        id="poolside",
+        name="Poolside",
+        tier=ProviderTier.TIER1,
+        category=ProviderCategory.US_LABS,
+        env_vars=["POOLSIDE_API_KEY"],
+        litellm_prefix="openai/",
+        base_url_env="POOLSIDE_BASE_URL",
+        default_base_url="https://inference.poolside.ai/v1",
+        docs_url="https://platform.poolside.ai",
+        example_models=[
+            "poolside/laguna-m.1",
+            "poolside/laguna-s-2.1",
+            "poolside/laguna-xs-2.1",
+        ],
+        notes=(
+            "Poolside's first-party OpenAI-compatible inference API. "
+            "The live Laguna model list follows models.dev."
+        ),
+        dynamic=True,
+    ),
     "grok-cli": ProviderDef(
         # Direct-API reuse of the official Grok CLI's subscription login
         # (`:grok api`). The token is imported into SuperQode's local auth

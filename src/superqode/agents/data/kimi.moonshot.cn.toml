@@ -1,23 +1,23 @@
 # Schema defined in agent_schema.py
-# https://github.com/MoonshotAI/kimi-cli
+# https://github.com/MoonshotAI/kimi-code
 identity = "kimi.moonshot.cn"
-name = "Kimi CLI"
+name = "Kimi Code"
 short_name = "kimi"
-url = "https://www.kimi.com/"
+url = "https://github.com/MoonshotAI/kimi-code"
 protocol = "acp"
 author_name = "Moonshot AI"
 author_url = "https://www.kimi.com/"
 publisher_name = "SuperQode Team"
 publisher_url = "https://github.com/your-org/superqode"
 type = "coding"
-description = "Kimi CLI is a new CLI agent that can help you with your software development tasks and terminal operations."
-tags = ["moonshot-ai", "kimi", "chinese", "official-acp"]
+description = "Moonshot AI's first-party open-source coding agent with a native ACP server."
+tags = ["moonshot-ai", "kimi", "open-source", "official-acp"]
 run_command."*" = "kimi acp"
 
 help = '''
-# Kimi CLI
+# Kimi Code
 
-Kimi CLI is a new CLI agent that can help you with your software development tasks and terminal operations.
+Kimi Code is Moonshot AI's first-party terminal coding agent.
 
 ## Features
 
@@ -28,30 +28,26 @@ Kimi CLI is a new CLI agent that can help you with your software development tas
 
 ## Setup Instructions
 
-See the following [instructions](https://github.com/MoonshotAI/kimi-cli?tab=readme-ov-file#usage) for how to configure Kimi before running.
+Launch `kimi` once and complete `/login`. SuperQode then starts its official
+ACP server with `kimi acp`.
 
 ## Installation
 
-Install via UV (recommended):
+Install the current Kimi Code release:
 ```bash
-uv tool install kimi-cli --no-cache
-```
-
-Upgrade when needed:
-```bash
-uv tool upgrade kimi-cli --no-cache
+curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash
 ```
 
 ---
 
-**Website**: https://www.kimi.com/
-**GitHub**: https://github.com/MoonshotAI/kimi-cli
+**Website**: https://code.kimi.com/
+**GitHub**: https://github.com/MoonshotAI/kimi-code
 '''
 
 [actions."*".install]
-command = "uv tool install kimi-cli --no-cache"
-description = "Install Kimi CLI"
+command = "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
+description = "Install Kimi Code"
 
 [actions."*".upgrade]
-command = "uv tool upgrade kimi-cli --no-cache"
-description = "Upgrade Kimi CLI"
+command = "kimi update"
+description = "Upgrade Kimi Code"

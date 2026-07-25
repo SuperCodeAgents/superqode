@@ -127,6 +127,18 @@ class CompletionMixin:
             )
         if lowered.startswith(":agy "):
             return self._agy_subcommand_completion_candidates(value)
+        if lowered == ":tau":
+            return [
+                PromptCompletionCandidate(
+                    value=":tau",
+                    label=":tau",
+                    description="Show native Hugging Face Tau harness commands",
+                    kind="command",
+                ),
+                *self._tau_subcommand_completion_candidates(":tau "),
+            ]
+        if lowered.startswith(":tau "):
+            return self._tau_subcommand_completion_candidates(value)
         if lowered.startswith(":harness use-all "):
             return self._harness_candidates_after_prefix(
                 value, ":harness use-all ", include_all=True
@@ -135,10 +147,18 @@ class CompletionMixin:
             return self._harness_candidates_after_prefix(value, ":harness use ", include_all=False)
         if lowered.startswith(":harness switch "):
             return self._harness_candidates_after_prefix(
-                value, ":harness switch ", include_all=False
+                value,
+                ":harness switch ",
+                include_all=True,
+                include_agents=True,
             )
         if lowered.startswith(":harness show "):
-            return self._harness_candidates_after_prefix(value, ":harness show ", include_all=True)
+            return self._harness_candidates_after_prefix(
+                value,
+                ":harness show ",
+                include_all=True,
+                include_agents=True,
+            )
         if lowered.startswith(":harness customize "):
             return self._harness_candidates_after_prefix(
                 value, ":harness customize ", include_all=True
@@ -146,7 +166,10 @@ class CompletionMixin:
         if lowered.startswith(":harness "):
             command_candidates = self._static_command_candidates(value)
             harness_candidates = self._harness_candidates_after_prefix(
-                value, ":harness ", include_all=True
+                value,
+                ":harness ",
+                include_all=True,
+                include_agents=True,
             )
             seen: set[str] = set()
             combined: list[PromptCompletionCandidate] = []
@@ -262,15 +285,30 @@ class CompletionMixin:
 
     @staticmethod
     def _harness_candidates_after_prefix(
-        value: str, prefix: str, *, include_all: bool
+        value: str,
+        prefix: str,
+        *,
+        include_all: bool,
+        include_agents: bool = False,
     ) -> list[PromptCompletionCandidate]:
         """Complete from the curated or complete catalog without losing group order."""
         try:
-            from superqode.harness import list_harnesses, recommended_harnesses
+            if include_agents:
+                from superqode.app.harness_picker import acp_picker_items, harness_picker_items
 
-            entries = (
-                list_harnesses(Path.cwd()) if include_all else recommended_harnesses(Path.cwd())
-            )
+                entries = harness_picker_items(Path.cwd(), include_all=include_all)
+                seen_ids = {entry.id for entry in entries}
+                entries.extend(
+                    entry
+                    for entry in acp_picker_items(include_registry=True)
+                    if entry.id not in seen_ids
+                )
+            else:
+                from superqode.harness import list_harnesses, recommended_harnesses
+
+                entries = (
+                    list_harnesses(Path.cwd()) if include_all else recommended_harnesses(Path.cwd())
+                )
         except Exception:
             return []
         partial = value[len(prefix) :].lower()
@@ -283,7 +321,11 @@ class CompletionMixin:
                 continue
             route = f"{entry.provider}/{entry.model} · " if entry.provider and entry.model else ""
             source = "project · " if entry.source == "file" else ""
-            kind = "project" if entry.source == "file" else entry.category
+            kind = (
+                entry.kind
+                if hasattr(entry, "kind")
+                else ("project" if entry.source == "file" else entry.category)
+            )
             availability = ""
             if not entry.available:
                 setup = entry.issue or "optional dependency is not installed"

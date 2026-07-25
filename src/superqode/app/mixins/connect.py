@@ -196,6 +196,9 @@ class ConnectMixin:
                 "Use `:connect copilot` for the recommended SDK integration or "
                 "`:connect acp copilot` for ACP."
             )
+        if conn == "acp" and not profile.available and log is not None:
+            log.add_info(f"{profile.label} needs setup: {profile.unavailable_hint}")
+            return
         if conn == "runtime":
             # Self-contained runtime (e.g. Codex) — auto-connects in _runtime_cmd.
             self._runtime_cmd(profile.runtime or "", log)
@@ -318,7 +321,7 @@ class ConnectMixin:
         for profile in list_connection_profiles():
             desc = profile.description
             if not profile.available and profile.unavailable_hint:
-                desc = f"needs setup — {profile.unavailable_hint}"
+                desc = f"needs setup: {profile.unavailable_hint}"
             candidates.append(
                 PromptCompletionCandidate(
                     value=profile.id,
@@ -1272,7 +1275,13 @@ class ConnectMixin:
         if not (0 <= highlighted_idx < len(profiles)):
             highlighted_idx = 0
 
+        current_group = ""
         for i, profile in enumerate(profiles):
+            if profile.group != current_group:
+                if current_group:
+                    t.append("\n", style="")
+                t.append(f"  {profile.group}\n", style=f"bold {THEME['purple']}")
+                current_group = profile.group
             num = i + 1
             available = profile.available
             status = "ready" if available else "needs setup"
@@ -1294,7 +1303,7 @@ class ConnectMixin:
             t.append("        ", style="")
             t.append(status, style=status_color)
             if not available and profile.unavailable_hint:
-                t.append(f" — {profile.unavailable_hint}", style=THEME["dim"])
+                t.append(f": {profile.unavailable_hint}", style=THEME["dim"])
             t.append("\n\n", style="")
 
         t.append("  💡 ", style=THEME["muted"])
@@ -1918,7 +1927,13 @@ class ConnectMixin:
                         log=log,
                         dedupe_key=f"agent:{self.current_agent}:{self.current_model}",
                     )
+                announce_harness_switch = getattr(
+                    self, "_announce_pending_acp_harness_transition", None
+                )
+                if callable(announce_harness_switch):
+                    announce_harness_switch(log, agent)
             else:
+                self._pending_harness_acp_transition = None
                 self._announce_transition(
                     title="Agent not found",
                     primary=agent_id,
@@ -1928,6 +1943,7 @@ class ConnectMixin:
                     guidance="Run :connect acp all to review available agents.",
                 )
         except Exception as e:
+            self._pending_harness_acp_transition = None
             self._announce_transition(
                 title="Connection failed",
                 primary=agent_id,

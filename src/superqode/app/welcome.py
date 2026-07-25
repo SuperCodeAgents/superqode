@@ -177,6 +177,11 @@ def render_welcome(
     keys_text.append(" exit", style=THEME["muted"])
     items.append(place(keys_text))
 
+    home_text = Text(justify=align)
+    home_text.append("Return here anytime: ", style=THEME["muted"])
+    home_text.append(":home", style=f"bold {THEME['cyan']}")
+    items.append(place(home_text))
+
     return Group(*items)
 
 

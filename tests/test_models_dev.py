@@ -77,6 +77,34 @@ def test_models_dev_parses_current_openai_and_meta_models():
     } <= set(muse.capabilities)
 
 
+def test_models_dev_normalizes_current_host_ids_without_duplicates():
+    payload = {
+        "togetherai": {
+            "name": "Together AI",
+            "env": ["TOGETHER_AI_API_KEY"],
+            "api": "https://api.together.xyz/v1",
+            "models": {"test-model": _model("Test model", input_price=1, output_price=2)},
+        },
+        "fireworks-ai": {
+            "name": "Fireworks AI",
+            "env": ["FIREWORKS_API_KEY"],
+            "api": "https://api.fireworks.ai/inference/v1",
+            "models": {},
+        },
+        "cloudflare-workers-ai": {
+            "name": "Cloudflare Workers AI",
+            "env": ["CLOUDFLARE_API_TOKEN"],
+            "models": {},
+        },
+    }
+    client = ModelsDev()
+
+    client._parse_data(payload)
+
+    assert set(client.get_providers()) == {"together", "fireworks", "cloudflare"}
+    assert "test-model" in client.get_models_for_provider("together")
+
+
 @pytest.mark.asyncio
 async def test_expired_cache_refreshes_instead_of_resetting_its_timestamp(monkeypatch, tmp_path):
     cache_file = tmp_path / "models_cache.json"

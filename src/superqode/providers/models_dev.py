@@ -61,6 +61,7 @@ SUPPORTED_PROVIDERS = {
     "google",
     "xai",
     "nvidia",
+    "poolside",
     # Other Labs
     "mistral",
     "cohere",
@@ -112,6 +113,9 @@ PROVIDER_ID_MAP = {
     "qianfan": "baidu",
     "dashscope": "alibaba",
     "qwen": "alibaba",
+    "togetherai": "together",
+    "fireworks-ai": "fireworks",
+    "cloudflare-workers-ai": "cloudflare",
     "zhipuai": "zhipu",
     "glm": "zhipu",
     "volcengine": "doubao",

@@ -170,3 +170,24 @@ def test_meta_is_curated_us_lab_not_synthesized_model_host():
     # Curated entry wins over synthesis, so the picker shows it exactly once.
     assert dynamic.resolve_provider_def("meta") is meta
     assert dynamic.is_curated_provider("meta") is True
+
+
+@pytest.mark.parametrize(
+    ("provider_id", "env_var", "base_url"),
+    [
+        ("nvidia", "NVIDIA_API_KEY", "https://integrate.api.nvidia.com/v1"),
+        ("poolside", "POOLSIDE_API_KEY", "https://inference.poolside.ai/v1"),
+    ],
+)
+def test_nvidia_and_poolside_are_first_class_us_byok_providers(
+    provider_id, env_var, base_url
+):
+    provider = PROVIDERS[provider_id]
+
+    assert provider.category == ProviderCategory.US_LABS
+    assert provider.tier == ProviderTier.TIER1
+    assert provider.dynamic is True
+    assert provider.litellm_prefix == "openai/"
+    assert provider.default_base_url == base_url
+    assert env_var in provider.env_vars
+    assert provider_id in dynamic.connect_provider_ids()
