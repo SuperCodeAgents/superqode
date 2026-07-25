@@ -1128,8 +1128,7 @@ class CodexMixin:
             # Store process reference for cancellation
             self._agent_process = process
 
-            # Stop thinking, start streaming animation
-            self._call_ui(self._stop_thinking)
+            # Continue the existing thinking phase into streaming.
             self._call_ui(self._start_stream_animation, log)
 
             # Show header

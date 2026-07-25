@@ -242,54 +242,110 @@ def test_byok_picker_includes_models_dev_provider_and_full_model_lookup(monkeypa
         model_db._live_autoload_attempted = saved_autoload_attempted
 
 
-def test_streaming_indicator_uses_single_slow_rotating_phrase(monkeypatch):
+def test_streaming_indicator_starts_with_thinking_then_rotates_slowly(monkeypatch):
     import superqode.app.widgets as widgets
 
-    monkeypatch.setattr(widgets, "monotonic", lambda: 0)
+    now = 100.0
+    monkeypatch.setattr(widgets, "monotonic", lambda: now)
+    monkeypatch.setattr(widgets.random, "shuffle", lambda phrases: phrases.reverse())
     indicator = StreamingThinkingIndicator()
-    indicator.is_active = True
+    indicator.begin()
 
     text = render_plain(indicator.render())
 
-    assert "◌ 🧠 Thinking deeply" in text
-    assert text.count("Thinking deeply") == 1
+    assert "◌ 🧠 Thinking" in text
+    assert "Considering the request" not in text
 
-    monkeypatch.setattr(widgets, "monotonic", lambda: 128)
+    now += indicator.PHRASE_SECONDS - 0.01
     text = render_plain(indicator.render())
+    assert "🧠 Thinking" in text
 
-    assert "🍕 Serving hot code" in text
-    assert text.count("Serving hot code") == 1
+    now += 0.01
+    text = render_plain(indicator.render())
+    assert "✨ Refining the response" in text
+
+    # Starting the streaming phase for the same turn must not reset the text
+    # back to Thinking.
+    indicator.begin()
+    assert "✨ Refining the response" in render_plain(indicator.render())
+
+    indicator.end()
+    now += 30
+    indicator.begin()
+    assert "🧠 Thinking" in render_plain(indicator.render())
 
 
 def test_streaming_indicator_status_shows_alongside_rotating_phrase(monkeypatch):
     import superqode.app.widgets as widgets
 
-    monkeypatch.setattr(widgets, "monotonic", lambda: 128)
+    now = 100.0
+    monkeypatch.setattr(widgets, "monotonic", lambda: now)
+    monkeypatch.setattr(widgets.random, "shuffle", lambda _phrases: None)
     indicator = StreamingThinkingIndicator()
-    indicator.is_active = True
+    indicator.begin()
+    now += indicator.PHRASE_SECONDS
     indicator.status = "Working… (step 2)"
 
     text = render_plain(indicator.render())
 
-    # The whimsical phrase keeps cycling in every mode; the concrete live
+    # The calm phrase keeps cycling in every mode; the concrete live
     # status appears beside it rather than replacing it.
     assert "Working… (step 2)" in text
-    assert "Serving hot code" in text
+    assert "Considering the request" in text
 
 
 def test_streaming_indicator_skips_generic_thinking_status(monkeypatch):
     import superqode.app.widgets as widgets
 
-    monkeypatch.setattr(widgets, "monotonic", lambda: 128)
+    monkeypatch.setattr(widgets, "monotonic", lambda: 100)
+    monkeypatch.setattr(widgets.random, "shuffle", lambda _phrases: None)
     indicator = StreamingThinkingIndicator()
-    indicator.is_active = True
+    indicator.begin()
     indicator.status = "💭 Thinking…"
 
     text = render_plain(indicator.render())
 
     # A generic "thinking" status is redundant with the phrase, so it's hidden.
-    assert "🍕 Serving hot code" in text
+    assert "🧠 Thinking" in text
     assert "💭 Thinking…" not in text
+
+
+def test_streaming_indicator_shuffles_after_thinking_for_each_turn(monkeypatch):
+    import superqode.app.widgets as widgets
+
+    now = 100.0
+    shuffle_calls = 0
+
+    def rotate(phrases):
+        nonlocal shuffle_calls
+        shuffle_calls += 1
+        phrases.append(phrases.pop(0))
+
+    monkeypatch.setattr(widgets, "monotonic", lambda: now)
+    monkeypatch.setattr(widgets.random, "shuffle", rotate)
+    indicator = StreamingThinkingIndicator()
+
+    indicator.begin()
+    first_order = indicator._phrase_order
+    assert first_order[0] == "🧠 Thinking"
+
+    indicator.begin()
+    assert shuffle_calls == 1
+    assert indicator._phrase_order == first_order
+
+    indicator.end()
+    indicator.begin()
+    assert shuffle_calls == 2
+    assert indicator._phrase_order[0] == "🧠 Thinking"
+    assert indicator._phrase_order != first_order
+
+
+def test_thinking_bars_use_calm_animation_speeds():
+    from superqode.app.widgets import BottomScanningLine, TopScanningLine
+
+    assert TopScanningLine.PRIMARY_WAVE_SPEED == 0.9
+    assert TopScanningLine.SECONDARY_WAVE_SPEED == 1.4
+    assert BottomScanningLine.SWEEP_CYCLES_PER_SECOND == 0.2
 
 
 def test_welcome_uses_agent_engineering_positioning():

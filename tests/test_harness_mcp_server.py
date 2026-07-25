@@ -45,9 +45,7 @@ def test_server_registers_three_tools():
         ),
     ],
 )
-def test_run_server_passes_transport_settings_to_fastmcp(
-    monkeypatch, transport, expected
-):
+def test_run_server_passes_transport_settings_to_fastmcp(monkeypatch, transport, expected):
     calls = []
 
     class FakeServer:

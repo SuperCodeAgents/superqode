@@ -47,7 +47,7 @@ Or run once without installing:
 uvx superqode
 ```
 
-Both are fully supported — pick whichever fits your setup. See
+Both are fully supported, so pick whichever fits your setup. See
 [Installation Methods](#installation-methods) for the full comparison.
 
 Verify the installed tool:
@@ -121,7 +121,7 @@ If you need to install Python 3.12+:
 
 | Method | Best for | Needs uv preinstalled |
 | --- | --- | --- |
-| [One-line installer](#method-1-one-line-installer-recommended) | Most users; first-time setup | No — installs it for you |
+| [One-line installer](#method-1-one-line-installer-recommended) | Most users; first-time setup | No, it installs uv for you |
 | [uv directly](#method-2-uv-directly) | You already use uv and want to manage the install | Yes |
 | [uvx](#method-3-uvx-no-persistent-install) | Trying SuperQode without installing | Yes |
 

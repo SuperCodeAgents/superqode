@@ -96,7 +96,7 @@ class AgentRunMixin:
         # Show streaming thinking indicator with changing text
         try:
             thinking_indicator = self.query_one("#streaming-thinking", StreamingThinkingIndicator)
-            thinking_indicator.is_active = True
+            thinking_indicator.begin()
             thinking_indicator.add_class("visible")
         except Exception:
             pass
@@ -133,8 +133,7 @@ class AgentRunMixin:
         # Hide streaming thinking indicator
         try:
             thinking_indicator = self.query_one("#streaming-thinking", StreamingThinkingIndicator)
-            thinking_indicator.is_active = False
-            thinking_indicator.status = ""
+            thinking_indicator.end()
             thinking_indicator.remove_class("visible")
         except Exception:
             pass
@@ -167,9 +166,9 @@ class AgentRunMixin:
         # Show streaming thinking indicator with changing text
         try:
             thinking_indicator = self.query_one("#streaming-thinking", StreamingThinkingIndicator)
-            thinking_indicator.is_active = True
-            # Start each turn with the whimsical phrases; loop bookkeeping in
-            # normal mode will swap in a steady "Working… (step N)" status.
+            thinking_indicator.begin()
+            # Start each turn with "Thinking"; loop bookkeeping in normal mode
+            # can add a concrete "Working… (step N)" detail beside it.
             thinking_indicator.status = ""
             thinking_indicator.add_class("visible")
         except Exception:
@@ -216,8 +215,7 @@ class AgentRunMixin:
         # Hide streaming thinking indicator
         try:
             thinking_indicator = self.query_one("#streaming-thinking", StreamingThinkingIndicator)
-            thinking_indicator.is_active = False
-            thinking_indicator.status = ""
+            thinking_indicator.end()
             thinking_indicator.remove_class("visible")
         except Exception:
             pass
@@ -813,8 +811,8 @@ class AgentRunMixin:
             chunk_count = 0
             response_started = False
 
-            # Stop thinking animation (spinning bar), start streaming animation (flowing line)
-            self._stop_thinking()
+            # Continue the same thinking phase while streaming starts. Restarting
+            # the shared indicator here would show "Thinking" twice in one turn.
             self._start_stream_animation(log)
 
             # Use enhanced agent session header (always visible)
@@ -1481,8 +1479,7 @@ class AgentRunMixin:
             # Store process reference for cancellation
             self._agent_process = process
 
-            # Stop thinking, start streaming animation
-            self._call_ui(self._stop_thinking)
+            # Continue the existing thinking phase into streaming.
             self._call_ui(self._start_stream_animation, log)
 
             # Show header
@@ -1607,7 +1604,7 @@ class AgentRunMixin:
 
         text_parts: list[str] = []
         try:
-            self._call_ui(self._stop_thinking)
+            # Continue the existing thinking phase into streaming.
             self._call_ui(self._start_stream_animation, log)
             self._call_ui(
                 log.start_agent_session,
@@ -1855,8 +1852,7 @@ class AgentRunMixin:
         if persona_context and persona_context.is_valid:
             self._call_ui(log.add_info, f"🎭 Persona active: {persona_context.role_name}")
 
-        # Stop thinking, start streaming animation
-        self._call_ui(self._stop_thinking)
+        # Continue the existing thinking phase into streaming.
         self._call_ui(self._start_stream_animation, log)
 
         # Use enhanced agent session header (always visible)
@@ -2645,8 +2641,7 @@ class AgentRunMixin:
             # Store process reference for cancellation
             self._agent_process = process
 
-            # Stop thinking, start streaming animation
-            self._call_ui(self._stop_thinking)
+            # Continue the existing thinking phase into streaming.
             self._call_ui(self._start_stream_animation, log)
 
             # Show header
@@ -3200,8 +3195,7 @@ class AgentRunMixin:
             # Store process reference for cancellation
             self._agent_process = process
 
-            # Stop thinking, start streaming animation
-            self._call_ui(self._stop_thinking)
+            # Continue the existing thinking phase into streaming.
             self._call_ui(self._start_stream_animation, log)
 
             # Show header

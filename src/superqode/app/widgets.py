@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import math
+import random
 from time import monotonic
 from typing import Any
 
@@ -502,9 +503,12 @@ class TopScanningLine(Static):
     is_active = reactive(False)
     needs_approval = reactive(False)
     WAVE_COLORS = ["#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#c026d3", "#ec4899"]
+    PRIMARY_WAVE_SPEED = 0.9
+    SECONDARY_WAVE_SPEED = 1.4
+    COLOR_DRIFT_SPEED = 0.04
 
     def on_mount(self):
-        self.auto_refresh = 1 / 25
+        self.auto_refresh = 1 / 12
 
     def render(self) -> Text:
         if not self.is_active:
@@ -515,8 +519,8 @@ class TopScanningLine(Static):
         result = Text()
 
         for i in range(width):
-            wave1 = math.sin(t * 2 + i * 0.2) * 0.4
-            wave2 = math.sin(t * 3.5 + i * 0.15 + 1.5) * 0.3
+            wave1 = math.sin(t * self.PRIMARY_WAVE_SPEED + i * 0.2) * 0.4
+            wave2 = math.sin(t * self.SECONDARY_WAVE_SPEED + i * 0.15 + 1.5) * 0.3
             combined = (wave1 + wave2 + 1) / 2
             combined = max(0, min(1, combined))
 
@@ -531,7 +535,7 @@ class TopScanningLine(Static):
             else:
                 char = "─"
 
-            color_pos = (i / width + t * 0.1) % 1.0
+            color_pos = (i / width + t * self.COLOR_DRIFT_SPEED) % 1.0
             color_idx = int(color_pos * len(self.WAVE_COLORS)) % len(self.WAVE_COLORS)
             color = self.WAVE_COLORS[color_idx]
 
@@ -550,9 +554,10 @@ class BottomScanningLine(Static):
 
     is_active = reactive(False)
     needs_approval = reactive(False)
+    SWEEP_CYCLES_PER_SECOND = 0.2
 
     def on_mount(self):
-        self.auto_refresh = 1 / 30
+        self.auto_refresh = 1 / 12
 
     def render(self) -> Text:
         if not self.is_active:
@@ -562,7 +567,7 @@ class BottomScanningLine(Static):
         t = monotonic()
         result = Text()
 
-        sweep_pos = (t * 0.5) % 1.0
+        sweep_pos = (t * self.SWEEP_CYCLES_PER_SECOND) % 1.0
         sweep_x = int(sweep_pos * width)
 
         for i in range(width):
@@ -606,81 +611,77 @@ class StreamingThinkingIndicator(Static):
     """Animated thinking indicator for streaming."""
 
     is_active = reactive(False)
-    # When set (normal thinking mode), shows this steady status instead of the
-    # cycling whimsical phrases - e.g. "Working… (step 2)".
+    # When set, adds a concrete live detail beside the rotating phrase,
+    # for example "Working… (step 2)".
     status = reactive("")
     SPINNER_FRAMES = ["◌", "◔", "◑", "◕"]
+    SPINNER_FRAMES_PER_SECOND = 1.0
+    PHRASE_SECONDS = 7.0
 
     THINKING_PHRASES = [
-        "🧠 Thinking deeply",
-        "💭 Processing your request",
-        "⚡ Analyzing the problem",
-        "🔍 Understanding context",
-        "✨ Generating response",
-        "🎯 Computing solution",
-        "🚀 Working on it",
-        "💡 Light bulb moment",
-        "🎪 Juggling possibilities",
-        "🎨 Painting a masterpiece",
-        "🧩 Solving the puzzle",
-        "👨‍🍳 Cooking up magic",
-        "🚀 Launching into orbit",
-        "🪄 Casting a spell",
-        "💻 Compiling thoughts",
-        "🔧 Tightening the bolts",
-        "🐝 Busy bee mode",
-        "🏗️ Under construction",
-        "🧙‍♂️ Wizarding up a solution",
-        "🦄 Summoning unicorn power",
-        "🐉 Awakening the code dragon",
-        "🌟 Aligning the stars",
-        "🔭 Scanning the codeverse",
-        "⚛️ Splitting atoms of logic",
-        "🌌 Exploring the galaxy",
-        "🛸 Beaming down answers",
-        "🔮 Consulting the crystal ball",
-        "🎬 Directing the scene",
-        "🎸 Jamming on your code",
-        "🎲 Rolling for initiative",
-        "🍳 Frying some fresh code",
-        "☕ Brewing the perfect response",
-        "🍕 Serving hot code",
-        "🦊 Being clever like a fox",
-        "🐙 Multitasking like an octopus",
-        "🦅 Eagle-eye analyzing",
-        "🔥 Firing up the engines",
-        "💎 Polishing the gem",
-        "🎭 Getting into character",
-        "🎡 Spinning up ideas",
-        "🎯 Locking onto target",
-        "⚙️ Processing information",
-        "🧪 Experimenting with solutions",
-        "🔬 Running analysis",
-        "📊 Crunching numbers",
-        "🎨 Creating art",
-        "🎪 Performing magic",
-        "🎭 Acting out the solution",
+        "🧠 Thinking",
+        "💭 Considering the request",
+        "🔍 Reviewing the context",
+        "🧩 Connecting the details",
+        "⚙️ Evaluating approaches",
+        "💡 Forming a solution",
+        "🔬 Checking the reasoning",
+        "✨ Refining the response",
     ]
 
     def on_mount(self):
         self.auto_refresh = 1 / 2
 
+    def begin(self) -> None:
+        """Begin a fresh phase, without restarting one already in progress."""
+        if self.is_active:
+            return
+        phrases = list(self.THINKING_PHRASES[1:])
+        random.shuffle(phrases)
+        shuffled = (self.THINKING_PHRASES[0], *phrases)
+        previous = getattr(self, "_phrase_order", ())
+        if shuffled == previous and len(phrases) > 1:
+            phrases.append(phrases.pop(0))
+            shuffled = (self.THINKING_PHRASES[0], *phrases)
+        self._phrase_order = shuffled
+        self._animation_started_at = monotonic()
+        self.is_active = True
+        self.refresh()
+
+    def end(self) -> None:
+        """End the current thinking phase and reset its animation clock."""
+        self.is_active = False
+        self.status = ""
+        self._animation_started_at = None
+        self.refresh()
+
     def render(self) -> Text:
         if not self.is_active:
             return Text("")
 
-        t = monotonic()
+        now = monotonic()
+        started_at = getattr(self, "_animation_started_at", None)
+        if started_at is None:
+            started_at = now
+            self._animation_started_at = started_at
+        phrase_order = getattr(self, "_phrase_order", ())
+        if not phrase_order:
+            phrases = list(self.THINKING_PHRASES[1:])
+            random.shuffle(phrases)
+            phrase_order = (self.THINKING_PHRASES[0], *phrases)
+            self._phrase_order = phrase_order
+        elapsed = max(0.0, now - started_at)
         result = Text()
 
-        spinner_idx = int(t * 2) % len(self.SPINNER_FRAMES)
+        spinner_idx = int(elapsed * self.SPINNER_FRAMES_PER_SECOND) % len(self.SPINNER_FRAMES)
         color = "#a855f7"
 
         spinner = self.SPINNER_FRAMES[spinner_idx]
 
-        # Always cycle the whimsical phrases so there's lively, ever-changing
-        # text whenever the agent is working - in every mode, not just chat.
-        phrase_idx = int(t / 4) % len(self.THINKING_PHRASES)
-        phrase = self.THINKING_PHRASES[phrase_idx]
+        # Every phase begins with "Thinking", then moves through calm progress
+        # language slowly enough to be readable rather than feeling rushed.
+        phrase_idx = int(elapsed / self.PHRASE_SECONDS) % len(phrase_order)
+        phrase = phrase_order[phrase_idx]
 
         result.append(f"  {spinner} ", style=f"bold {color}")
         result.append(phrase, style=f"bold {color}")

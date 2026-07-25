@@ -116,9 +116,9 @@ class TauHarnessProtocolAdapter:
         if session.session_id in self._sessions:
             return self._refs.get(session.session_id, session)
         metadata = dict(session.metadata)
-        working_directory = Path(
-            str(metadata.get("working_directory") or Path.cwd())
-        ).expanduser().resolve()
+        working_directory = (
+            Path(str(metadata.get("working_directory") or Path.cwd())).expanduser().resolve()
+        )
         request = HarnessCreateRequest(
             harness_id=self.descriptor.id,
             provider=str(metadata.get("provider") or ""),

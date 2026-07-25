@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Calmer thinking animation** - Slowed the TUI thinking bars and spinner, made every turn begin with `Thinking` exactly once, and shuffled the remaining slower progress phrases independently for each turn.
 - **Installer URL** - Moved the hosted installer to `https://super-agentic.ai/superqode-install.sh` and updated the README and documentation to match.
 - **macOS install fix** - Constrained `litellm` below 1.92 so macOS installs resolve, since 1.92+ dropped macOS wheels.
 - **Release metadata** - Bumped package, runtime, lockfile, ACP registry, and package checks to `0.2.38`.

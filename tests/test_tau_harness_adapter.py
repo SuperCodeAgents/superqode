@@ -136,9 +136,7 @@ async def test_tau_backend_translates_protocol_events_for_tui(tmp_path: Path):
     async def factory(_request, _session_path, _tool_mode):
         return fake
 
-    backend = TauHarnessBackend(
-        adapter=TauHarnessProtocolAdapter(session_factory=factory)
-    )
+    backend = TauHarnessBackend(adapter=TauHarnessProtocolAdapter(session_factory=factory))
     request = HarnessBackendRequest(
         spec=tau_template(),
         prompt="inspect this repository",
@@ -179,7 +177,10 @@ def test_tau_is_always_visible_in_harness_catalog(tmp_path: Path):
     assert entry.runtime == "tau"
     assert entry.recommended is True
     if not entry.available:
-        assert "superqode[tau]" in entry.issue
+        # The hint is environment-aware: a source checkout gets
+        # `uv pip install -e ".[tau]"`, other contexts get a `superqode[tau]`
+        # spec. Assert on the extra itself so the test holds in every context.
+        assert "[tau]" in entry.issue
 
 
 @pytest.mark.asyncio

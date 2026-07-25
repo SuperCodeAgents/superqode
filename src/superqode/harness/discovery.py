@@ -110,8 +110,7 @@ def discover_harness_adapters(
                 id="tau",
                 name="Hugging Face Tau",
                 description=(
-                    "Tau's event-first Python coding-agent harness through "
-                    "Harness Protocol v1"
+                    "Tau's event-first Python coding-agent harness through Harness Protocol v1"
                 ),
                 source="optional:tau",
                 available=tau_available,

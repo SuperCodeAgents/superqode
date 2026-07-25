@@ -104,11 +104,7 @@ def _session_ref(request: HarnessBackendRequest) -> HarnessSessionRef:
     safe_session_id = re.sub(r"[^A-Za-z0-9_.-]+", "-", session_id).strip(".-")
     safe_session_id = safe_session_id or "session"
     session_path = (
-        request.working_directory
-        / ".superqode"
-        / "tau"
-        / "sessions"
-        / f"{safe_session_id}.jsonl"
+        request.working_directory / ".superqode" / "tau" / "sessions" / f"{safe_session_id}.jsonl"
     )
     return HarnessSessionRef(
         session_id=session_id,

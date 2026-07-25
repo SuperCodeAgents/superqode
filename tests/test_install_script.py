@@ -85,10 +85,7 @@ def test_installer_uses_isolated_uv_tool_install_and_verifies_both_commands(tmp_
     assert "sq 0.test" in result.stdout
     assert "SuperQode is installed. Run: superqode" in result.stdout
     uv_calls = uv_log.read_text(encoding="utf-8")
-    assert (
-        "tool install --no-config --upgrade --force "
-        "--with litellm<1.92 superqode"
-    ) in uv_calls
+    assert ("tool install --no-config --upgrade --force --with litellm<1.92 superqode") in uv_calls
     assert "tool dir --bin --no-config" in uv_calls
 
 
@@ -164,7 +161,7 @@ chmod +x "$HOME/.local/bin/uv"
     )
     _write_executable(
         command_bin / "curl",
-        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$FAKE_CURL_LOG\"\ncat \"$FAKE_BOOTSTRAP\"\n",
+        '#!/bin/sh\nprintf \'%s\\n\' "$*" >> "$FAKE_CURL_LOG"\ncat "$FAKE_BOOTSTRAP"\n',
     )
     _write_executable(tool_bin / "superqode", "#!/bin/sh\nprintf '%s\\n' 'superqode 0.test'\n")
     _write_executable(tool_bin / "sq", "#!/bin/sh\nprintf '%s\\n' 'sq 0.test'\n")
