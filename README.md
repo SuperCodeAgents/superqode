@@ -1,8 +1,12 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/SuperagenticAI/superqode/main/assets/superqode-logo.png" alt="SuperQode" width="220">
+  <img src="assets/superqode-banner.png" alt="SuperQode" width="100%">
 </p>
 
 <h1 align="center">SuperQode</h1>
+
+<p align="center">
+  <img src="assets/superqode-logo.png" alt="SuperQode logo" width="180">
+</p>
 
 <p align="center">
   <strong>Agent engineering for your code factory.</strong><br>
