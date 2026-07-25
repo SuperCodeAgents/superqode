@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.38] - 2026-07-25
+
+### Added
+
+- **Tau harness backend** - Added Tau as an optional selectable harness backend with adapter, templates, discovery, and catalog availability status in the TUI, plus the `tau` install extra.
+- **One-line POSIX installer** - Added a sudo-free installer that bootstraps `uv` when missing, installs SuperQode into an isolated tool environment, and supports upgrades, extras, and version pins.
+
+### Changed
+
+- **Installer URL** - Moved the hosted installer to `https://super-agentic.ai/superqode-install.sh` and updated the README and documentation to match.
+- **macOS install fix** - Constrained `litellm` below 1.92 so macOS installs resolve, since 1.92+ dropped macOS wheels.
+- **Release metadata** - Bumped package, runtime, lockfile, ACP registry, and package checks to `0.2.38`.
+
 ## [0.2.37] - 2026-07-24
 
 ### Added

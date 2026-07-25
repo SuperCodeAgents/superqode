@@ -12,7 +12,16 @@ SuperQode is your portable coding agent harness. A harness defines the run contr
 ## 1. Install
 
 ```bash
-curl -LsSf https://superagenticai.github.io/superqode/install.sh | sh
+curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
+```
+
+This installs `uv` when it is missing, then installs SuperQode in an isolated
+environment without `sudo`. If you already have
+[uv](https://docs.astral.sh/uv/), you can install it yourself instead:
+
+```bash
+uv tool install superqode      # persistent install
+uvx superqode                  # run once without installing
 ```
 
 Optional runtime backends are installed only when you need them:

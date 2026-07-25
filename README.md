@@ -114,14 +114,18 @@ SuperQode separates agent systems into interchangeable pieces: the **harness** c
 
 **One-line installer (Recommended)**
 ```bash
-curl -LsSf https://superagenticai.github.io/superqode/install.sh | sh
+curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
 ```
 
 The installer fetches `uv` from Astral when needed, installs SuperQode from
 PyPI in an isolated environment, and verifies both `superqode` and `sq`. It
 does not use `sudo`.
 
-**Already have uv?**
+**Alternative: install with uv**
+
+If you already have [uv](https://docs.astral.sh/uv/) and prefer to manage the
+install yourself:
+
 ```bash
 uv tool install superqode
 
@@ -129,7 +133,7 @@ uv tool install superqode
 uvx superqode
 ```
 
-This installs the latest [SuperQode release](https://pypi.org/project/superqode/) from PyPI.
+Both paths install the latest [SuperQode release](https://pypi.org/project/superqode/) from PyPI.
 
 SuperQode uses [uv](https://docs.astral.sh/uv/) for installs, development, and release checks. If uv is new to you, start with the official uv documentation before installing extras or working from source.
 

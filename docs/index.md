@@ -37,7 +37,7 @@ hide:
 ## Installation and first run
 
 ```bash
-curl -LsSf https://superagenticai.github.io/superqode/install.sh | sh
+curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
 cd your-project
 superqode
 ```
@@ -45,6 +45,13 @@ superqode
 The installer adds `uv` when needed, installs the latest
 [SuperQode release](https://pypi.org/project/superqode/) from PyPI in an
 isolated environment, and verifies the command. It does not use `sudo`.
+
+Already have [uv](https://docs.astral.sh/uv/)? Install it yourself instead:
+
+```bash
+uv tool install superqode      # persistent install
+uvx superqode                  # run once without installing
+```
 
 The command starts the interactive TUI. Connect a model with one of the following commands:
 

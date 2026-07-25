@@ -83,12 +83,25 @@ Optional tools depend on your workflow:
 
 ## 1. Install
 
+=== "Installer (recommended)"
+
+    ```bash
+    curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
+    superqode --version
+    ```
+
+    Installs `uv` when it is missing, then installs SuperQode in an isolated
+    environment. No `sudo` required.
+
 === "uv"
 
     ```bash
-    curl -LsSf https://superagenticai.github.io/superqode/install.sh | sh
+    uv tool install superqode
     superqode --version
     ```
+
+    Use this when you already have [uv](https://docs.astral.sh/uv/) and prefer
+    to manage the install yourself.
 
 === "uvx"
 
@@ -105,7 +118,7 @@ Optional tools depend on your workflow:
     uv run superqode --version
     ```
 
-The uv and uvx commands install the latest [SuperQode release](https://pypi.org/project/superqode/) from PyPI.
+Every method except `source` installs the latest [SuperQode release](https://pypi.org/project/superqode/) from PyPI.
 
 ---
 

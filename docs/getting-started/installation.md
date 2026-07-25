@@ -12,7 +12,7 @@ including verification, optional runtime extras, and troubleshooting.
 Run the hosted installer on macOS, Linux, or WSL:
 
 ```bash
-curl -LsSf https://superagenticai.github.io/superqode/install.sh | sh
+curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
 ```
 
 It:
@@ -26,13 +26,16 @@ It:
 If you prefer to inspect downloaded scripts before running them:
 
 ```bash
-curl -LsSf https://superagenticai.github.io/superqode/install.sh \
+curl -LsSf https://super-agentic.ai/superqode-install.sh \
   -o superqode-install.sh
 less superqode-install.sh
 sh superqode-install.sh
 ```
 
-If uv is already installed, the direct equivalent is:
+### Prefer to install it yourself?
+
+The installer is the recommended path because it handles the `uv` bootstrap for
+you. If uv is already installed, the direct equivalent is:
 
 ```bash
 uv tool install --upgrade --force superqode
@@ -43,6 +46,9 @@ Or run once without installing:
 ```bash
 uvx superqode
 ```
+
+Both are fully supported — pick whichever fits your setup. See
+[Installation Methods](#installation-methods) for the full comparison.
 
 Verify the installed tool:
 
@@ -113,10 +119,16 @@ If you need to install Python 3.12+:
 
 ## Installation Methods
 
-### Method 1: One-line installer
+| Method | Best for | Needs uv preinstalled |
+| --- | --- | --- |
+| [One-line installer](#method-1-one-line-installer-recommended) | Most users; first-time setup | No — installs it for you |
+| [uv directly](#method-2-uv-directly) | You already use uv and want to manage the install | Yes |
+| [uvx](#method-3-uvx-no-persistent-install) | Trying SuperQode without installing | Yes |
+
+### Method 1: One-line installer (recommended)
 
 ```bash
-curl -LsSf https://superagenticai.github.io/superqode/install.sh | sh
+curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
 ```
 
 Run the same command later to upgrade. Uninstall with:
@@ -151,19 +163,19 @@ Set `SUPERQODE_EXTRAS` immediately before the installer. For example, install
 the Hugging Face Tau adapter:
 
 ```bash
-curl -LsSf https://superagenticai.github.io/superqode/install.sh |
+curl -LsSf https://super-agentic.ai/superqode-install.sh |
   SUPERQODE_EXTRAS=tau sh
 ```
 
 Multiple extras use commas:
 
 ```bash
-curl -LsSf https://superagenticai.github.io/superqode/install.sh |
+curl -LsSf https://super-agentic.ai/superqode-install.sh |
   SUPERQODE_EXTRAS=tau,vendor-sdks sh
 ```
 
 Release automation can install an exact published version with
-`SUPERQODE_VERSION=0.2.37`.
+`SUPERQODE_VERSION=0.2.38`.
 
 ## Installation for Developers
 
