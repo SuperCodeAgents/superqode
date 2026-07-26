@@ -28,10 +28,6 @@
 </p>
 
 <h3 align="center">
-  <a href="https://super-agentic.ai/superqode/">🌐 Visit the SuperQode Website →</a>
-</h3>
-
-<h3 align="center">
   <a href="https://superagenticai.github.io/superqode/">📚 Read the Full Documentation →</a>
 </h3>
 
@@ -52,6 +48,10 @@ harnesses across your repositories.
 Run local or hosted models and the coding agents you already use through one
 inspectable, portable HarnessSpec while keeping tools, policies, sessions, and
 evidence under your control.
+
+<p align="center">
+  <img src="assets/superqode-hero.png" alt="SuperQode Agent Engineering terminal workbench" width="920">
+</p>
 
 ## Install
 
@@ -285,10 +285,6 @@ That lets you:
 - **Evaluate** agent behavior with scorecards, benchmarks, and regression gates.
 - **Govern** file, shell, network, credential, budget, and approval policies.
 - **Optimize** model routes and harness candidates using recorded evidence.
-
-<p align="center">
-  <img src="assets/superqode-hero.png" alt="SuperQode Agent Engineering terminal workbench" width="920">
-</p>
 
 ## Why Own the Harness?
 

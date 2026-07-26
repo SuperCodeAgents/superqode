@@ -9,6 +9,8 @@ gap.
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from superqode.app_main import SuperQodeApp, SelectionAwareInput
@@ -713,3 +715,124 @@ async def test_quit_command_quits_from_harness_wizard(monkeypatch):
         await pilot.pause()
 
         assert exits == [True]
+
+
+async def test_disconnect_tears_down_runtime_and_harness(monkeypatch):
+    """:disconnect must drop the live runtime, not just reset the view.
+
+    ``:home`` deliberately keeps ``_pure_mode`` warm, so a cosmetic-only reset
+    left BYOK/local/SDK sessions connected while the badge claimed otherwise.
+    """
+    calls = []
+
+    class _FakePureMode:
+        def __init__(self):
+            self.session = type("S", (), {"connected": True, "harness_name": "review-harness"})()
+
+        def cancel(self):
+            calls.append("cancel")
+
+        def disconnect(self):
+            calls.append("disconnect")
+
+    monkeypatch.setenv("SUPERQODE_RUNTIME", "codex-sdk")
+    monkeypatch.setenv("SUPERQODE_HARNESS", "review-harness")
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 30)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        bar = app.query_one("#status-bar", ColorfulStatusBar)
+
+        app._pure_mode = _FakePureMode()
+        app.current_model = "gpt-5.5"
+        app.current_provider = "openai"
+        bar.active_runtime = "codex-sdk"
+        bar.active_model = "gpt-5.5"
+        bar.active_harness = "review-harness"
+        await pilot.pause()
+
+        app._disconnect_everything(log)
+        await pilot.pause()
+
+        # The runtime was cancelled and closed, not merely hidden.
+        assert calls == ["cancel", "disconnect"]
+        # A fresh launch has no _pure_mode attribute at all; connect paths test
+        # with hasattr, so leaving a dead object behind would break reconnects.
+        assert not hasattr(app, "_pure_mode")
+        assert os.environ.get("SUPERQODE_RUNTIME") is None
+        assert os.environ.get("SUPERQODE_HARNESS") is None
+        assert bar.active_runtime == ""
+        assert bar.active_model == ""
+        # "core" is the built-in harness a freshly launched app reports, so the
+        # named harness is detached rather than the row being blanked.
+        assert bar.active_harness == "core"
+        assert app.current_model == ""
+        assert app.current_provider == ""
+
+
+async def test_home_keeps_the_warm_runtime_session_and_shows_it():
+    """:home stays a view change, so the live connection must stay on screen.
+
+    Blanking the badge over a still-running session was the half-state that made
+    :home look like it had disconnected.
+    """
+    from superqode.app.widgets import ModeBadge
+
+    class _WarmPureMode:
+        session = type("S", (), {"connected": True, "provider": "openai", "model": "gpt-5.5"})()
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 30)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        badge = app.query_one("#mode-badge", ModeBadge)
+
+        app._pure_mode = _WarmPureMode()
+        app.current_provider = "openai"
+        app.current_model = "gpt-5.5"
+        badge.provider = "openai"
+        badge.model = "gpt-5.5"
+        badge.execution_mode = "byok"
+        badge.agent = "codex"
+        await pilot.pause()
+
+        app._go_home(log)
+        await pilot.pause()
+
+        # The session itself is untouched.
+        assert isinstance(app._pure_mode, _WarmPureMode)
+        # The connection identity stays visible because it is still live.
+        assert app.current_provider == "openai"
+        assert app.current_model == "gpt-5.5"
+        assert badge.provider == "openai"
+        assert badge.model == "gpt-5.5"
+        assert badge.execution_mode == "byok"
+        # What :home really did tear down is cleared.
+        assert badge.agent == ""
+        assert app.current_agent == ""
+        assert badge.mode == "home"
+
+
+async def test_home_still_clears_the_badge_without_a_live_session():
+    """With nothing warm behind it, :home must not advertise a connection."""
+    from superqode.app.widgets import ModeBadge
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 30)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        badge = app.query_one("#mode-badge", ModeBadge)
+
+        app.current_provider = "openai"
+        app.current_model = "gpt-5.5"
+        badge.provider = "openai"
+        badge.model = "gpt-5.5"
+        badge.execution_mode = "byok"
+        await pilot.pause()
+
+        app._go_home(log)
+        await pilot.pause()
+
+        assert app.current_provider == ""
+        assert app.current_model == ""
+        assert badge.provider == ""
+        assert badge.model == ""
+        assert badge.execution_mode == ""

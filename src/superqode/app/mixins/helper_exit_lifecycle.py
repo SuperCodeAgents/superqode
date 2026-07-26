@@ -57,6 +57,72 @@ class HelperExitLifecycleMixin:
                 pass
         terminals.clear()
 
+    def _disconnect_everything(self, log: ConversationLog):
+        """Drop every live connection and return to a freshly launched state.
+
+        ``:home`` only leaves the current view: BYOK, local, and self-contained
+        SDK sessions live on ``_pure_mode`` and stay warm so re-entering a mode
+        is instant. ``:disconnect`` is the opposite promise, so tear the runtime
+        down, detach the harness, and clear the environment the next connection
+        would otherwise inherit.
+        """
+        pure = getattr(self, "_pure_mode", None)
+        if pure is not None:
+            try:
+                pure.cancel()
+            except Exception:
+                pass
+            try:
+                pure.disconnect()
+            except Exception:
+                pass
+            # Remove the attribute rather than setting None: the connect paths
+            # test with hasattr and would keep a dead object otherwise. A fresh
+            # launch has no attribute at all, so this reproduces it exactly.
+            try:
+                del self._pure_mode
+            except AttributeError:
+                pass
+
+        # A retained runtime/harness would silently come back on the next
+        # connection, which is the behavior being removed here.
+        for variable in ("SUPERQODE_RUNTIME", "SUPERQODE_HARNESS"):
+            os.environ.pop(variable, None)
+
+        try:
+            from superqode.app.widgets import ColorfulStatusBar
+
+            status = self.query_one("#status-bar", ColorfulStatusBar)
+            status.update_byok_status()
+            status.active_runtime = ""
+            status.active_model = ""
+            status.active_harness = ""
+        except Exception:
+            pass
+
+        self._go_home(log)
+
+        refresh_harness_panel = getattr(self, "_refresh_harness_panel", None)
+        if refresh_harness_panel is not None:
+            try:
+                refresh_harness_panel()
+            except Exception:
+                pass
+
+        # A transcript line would be written below the freshly rendered welcome
+        # and scrolled out of view, so announce the transition as a popup.
+        self._announce_transition(
+            title="Disconnected",
+            primary="Model and harness detached",
+            detail="SuperQode is back to a freshly launched state",
+            severity="information",
+            log=log,
+            persist=False,
+            popup=True,
+            timeout=3.0,
+            dedupe_key="disconnect-everything",
+        )
+
     def _go_home(self, log: ConversationLog):
         # First, cancel any running agent process
         if self._agent_process is not None:
@@ -99,22 +165,33 @@ class HelperExitLifecycleMixin:
         if session.is_connected_to_agent():
             session.disconnect_agent()
 
+        # BYOK, local, and self-contained SDK sessions live on _pure_mode and are
+        # deliberately left running here so returning to a mode stays instant.
+        # Only the things actually torn down above (the ACP client, a subprocess
+        # agent, the active role) are cleared from the display; blanking a live
+        # connection too made :home look like it had disconnected. :disconnect is
+        # the command that drops the session, and it clears this state itself.
+        pure_session = getattr(getattr(self, "_pure_mode", None), "session", None)
+        warm_connection = bool(getattr(pure_session, "connected", False))
+
         self.current_mode = "home"
         self.current_role = ""
         self.current_agent = ""
-        self.current_model = ""
-        self.current_provider = ""
         set_mode("home")
         session.state = "superqode"
-        session.execution_mode = "acp"  # Reset execution mode
 
         badge = self.query_one("#mode-badge", ModeBadge)
         badge.mode = "home"
         badge.role = ""
         badge.agent = ""
-        badge.model = ""
-        badge.provider = ""
-        badge.execution_mode = ""
+
+        if not warm_connection:
+            self.current_model = ""
+            self.current_provider = ""
+            session.execution_mode = "acp"  # Reset execution mode
+            badge.model = ""
+            badge.provider = ""
+            badge.execution_mode = ""
 
         # Clear and show homepage
         self.action_clear_screen()

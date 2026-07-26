@@ -94,8 +94,10 @@ class SlashCommandMixin:
             self._run_cli_group("daemon", args, log, "Daemon command")
         elif c == "profiles":
             self._run_cli_group("profiles", args or "list", log, "Profiles command")
-        elif c in ("home", "disconnect"):
+        elif c == "home":
             self._go_home(log)
+        elif c == "disconnect":
+            self._disconnect_everything(log)
         elif c == "acp":
             self._acp_cmd(args, log)
         elif c in ("agents", "agent"):
