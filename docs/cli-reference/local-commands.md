@@ -168,7 +168,11 @@ superqode local build --repo . --model MiniMaxAI/MiniMax-M1 --dry-run
 
 ### `local search`
 
-Find models matching a query in the trusted catalog and show, per model, the real native download command for every engine it can run on (Ollama, llama.cpp, LM Studio, MLX) plus a `superqode models download` alternative, an approximate size, whether you already have it, and a rough memory-fit verdict for your hardware. With `--hub` it also queries the Hugging Face Hub live (trusted publishers only) for the newest releases.
+Find models matching a query in the trusted catalog. Each result includes
+native download commands for compatible Ollama, llama.cpp, LM Studio, and MLX
+engines. It also reports the `superqode models download` alternative, estimated
+size, local availability, and approximate memory fit. The `--hub` option queries
+current releases from trusted Hugging Face publishers.
 
 ```bash
 superqode local search qwen3-coder

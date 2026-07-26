@@ -106,8 +106,8 @@ requests free, and a fallback model may have a smaller context window.
 
 ## Feature support matrix
 
-The status column describes the current SuperQode integration, not merely what the
-upstream API advertises.
+The status column describes behavior implemented by the current SuperQode
+integration. Upstream API availability alone does not imply support.
 
 | K3 capability | Moonshot API | SuperQode status | Notes |
 |---------------|--------------|------------------|-------|

@@ -390,7 +390,10 @@ superqode harness doctor --spec harness.yaml
 
 Run a quick readiness probe. Without `--live`, this validates spec loading, doctor checks, and kernel initialization. With `--live`, it also sends a small prompt to the configured model and returns a compact failure digest.
 
-The failure digest classifies a failure by one of the nine harness dimensions (`dimension: {id, label, field}`, e.g. `D1 model selection -> model_policy`), so it points at the spec field to edit, not just what failed.
+The failure digest classifies a failure by one of the nine harness dimensions
+(`dimension: {id, label, field}`, for example
+`D1 model selection -> model_policy`). The result identifies the failed
+operation and the corresponding specification field.
 
 ```bash
 superqode harness test --spec harness.yaml

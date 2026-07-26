@@ -104,7 +104,7 @@ Optional tools depend on your workflow:
 === "Installer (recommended)"
 
     ```bash
-    curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
+    curl -fsSL https://super-agentic.ai/superqode.sh | sh
     superqode --version
     ```
 

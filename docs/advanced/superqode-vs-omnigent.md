@@ -18,7 +18,7 @@ governance, and guarded optimization around that session.
 
 Omnigent and SuperQode start from several similar beliefs:
 
-- a useful coding agent is more than a model and prompt
+- a useful coding agent requires a model, prompt, execution loop, tools, and policy
 - teams should be able to use more than one model or harness
 - agent definitions should be portable and inspectable
 - sessions, tool activity, policy, and sandbox decisions should be recorded

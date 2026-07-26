@@ -49,7 +49,7 @@ evidence under your control.
 ## Install
 
 ```bash
-curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
+curl -fsSL https://super-agentic.ai/superqode.sh | sh
 ```
 
 The installer gets the latest SuperQode release from PyPI in an isolated

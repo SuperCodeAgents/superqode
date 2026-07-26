@@ -265,11 +265,11 @@ model                                            TTFT       decode    total
 qwen3-coder:30b-a3b                              0.4s   42.0 tok/s     6.5s
 ```
 
-Use `--agentic` when you want to know whether a local model is ready for a real
-coding-agent loop, not just whether it can stream tokens. The agentic bench is
-non-mutating: it asks the model to emit a `read_file` tool call, produce an edit
-patch/diff, emit a `bash` tool call, and recall a sentinel from a longer
-context. The score is the percentage of those four control probes that pass.
+Use `--agentic` to evaluate coding-loop readiness in addition to token
+streaming. The agentic bench is non-mutating: it asks the model to emit a
+`read_file` tool call, produce an edit patch or diff, emit a `bash` tool call,
+and recall a sentinel from a longer context. The score is the percentage of
+those four control probes that pass.
 
 ```text
 model                                   TTFT       decode   score  tool  edit  shell  ctx

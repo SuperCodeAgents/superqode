@@ -12,7 +12,7 @@ including verification, optional runtime extras, and troubleshooting.
 Run the hosted installer on macOS, Linux, or WSL:
 
 ```bash
-curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
+curl -fsSL https://super-agentic.ai/superqode.sh | sh
 ```
 
 It:
@@ -26,10 +26,10 @@ It:
 If you prefer to inspect downloaded scripts before running them:
 
 ```bash
-curl -LsSf https://super-agentic.ai/superqode-install.sh \
-  -o superqode-install.sh
-less superqode-install.sh
-sh superqode-install.sh
+curl -fsSL https://super-agentic.ai/superqode.sh \
+  -o superqode.sh
+less superqode.sh
+sh superqode.sh
 ```
 
 ### Prefer to install it yourself?
@@ -128,7 +128,7 @@ If you need to install Python 3.12+:
 ### Method 1: One-line installer (recommended)
 
 ```bash
-curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
+curl -fsSL https://super-agentic.ai/superqode.sh | sh
 ```
 
 Run the same command later to upgrade. Uninstall with:
@@ -163,14 +163,14 @@ Set `SUPERQODE_EXTRAS` immediately before the installer. For example, install
 the Hugging Face Tau adapter:
 
 ```bash
-curl -LsSf https://super-agentic.ai/superqode-install.sh |
+curl -fsSL https://super-agentic.ai/superqode.sh |
   SUPERQODE_EXTRAS=tau sh
 ```
 
 Multiple extras use commas:
 
 ```bash
-curl -LsSf https://super-agentic.ai/superqode-install.sh |
+curl -fsSL https://super-agentic.ai/superqode.sh |
   SUPERQODE_EXTRAS=tau,vendor-sdks sh
 ```
 

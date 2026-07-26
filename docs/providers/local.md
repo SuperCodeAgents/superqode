@@ -137,7 +137,16 @@ Qwen3-Coder 30B-A3B  [~17.4 GB · likely fits]
     SuperQode   superqode models download lmstudio-community/...-MLX-4bit  (any engine)
 ```
 
-The MLX and GGUF repositories come from the live Hugging Face API (trusted publishers only), and the command syntaxes are the current ones: `hf download` (not the deprecated `huggingface-cli`), `llama-server -hf <repo>`, and `lms get <full HF URL>`. Each match also shows an approximate model size, whether you already have it, and a rough memory-fit verdict for your hardware. The size is estimated from the parameter count and quantization, so treat it as a guide, not a guarantee. (Works offline too: without a network it falls back to the catalog command only.) SuperQode prints the command; you run it in your tool, then `:connect local`.
+MLX and GGUF repositories are retrieved from trusted publishers through the
+live Hugging Face API. Download commands use `hf download`,
+`llama-server -hf <repo>`, and `lms get <full HF URL>`. The deprecated
+`huggingface-cli` syntax is not emitted.
+
+Each result includes an estimated model size, local availability, and an
+approximate memory-fit assessment. Size estimates are derived from parameter
+count and quantization. Without network access, the command returns catalog
+results only. Run the printed command with the corresponding model tool, then
+connect with `:connect local`.
 
 ### Verify Readiness Anytime
 

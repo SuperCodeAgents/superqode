@@ -88,7 +88,8 @@ debugging, refactoring, CI triage, and multi-agent coding workflows.
 
 #### No-Tool Harness
 
-The no-tool harness is a separate first-class flavor, not just "coding harness with tools disabled."
+The no-tool harness is a separate first-class flavor with its own execution
+contract. It is not a coding harness with tools disabled.
 
 It bets on model capability alone:
 

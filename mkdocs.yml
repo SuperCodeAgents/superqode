@@ -137,13 +137,13 @@ extra_css:
 
 
 nav:
-  - 🏠 Home: index.md
-
-  - 🚀 Start:
+  - 🚀 Quick Start:
+    - ⚡ Quick Start: getting-started/quickstart.md
+    - 🏠 Documentation Home: index.md
     - 🧭 Developer Journey: getting-started/index.md
     - 📦 Installation: getting-started/installation.md
     - 💻 Use It as a Coding Agent: getting-started/first-session.md
-    - ⚡ Complete Quick Start: getting-started/quickstart.md
+    - 📘 Complete Getting Started Guide: getting-started/complete-guide.md
     - 🧭 Troubleshooting: getting-started/troubleshooting.md
     - 🧠 Understand SuperQode:
       - 📚 Core Concepts: concepts/index.md
@@ -223,6 +223,20 @@ nav:
     - 📦 WorkOrders: advanced/workorders.md
     - 📱 Chat Channels Remote Control: advanced/channels.md
     - ⌨️ Vim-Like Navigation: advanced/vim-mode.md
+
+  - 🔗 Integrations:
+    - 🧭 Integration Overview: integrations/index.md
+    - 📋 All Integrations: integrations/all.md
+    - 🤖 Coding Agents: integrations/coding-agents.md
+    - 🧠 Models & Inference: integrations/models-inference.md
+    - ⚙️ Runtimes & Harnesses: integrations/runtimes-harnesses.md
+    - 🔌 Protocols & Tools: integrations/protocols-tools.md
+    - 📈 Optimization: integrations/optimization.md
+    - 🧠 Memory: integrations/memory.md
+    - 🏖️ Sandboxes: integrations/sandboxes.md
+    - 📊 Observability: integrations/observability.md
+    - 📱 Remote Interfaces: integrations/remote-interfaces.md
+    - 🧩 Dependency Compatibility: integrations/dependency-compatibility.md
 
   - 📚 Reference:
     - 🔬 Advanced:

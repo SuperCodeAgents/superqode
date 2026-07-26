@@ -1,362 +1,276 @@
+---
+title: Quick Start
+description: Install SuperQode, connect an agent or model, and create a first harness.
+---
+
 # Quick Start
 
-This guide installs SuperQode and starts a normal coding-agent session. Use the
-agent or model you already prefer, switch harnesses when the task changes, and
-create your own HarnessSpec only when you need a durable project contract.
+This guide covers the shortest path from installation to a working coding
+session. A custom harness is optional for the first session.
 
-SuperQode is your portable coding agent harness. A harness defines the run contract: model policy, runtime backend, tool access, sandbox policy, workflow shape, events, and output handling.
+## 1. Install SuperQode
 
-!!! note "Safe first run"
-    Start in a low-risk repository, throwaway branch, sandbox, or VM. Coding harnesses can read files, edit files, and run shell commands when policy allows it.
-
----
-
-## 1. Install
+Run the installer:
 
 ```bash
-curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
+curl -fsSL https://super-agentic.ai/superqode.sh | sh
 ```
 
-This installs `uv` when it is missing, then installs SuperQode in an isolated
-environment without `sudo`. If you already have
-[uv](https://docs.astral.sh/uv/), you can install it yourself instead:
+The installer creates an isolated `uv` tool environment and does not require
+`sudo`.
+
+If `uv` is already installed:
 
 ```bash
-uv tool install superqode      # persistent install
-uvx superqode                  # run once without installing
+uv tool install superqode
 ```
 
-Optional runtime backends are installed only when you need them:
+Verify the command:
 
 ```bash
-uv tool install "superqode[openai-agents]"
-uv tool install "superqode[pydanticai]"
-uv tool install "superqode[deepagents]"
-uv tool install "superqode[adk]"
+superqode --version
 ```
 
-For Codex, GitHub Copilot SDK, Claude Agent SDK, and Antigravity SDK support, install one runtime
-or the optional bundle:
+See [Installation](installation.md) for operating-system requirements,
+alternative installation methods, upgrades, and optional dependencies.
 
-```bash
-uv tool install "superqode[codex-sdk]"
-uv tool install "superqode[copilot-sdk]"
-uv tool install "superqode[claude-agent-sdk]"
-uv tool install "superqode[antigravity-sdk]"
-# Or install the complete vendor SDK bundle:
-uv tool install "superqode[vendor-sdks]"
-```
+## 2. Open a repository
 
-The bundle does not include the Grok or `agy` subscription CLIs. Run
-`superqode runtime setup` for installation and authentication guidance.
-
----
-
-## 2. Prerequisites
-
-Before starting the TUI, make sure you have one of these ready:
-
-- **Signed-in coding agent** such as Codex, GitHub Copilot, Antigravity, Grok,
-  Kimi Code, Qwen Code, OpenCode, or another ACP agent
-- **API key** for a cloud provider (set as env var like `ANTHROPIC_API_KEY`)
-- **Local model server** running (e.g., `ollama serve`, `mlx_lm.server`)
-
-See [Connection Methods and Vendors](../concepts/modes.md) for the centralized
-coding-agent, harness, provider, and local-model inventory.
-
-!!! tip "No config file needed"
-    SuperQode runs without a `superqode.yaml`. Connect a model to start a session.
-    Project defaults and MCP servers live in `superqode.yaml`. Repeatable run
-    behavior lives in a HarnessSpec such as `harness.yaml` or
-    `superqode.local.yaml`. Add them when you need durable project configuration
-    or a run contract you can inspect, version, and reuse.
-
----
-
-## 3. Run The TUI
-
-For interactive coding work:
+Start SuperQode from the repository that the agent may inspect:
 
 ```bash
 cd /path/to/your/project
 superqode
 ```
 
-Once the TUI starts, connect a provider or agent:
+The terminal user interface starts by default.
+
+## 3. Connect an agent or model
+
+Open the connection picker:
 
 ```text
 :connect
 ```
 
-Choose BYOK (cloud API key), Local (self-hosted model), ACP (coding agent), or
-an available SDK product profile from the picker. See
-[Connection Methods and Vendors](../concepts/modes.md) for the full connection
-and interoperability inventory.
+Choose one connection path. Only one is required.
 
-Direct coding-agent examples:
+### Local model
+
+Start a local server and download a model. This example uses Ollama:
+
+```bash
+ollama serve
+ollama pull qwen3:8b
+```
+
+Connect from the TUI:
 
 ```text
-:connect codex
-:connect copilot
-:connect antigravity
-:connect grok
-:connect kimi-code
-:connect qwen-code
+:connect local ollama qwen3:8b
+```
+
+Run `superqode local doctor` if the model or server is not detected. See
+[Local Providers](../providers/local.md) for Ollama, LM Studio, vLLM, SGLang,
+TGI, MLX, and other local routes.
+
+### ACP coding agent
+
+Open the installed and featured ACP agent list:
+
+```text
+:connect acp
+```
+
+Select an installed agent, or inspect the complete catalog:
+
+```text
+:connect acp all
+```
+
+For a named installed agent:
+
+```text
 :connect acp opencode
 ```
 
-For ACP coding agents, `:connect acp` shows installed and featured runtimes.
-Use `:connect acp all` to search the complete catalog or `:connect acp refresh`
-to update the cached official registry.
+See [ACP Coding Agents](../providers/acp.md) for discovery, installation, and
+diagnostics.
 
-Useful TUI commands after connecting:
+### BYOK provider
 
-| Command | Purpose |
-| --- | --- |
-| `:status` | Show current provider, runtime, mode, and harness state |
-| `:harness wizard` | Create and optionally load a starter HarnessSpec step by step |
-| `:harness harness.yaml` | Load a HarnessSpec into the session |
-| `:runtime list` | Show runtime backends |
-| `:runtime setup` | Show optional vendor SDK and authentication setup |
-| `:runtime pydanticai` | Switch runtime where available |
-| `:providers` | Inspect provider setup |
-| `:providers free` | Find free/local inference setup paths |
-| `:providers free --live openrouter` | Scan current zero-price model routes |
-| `:sandbox` | Show or set the local command sandbox mode |
-| `:theme` | Pick an accent theme |
-| `:compare <models>` | Re-run your last message across several models |
-| `:export` | Export the conversation to HTML |
-| `:rewind` | Rewind the conversation to an earlier message |
-| `:help` | Show available commands |
-
-For local models, the fastest path to a harness you own is:
+Set the provider's API key before starting SuperQode. For example:
 
 ```bash
-superqode local init --repo .
-superqode --harness superqode.local.yaml
+export OPENAI_API_KEY="your-key"
 ```
 
-`local init` detects the machine, writes `superqode.local.yaml`, and runs a
-non-destructive smoke check when a local server is available. Use `:local build`
-or `superqode local build` when you already know the model, endpoint, or pack
-you want to target. The pack is only the starting point; inspect the generated
-YAML and customize model policy, memory, tools, and approvals for your project.
-
-`superqode.local.yaml` is a harness file, not project configuration. Load it
-with `superqode --harness superqode.local.yaml` or `:harness
-superqode.local.yaml`. Use `superqode config init` separately when you want a
-project-level `superqode.yaml`.
-
-You can also ask directly in natural language:
+Connect through the picker:
 
 ```text
-Summarize this repository and suggest the smallest safe improvement.
+:connect byok
 ```
 
-This is the first SuperQode use case: work in the repository as you would with
-another coding agent. A custom HarnessSpec is not required.
+Or select a provider and model directly:
 
-### Switch the harness during the session
+```text
+:connect byok openai <model>
+```
 
-Open the unified Harness Switcher:
+Check provider readiness with:
+
+```bash
+superqode providers doctor openai
+```
+
+See [BYOK Providers](../providers/byok.md) for supported providers and
+credential names.
+
+### OpenAI Codex
+
+Install the Codex runtime and complete the local login:
+
+```bash
+uv tool install "superqode[codex-sdk]"
+codex login
+```
+
+Connect from the TUI:
+
+```text
+:connect codex
+```
+
+See [OpenAI Codex](../providers/codex.md) for SDK, ACP, and BYOK routes.
+
+### Google Antigravity
+
+Install the `agy` CLI:
+
+```bash
+curl -fsSL https://antigravity.google/cli/install.sh | bash
+```
+
+Run `agy` once to complete Google sign-in, then connect from the TUI:
+
+```text
+:connect antigravity
+```
+
+The signed-in CLI owns the Antigravity agent loop. See
+[Google Antigravity](../providers/antigravity.md) for CLI, SDK, managed, and
+BYOK routes.
+
+### xAI Grok
+
+Install the Grok CLI and authenticate:
+
+```bash
+curl -fsSL https://x.ai/cli/install.sh | bash
+grok login
+```
+
+Connect Grok Build:
+
+```text
+:connect grok
+```
+
+See [xAI Grok](../providers/grok.md) for Grok Build, subscription-model, and
+BYOK routes.
+
+## 4. Run the first coding task
+
+Check the active connection:
+
+```text
+:status
+```
+
+Submit a small repository task:
+
+```text
+Summarize this repository and identify the smallest safe improvement.
+```
+
+Review approval requests before allowing file edits or shell commands.
+
+## 5. List and switch harnesses
+
+List repository and installed harnesses from the shell:
+
+```bash
+superqode harness list
+```
+
+Open the Harness Switcher:
 
 ```text
 :harness
-:harness switch
 ```
 
-The picker includes built-in and project HarnessSpecs, vendor coding agents,
-ACP agents, optional integrations such as Hugging Face Tau, installed Python
-harnesses, registry harnesses, and model presets. Select a different harness
-for the next turn, or fork when the new harness should start an independent
-conversation branch.
+The list includes built-in harnesses, project HarnessSpecs, connected coding
+agents, ACP agents, model presets, installed harnesses, and optional
+integrations.
 
-Direct examples:
+Inspect or switch the active harness:
 
 ```text
-:harness switch workbench
-:harness switch kimi-code --fork
 :harness current
+:harness switch workbench
 ```
 
----
+Create an independent session branch during a switch:
 
-## 4. Run One Headless Task
-
-For a quick terminal task:
-
-```bash
-superqode --print "summarize this repository"
+```text
+:harness switch kimi-code --fork
 ```
 
-For JSON output:
+See [Your First Session](first-session.md) for session controls, approvals, and
+change inspection.
 
-```bash
-superqode --mode json --print "summarize this repository"
-```
+## 6. Build the first project harness
 
----
-
-## 5. Create A Harness When Ready
-
-Create a reusable coding harness:
+Create a repository-owned coding harness:
 
 ```bash
 superqode harness init my-coder --template coding --output harness.yaml
 ```
 
-Check it before running:
-
-```bash
-superqode harness doctor --spec harness.yaml
-```
-
-Run it:
-
-```bash
-superqode harness run --spec harness.yaml --prompt "summarize the architecture"
-```
-
-For complete starting points, use the repository examples in `examples/harnesses/`. They cover the builtin coding harness, no-tool reasoning, PydanticAI, DeepAgents, OpenAI Agents SDK, Google ADK, Gemma4, and DS4.
-
-The JSON form includes the `run_id`:
-
-```bash
-superqode harness run --spec harness.yaml --prompt "summarize the architecture" --json
-```
-
----
-
-## 6. Inspect What Happened
-
-Every HarnessSpec run writes normalized events and a graph view.
-
-```bash
-superqode harness events <run-id>
-superqode harness graph <run-id>
-superqode harness graph <run-id> --json
-```
-
-Use this when a run behaves unexpectedly. The graph gives one inspection model across backends.
-
-| Backend | Rich graph events |
-| --- | --- |
-| `builtin` | Model requests, model deltas, tools, results, approvals |
-| `pydanticai` | Model deltas, tools, results, approvals |
-| `openai-agents` | Model deltas, tools, approvals, sandbox markers |
-| `deepagents` | Model deltas, tools, subagents, memory, sandbox activity, results |
-| `adk` | Run and stream events |
-
----
-
-## 7. Pick The Right Template
-
-| Template | Use when |
-| --- | --- |
-| `coding` | You want repository-aware coding with file/search/edit/shell tools under policy |
-| `no-tool` | You want model-only reasoning with no tools, shell, or repository access |
-| `gemma4-coding` | You want a Gemma4 local coding starting point |
-| `gemma4-no-tool` | You want Gemma4 model-only reasoning |
-| `ds4-coding` | You want a DS4 local coding starting point |
-| `ds4-fast-local` | You want lower-latency local DS4 iteration |
-
-List templates:
-
-```bash
-superqode harness list-templates
-```
-
----
-
-## 8. Choose A Runtime
-
-List backends:
-
-```bash
-superqode harness list-backends
-```
-
-Run with a backend override:
-
-```bash
-superqode harness run --spec harness.yaml --runtime pydanticai --prompt "review this design"
-superqode harness run --spec harness.yaml --runtime openai-agents --prompt "make the smallest safe fix"
-superqode harness run --spec harness.yaml --runtime deepagents --prompt "prototype the implementation"
-```
-
-Use `doctor` with the same override before a team run:
-
-```bash
-superqode harness doctor --spec harness.yaml --runtime pydanticai
-```
-
----
-
-## 9. Common Commands
-
-| Command | Purpose |
-| --- | --- |
-| `superqode` | Launch the interactive TUI |
-| `superqode --print "..."` | Run one headless task |
-| `superqode harness init ...` | Create a HarnessSpec |
-| `superqode harness validate --spec harness.yaml` | Validate spec syntax |
-| `superqode harness doctor --spec harness.yaml` | Preflight a spec and backend |
-| `superqode harness inspect --spec harness.yaml` | Show resolved policy and compatibility |
-| `superqode harness compile --spec harness.yaml --json` | Show effective spec and model policy |
-| `superqode harness diff old.yaml new.yaml` | Compare two harness specs |
-| `superqode harness run --spec harness.yaml --prompt "..."` | Run a harness task |
-| `superqode harness events <run-id>` | Show normalized run events |
-| `superqode harness graph <run-id>` | Show the persisted event graph |
-| `superqode providers doctor openai` | Check provider setup |
-| `superqode runtime list` | List runtime backends |
-
----
-
-## 10. Harness Checks
-
-Project checks are part of a harness. Add commands under `checks.custom_steps`, then run the harness or inspect it with `doctor`.
-
-```yaml
-checks:
-  enabled: true
-  fail_on_error: false
-  timeout_seconds: 300
-  custom_steps:
-    - name: tests
-      command: uv run pytest
-      enabled: true
-      timeout: 300
-```
+Validate the generated specification:
 
 ```bash
 superqode harness validate --spec harness.yaml
 superqode harness doctor --spec harness.yaml
-superqode harness run --spec harness.yaml --prompt "make the smallest safe fix and run the configured check"
 ```
 
-Use this path for repeatable project checks. For day-to-day coding, start with the TUI and focused prompts.
+Load it in the current TUI session:
 
----
+```text
+:harness harness.yaml
+```
 
-## Next Steps
+Or run it directly:
 
-1. [Your First Session](first-session.md)
-2. [Connection Methods and Vendors](../concepts/modes.md)
-3. [Bring Your Own Harness](bring-your-own-harness.md)
-4. [Harness System](../advanced/harness-system.md)
-5. [Running, Measuring, and Optimizing a Harness](../advanced/harness-optimization.md)
-6. [Runtime Backends](../runtimes.md)
-7. [Configuration Guide](configuration.md)
+```bash
+superqode harness run \
+  --spec harness.yaml \
+  --prompt "Summarize the repository architecture"
+```
 
----
+The generated `harness.yaml` records the runtime, model policy, tools,
+permissions, sandbox, workflow, and output behavior. Commit it when the
+configuration is ready to become part of the repository contract.
 
-## Tips
+See [Bring Your Own Harness](bring-your-own-harness.md) for the guided builder,
+templates, editing, testing, and policy reference.
 
-!!! tip "Run doctor first"
-    `superqode harness doctor --spec harness.yaml` catches missing optional runtimes, incompatible no-tool/coding settings, sandbox policy issues, and event-store problems.
+## Next steps
 
-!!! tip "Use no-tool for pure reasoning"
-    The `no-tool` template intentionally removes filesystem, shell, network, and repository access.
-
-!!! tip "Use the graph when debugging"
-    `superqode harness graph <run-id> --json` is the best way to see what a backend actually emitted.
+| Goal | Guide |
+| --- | --- |
+| Compare every connection method | [Connect Agents, Models, and Harnesses](../concepts/modes.md) |
+| Browse external systems and optional dependencies | [Integrations](../integrations/index.md) |
+| Use local and open models | [Local Agentic Coding](../local-agentic-coding.md) |
+| Evaluate and optimize a harness | [Harness Optimization](../advanced/harness-optimization.md) |
+| Follow the complete command workflow | [Complete Getting Started Guide](complete-guide.md) |

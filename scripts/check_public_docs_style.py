@@ -23,6 +23,8 @@ PROHIBITED_FORMULAIC_PHRASES = {
     "in today's fast-paced": "remove the generic introductory phrase",
     "whether you're": "replace the generic audience construction with scope",
     "more than just": "describe the additional capability directly",
+    "not just": "state the complete technical distinction directly",
+    "not merely": "state the technical scope directly",
     "supercharge": "replace promotional wording with a technical description",
 }
 

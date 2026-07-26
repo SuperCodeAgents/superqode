@@ -150,7 +150,7 @@ superqode memory export --provider local --output memory.json
 | `local` | file-based | `~/.superqode/memory/` | Built-in, always available |
 | `specmem` | project | `.superqode/memory/` | Built-in, per-project scope |
 | `mem0` | hosted | superqode[mem0] | Install `superqode[mem0]`, configure in `superqode.yaml` |
-| `cognee` | local/cloud | install separately | Install `superqode[cognee]` and Cognee |
+| `cognee` | local/cloud | install separately | Install Cognee separately or expose `cognee-cli` on `PATH` |
 | `supermemory` | hosted | superqode[supermemory] | Install `superqode[supermemory]`, configure in `superqode.yaml` |
 
 `local` is the default provider. `specmem`, `mem0`, `cognee`, and `supermemory` are opt-in providers configured under `memory.providers` in `superqode.yaml`.

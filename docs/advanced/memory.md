@@ -236,7 +236,7 @@ uv pip install "cognee>=1.1.2,<2.0.0"
 
 Current note: Cognee `1.1.2` depends through `instructor` on `rich<15`, while
 SuperQode uses `rich>=15`. For that reason SuperQode does not currently ship a
-bundled `superqode[cognee]` extra. The adapter remains configurable for
+bundled Cognee extra. The adapter remains configurable for
 developers who run Cognee separately or resolve that dependency boundary in
 their own environment.
 

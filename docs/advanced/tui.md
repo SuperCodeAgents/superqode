@@ -665,12 +665,12 @@ superqode harness run --spec harness.yaml --prompt "analyze this codebase"
 
 ## Requirements
 
-The TUI requires:
+The TUI and its Textual and Rich dependencies are included in the standard
+SuperQode installation:
 
 ```bash
-uv tool install "superqode[tui]"
-# or
-uv pip install textual rich
+uv tool install superqode
+superqode
 ```
 
 ## Troubleshooting

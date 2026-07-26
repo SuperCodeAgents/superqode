@@ -2,7 +2,7 @@
 #
 # SuperQode one-line installer for macOS, Linux, and WSL:
 #
-#   curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
+#   curl -fsSL https://super-agentic.ai/superqode.sh | sh
 #
 # The script installs uv when it is missing, then uses uv to install SuperQode
 # from PyPI in an isolated tool environment. It never uses sudo.

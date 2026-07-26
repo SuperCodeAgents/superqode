@@ -38,7 +38,7 @@ hide:
 ## Installation and first run
 
 ```bash
-curl -LsSf https://super-agentic.ai/superqode-install.sh | sh
+curl -fsSL https://super-agentic.ai/superqode.sh | sh
 cd your-project
 superqode
 ```
@@ -145,38 +145,36 @@ SuperQode makes the harness a repository-owned engineering artifact, connects ex
 
 ## Where SuperQode fits
 
-The coding-agent market can be understood by asking two ownership questions:
-who controls the model, and who controls the harness around it? The harness is
-the complete agent loop, including its prompts, context strategy, tools, memory,
-permissions, workflow, and verification behavior.
+Two ownership boundaries distinguish coding-agent products: control of the
+model and control of the harness. The harness is the complete agent loop,
+including prompts, context strategy, tools, memory, permissions, workflow, and
+verification behavior.
 
 | Ecosystem pattern | Model choice | Harness ownership | Typical examples | Practical result |
 | --- | --- | --- | --- | --- |
-| **Closed model, closed harness** | Primarily the vendor's models | The vendor owns and evolves the agent loop | Vendor coding agents such as [Claude Code with Claude](https://docs.anthropic.com/en/docs/claude-code/getting-started) | A polished coding experience, with the model and harness lifecycle managed as one product |
-| **Open or selectable models, closed harness** | Several providers or model families may be available | The product vendor still controls the complete loop | Multi-model products such as [Cursor](https://docs.cursor.com/models/) | Model choice increases, but the team does not own the complete harness as a portable repository artifact |
-| **Open models, open harness** | Hosted, open-weight, or local models | The agent implementation is open source and configurable | [Cline](https://github.com/cline/cline), [OpenCode](https://github.com/anomalyco/opencode), and [Aider](https://aider.chat/docs/llms.html) | The team can inspect the source and select models, but usually operates the product's established agent loop |
+| **Closed model, closed harness** | Primarily the vendor's models | The vendor owns and evolves the agent loop | Vendor coding agents such as [Claude Code with Claude](https://docs.anthropic.com/en/docs/claude-code/getting-started) | The vendor manages model access and agent-loop changes as one product |
+| **Open or selectable models, closed harness** | Several providers or model families may be available | The product vendor still controls the complete loop | Multi-model products such as [Cursor](https://docs.cursor.com/models/) | The team can select models, while the complete harness remains product-controlled |
+| **Open models, open harness** | Hosted, open-weight, or local models | The agent implementation is open source and configurable | [Cline](https://github.com/cline/cline), [OpenCode](https://github.com/anomalyco/opencode), and [Aider](https://aider.chat/docs/llms.html) | The source and model routes are inspectable; execution generally follows the framework's established loop |
 
-These categories describe control boundaries, not permanent labels. Products
-can support routes that cross categories. The deciding question for SuperQode
-is whether a team can store the complete working contract in its repository,
-run it across agents and models, measure it independently, and promote a proven
-revision.
+These categories describe control boundaries and can overlap. SuperQode
+classifies an integration by whether the complete working contract can be
+stored in a repository, executed across agents and models, evaluated
+independently, and promoted as a reviewed revision.
 
 ### Coding agents, static harnesses, meta-harnesses, and SuperQode
 
 | Layer | Primary purpose | What it provides | Relationship to SuperQode |
 | --- | --- | --- | --- |
 | **Coding agent** | Complete coding sessions | An interactive product with a built-in agent loop | SuperQode can connect supported coding agents and switch between them during a session |
-| **Static agent harness** | Run a configurable agent loop | A useful implementation with prompts, tools, and model settings defined by that product or framework | SuperQode can run its own native harness or connect external harnesses while keeping a common session, policy, and evidence layer |
+| **Static agent harness** | Run a configurable agent loop | An implementation with prompts, tools, and model settings defined by that product or framework | SuperQode can run its own native harness or connect external harnesses while keeping a common session, policy, and evidence layer |
 | **Meta-harness or optimizer** | Search for better prompts, code, configuration, or agent structure | Candidate generation and selection around an evaluator | SuperQode uses optimizers such as [MetaHarness and GEPA Omni](advanced/harness-optimization.md) as optional stages in a guarded lifecycle |
-| **SuperQode** | Engineer and operate the complete coding-agent lifecycle | Everyday coding, agent and model switching, repository-owned HarnessSpecs, evaluation, governance, optimization, and promotion | One terminal-first system from first session to an approved harness revision |
+| **SuperQode** | Engineer and operate the complete coding-agent lifecycle | Coding sessions, agent and model switching, repository-owned HarnessSpecs, evaluation, governance, optimization, and promotion | A terminal interface and versioned lifecycle for execution through approved harness revisions |
 
-SuperQode therefore does not require a team to abandon its current coding
-agents. A developer can use it as a normal coding agent first, connect the
-agents and models already available to the team, and adopt a repository-owned
-HarnessSpec only when repeatability and control are needed. Evaluation,
-optimization, and promotion come after the harness has a meaningful task
-contract.
+Existing coding agents can remain part of the workflow. SuperQode can first
+operate as the coding interface and connection layer. A repository-owned
+HarnessSpec can be introduced when the team requires repeatable behavior and
+control of the agent loop. Evaluation, optimization, and promotion require a
+defined task contract.
 
 ## Build your code factory
 
