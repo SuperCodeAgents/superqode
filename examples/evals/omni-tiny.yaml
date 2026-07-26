@@ -1,0 +1,26 @@
+metadata:
+  id: omni-tiny
+  name: Tiny Omni plumbing check
+  description: Two short tasks for a bounded, non-statistical Omni experiment.
+
+# Keep this file tiny: one optimizer-visible task and one sealed gate.
+# Replace the prompts and expectations with one real behavior your harness
+# currently misses before treating the result as evidence of improvement.
+tasks:
+  - id: held-in-format
+    split: held-in
+    prompt: |
+      Give a release decision for a documentation-only change whose tests pass.
+      Keep the answer to two short lines.
+    expect_contains:
+      - "DECISION:"
+      - "REASON:"
+
+  - id: held-out-format
+    split: held-out
+    prompt: |
+      Give a release decision for a change whose required tests are failing.
+      Keep the answer to two short lines.
+    expect_contains:
+      - "DECISION:"
+      - "REASON:"

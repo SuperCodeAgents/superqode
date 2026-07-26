@@ -727,6 +727,7 @@ COMMANDS = [
     ":harness candidates export",
     ":harness improve",
     ":harness optimize",
+    ":harness optimize-omni",
     ":harness optimize-inspect",
     ":harness optimize-ledger",
     ":workflow",

@@ -78,15 +78,43 @@ uv tool uninstall superqode
 
 ## Get Started
 
-SuperQode opens a terminal workbench where you can choose a harness, connect a
-model or coding agent, and inspect its work as it happens.
+SuperQode first works like a normal terminal coding agent. Open a repository,
+connect the coding agent or model you already use, and give it a task:
+
+```text
+:connect
+:connect codex
+:connect copilot
+:connect kimi-code
+:connect qwen-code
+:connect acp opencode
+```
+
+Then work normally:
+
+```text
+Summarize this repository and identify the smallest safe improvement.
+```
+
+Open the unified Harness Switcher when you want to change the complete agent
+behavior without leaving SuperQode:
+
+```text
+:harness
+:harness switch
+:harness switch qwen-code --fork
+```
+
+The picker includes SuperQode native harnesses, project HarnessSpecs, vendor
+and ACP coding agents, optional integrations such as Hugging Face Tau,
+installed and registry harnesses, and model presets.
 
 For a safe local-first setup:
 
 ```text
 :local init       # detect hardware and create a starter harness
 :connect local    # choose Ollama, LM Studio, MLX, DS4, llama.cpp, vLLM, or SGLang
-:harness          # choose or switch the active harness
+:harness          # select the generated or another active harness
 ```
 
 Or run a single headless task:

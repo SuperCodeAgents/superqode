@@ -279,3 +279,174 @@ def test_skills_optimize_requires_live_for_gepa(tmp_path):
 
     assert result.exit_code != 0
     assert "requires --live" in result.output
+
+
+def test_modern_skill_optimizer_uses_string_candidate_and_sealed_test_set(tmp_path, monkeypatch):
+    skill_path = tmp_path / ".agents" / "skills" / "review" / "SKILL.md"
+    tasks_path = tmp_path / "eval-tasks.yaml"
+    harness_path = tmp_path / "harness.yaml"
+    _write_skill(skill_path)
+    _write_harness(harness_path)
+    tasks_path.write_text(
+        "\n".join(
+            [
+                "tasks:",
+                "  - id: train-a",
+                "    split: held-in",
+                "    prompt: Say a",
+                "  - id: train-b",
+                "    split: held-in",
+                "    prompt: Say b",
+                "  - id: gate",
+                "    split: held-out",
+                "    prompt: Say gate",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    captured = {}
+
+    class FakeConfig:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+            captured["config"] = kwargs
+
+    class FakeResult:
+        best_candidate = skill_path.read_text(encoding="utf-8")
+        best_score = 0.75
+        total_evals = 7
+        metadata = {
+            "engine": "autoresearch",
+            "baseline_test_score": 0.25,
+            "test_score": 0.75,
+        }
+
+    def fake_optimize(seed_candidate, **kwargs):
+        captured["seed"] = seed_candidate
+        captured["kwargs"] = kwargs
+        return FakeResult()
+
+    import sys
+    import types
+
+    fake_module = types.ModuleType("gepa.optimize_anything")
+    fake_module.OptimizeAnythingConfig = FakeConfig
+    fake_module.optimize_anything = fake_optimize
+    fake_module.optimize_best_of = lambda *args, **kwargs: None
+    monkeypatch.setitem(sys.modules, "gepa.optimize_anything", fake_module)
+
+    result = optimize_skill_with_gepa(
+        skill="review",
+        harness_path=harness_path,
+        tasks_path=tasks_path,
+        output_dir=tmp_path / "modern",
+        root=tmp_path,
+        engine="autoresearch",
+        optimizer_model="claude-test",
+        max_metric_calls=7,
+        allow_dry_run=True,
+    )
+
+    assert isinstance(captured["seed"], str)
+    assert captured["config"]["engine"] == "autoresearch"
+    assert captured["config"]["max_evals"] == 7
+    assert captured["config"]["engine_config"]["model"] == "claude-test"
+    assert [item["id"] for item in captured["kwargs"]["dataset"]] == ["train-a", "train-b"]
+    assert [item["id"] for item in captured["kwargs"]["valset"]] == ["train-a", "train-b"]
+    assert [item["id"] for item in captured["kwargs"]["test_set"]] == ["gate"]
+    assert result.engine == "autoresearch"
+    assert result.baseline_score == 0.25
+    assert result.best_score == 0.75
+    assert result.total_metric_calls == 7
+
+
+def test_omni_skill_optimizer_partitions_budget_and_continues_from_winner(tmp_path, monkeypatch):
+    skill_path = tmp_path / ".agents" / "skills" / "review" / "SKILL.md"
+    tasks_path = tmp_path / "eval-tasks.yaml"
+    harness_path = tmp_path / "harness.yaml"
+    _write_skill(skill_path)
+    _write_harness(harness_path)
+    tasks_path.write_text(
+        "tasks:\n"
+        "  - id: train\n"
+        "    split: held-in\n"
+        "    prompt: Say ready\n"
+        "  - id: gate\n"
+        "    split: held-out\n"
+        "    prompt: Say ready\n",
+        encoding="utf-8",
+    )
+    configs = []
+    calls = []
+
+    class FakeConfig:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+            configs.append(self)
+
+    class FakeStage:
+        def __init__(self, engine, score):
+            self.best_candidate = skill_path.read_text(encoding="utf-8")
+            self.best_score = score
+            self.total_evals = 5
+            self.metadata = {
+                "engine": engine,
+                "baseline_test_score": 0.5,
+                "test_score": score,
+            }
+
+    def fake_best_of(seed_candidate, **kwargs):
+        stages = [
+            FakeStage("gepa", 0.6),
+            FakeStage("autoresearch", 0.7),
+            FakeStage("meta_harness", 0.65),
+        ]
+        winner = stages[1]
+        winner.metadata["all_results"] = stages
+        calls.append(("explore", seed_candidate, kwargs))
+        return winner
+
+    def fake_optimize(seed_candidate, **kwargs):
+        calls.append(("continue", seed_candidate, kwargs))
+        result = FakeStage("gepa", 0.8)
+        result.metadata["test_score"] = 0.8
+        return result
+
+    import sys
+    import types
+
+    fake_module = types.ModuleType("gepa.optimize_anything")
+    fake_module.OptimizeAnythingConfig = FakeConfig
+    fake_module.optimize_anything = fake_optimize
+    fake_module.optimize_best_of = fake_best_of
+    monkeypatch.setitem(sys.modules, "gepa.optimize_anything", fake_module)
+
+    result = optimize_skill_with_gepa(
+        skill="review",
+        harness_path=harness_path,
+        tasks_path=tasks_path,
+        output_dir=tmp_path / "omni",
+        root=tmp_path,
+        engine="omni",
+        continuation_engine="gepa",
+        max_metric_calls=20,
+        max_token_cost=4.0,
+        allow_dry_run=True,
+    )
+
+    explore_configs = calls[0][2]["configs"]
+    continuation_config = calls[1][2]["config"]
+    assert [config.max_evals for config in explore_configs] == [5, 5, 5]
+    assert [config.max_token_cost for config in explore_configs] == [1.0, 1.0, 1.0]
+    assert continuation_config.max_evals == 5
+    assert continuation_config.max_token_cost == 1.0
+    assert calls[1][1] == calls[0][1]
+    assert result.engine == "omni"
+    assert result.metadata["omni"] is True
+    assert result.metadata["omni_continuation_engine"] == "gepa"
+    assert len(result.metadata["omni_explore"]) == 3
+    assert result.metadata["omni_continuation"]["engine"] == "gepa"
+    assert result.metadata["omni_total_evals"] == 20
+    assert result.metadata["omni_total_cost"] == 0.0
+    assert result.total_metric_calls == 20

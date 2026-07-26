@@ -196,8 +196,8 @@ def test_connection_reference_covers_methods_profiles_providers_and_agents():
     assert missing_profiles == []
     assert missing_providers == []
     assert missing_agents == []
-    assert "🔌 Connections:" in mkdocs
-    assert "🧭 Overview: concepts/modes.md" in mkdocs
+    assert "🔌 Connect Agents, Models & Harnesses:" in mkdocs
+    assert "🧭 All Connections: concepts/modes.md" in mkdocs
 
 
 def test_every_connection_profile_has_a_sidebar_page():
@@ -212,8 +212,8 @@ def test_every_connection_profile_has_a_sidebar_page():
         "codex": "providers/codex.md",
         "copilot": "providers/github-copilot.md",
         "claude": "providers/anthropic-claude.md",
-        "kimi-code": "runtimes.md",
-        "qwen-code": "runtimes.md",
+        "kimi-code": "providers/kimi.md",
+        "qwen-code": "providers/qwen-code.md",
         "antigravity": "providers/antigravity.md",
         "grok": "providers/grok.md",
         "zai": "providers/zai.md",

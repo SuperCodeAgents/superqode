@@ -1,6 +1,8 @@
 # Quick Start
 
-This guide installs SuperQode and starts a coding harness.
+This guide installs SuperQode and starts a normal coding-agent session. Use the
+agent or model you already prefer, switch harnesses when the task changes, and
+create your own HarnessSpec only when you need a durable project contract.
 
 SuperQode is your portable coding agent harness. A harness defines the run contract: model policy, runtime backend, tool access, sandbox policy, workflow shape, events, and output handling.
 
@@ -54,10 +56,13 @@ The bundle does not include the Grok or `agy` subscription CLIs. Run
 
 Before starting the TUI, make sure you have one of these ready:
 
+- **Signed-in coding agent** such as Codex, GitHub Copilot, Antigravity, Grok,
+  Kimi Code, Qwen Code, OpenCode, or another ACP agent
 - **API key** for a cloud provider (set as env var like `ANTHROPIC_API_KEY`)
 - **Local model server** running (e.g., `ollama serve`, `mlx_lm.server`)
 
-See [BYOK providers](../providers/byok.md) or [Local providers](../providers/local.md) for setup guides.
+See [Connection Methods and Vendors](../concepts/modes.md) for the centralized
+coding-agent, harness, provider, and local-model inventory.
 
 !!! tip "No config file needed"
     SuperQode runs without a `superqode.yaml`. Connect a model to start a session.
@@ -87,6 +92,18 @@ Choose BYOK (cloud API key), Local (self-hosted model), ACP (coding agent), or
 an available SDK product profile from the picker. See
 [Connection Methods and Vendors](../concepts/modes.md) for the full connection
 and interoperability inventory.
+
+Direct coding-agent examples:
+
+```text
+:connect codex
+:connect copilot
+:connect antigravity
+:connect grok
+:connect kimi-code
+:connect qwen-code
+:connect acp opencode
+```
 
 For ACP coding agents, `:connect acp` shows installed and featured runtimes.
 Use `:connect acp all` to search the complete catalog or `:connect acp refresh`
@@ -136,6 +153,32 @@ You can also ask directly in natural language:
 Summarize this repository and suggest the smallest safe improvement.
 ```
 
+This is the first SuperQode use case: work in the repository as you would with
+another coding agent. A custom HarnessSpec is not required.
+
+### Switch the harness during the session
+
+Open the unified Harness Switcher:
+
+```text
+:harness
+:harness switch
+```
+
+The picker includes built-in and project HarnessSpecs, vendor coding agents,
+ACP agents, optional integrations such as Hugging Face Tau, installed Python
+harnesses, registry harnesses, and model presets. Select a different harness
+for the next turn, or fork when the new harness should start an independent
+conversation branch.
+
+Direct examples:
+
+```text
+:harness switch workbench
+:harness switch kimi-code --fork
+:harness current
+```
+
 ---
 
 ## 4. Run One Headless Task
@@ -154,7 +197,7 @@ superqode --mode json --print "summarize this repository"
 
 ---
 
-## 5. Create A Harness
+## 5. Create A Harness When Ready
 
 Create a reusable coding harness:
 
@@ -298,10 +341,12 @@ Use this path for repeatable project checks. For day-to-day coding, start with t
 ## Next Steps
 
 1. [Your First Session](first-session.md)
-2. [Harness System](../advanced/harness-system.md)
-3. [Runtime Backends](../runtimes.md)
-4. [Configuration Guide](configuration.md)
-5. [Connection Methods and Vendors](../concepts/modes.md)
+2. [Connection Methods and Vendors](../concepts/modes.md)
+3. [Bring Your Own Harness](bring-your-own-harness.md)
+4. [Harness System](../advanced/harness-system.md)
+5. [Running, Measuring, and Optimizing a Harness](../advanced/harness-optimization.md)
+6. [Runtime Backends](../runtimes.md)
+7. [Configuration Guide](configuration.md)
 
 ---
 

@@ -18,6 +18,9 @@ from superqode.harness.eval import load_eval_tasks
 from superqode.harness.loader import harness_spec_to_dict, load_harness_spec
 from superqode.skills import Skill, SkillsLoader
 
+SKILL_OPTIMIZER_ENGINES = ("gepa", "autoresearch", "gepa-meta-harness", "omni")
+OMNI_EXPLORATION_ENGINES = ("gepa", "autoresearch", "meta_harness")
+
 
 @dataclass(frozen=True)
 class SkillOptExport:
@@ -58,6 +61,7 @@ class SkillOptimizationResult:
     best_score: float | None
     total_metric_calls: int | None
     check: dict[str, Any]
+    metadata: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -72,6 +76,7 @@ class SkillOptimizationResult:
             "best_score": self.best_score,
             "total_metric_calls": self.total_metric_calls,
             "check": self.check,
+            "metadata": self.metadata or {},
         }
 
 
@@ -208,15 +213,30 @@ def optimize_skill_with_gepa(
     cache_evaluation: bool = False,
     use_merge: bool = False,
     max_merge_invocations: int = 5,
+    engine: str = "gepa",
+    continuation_engine: str = "gepa",
+    optimizer_model: str = "claude-sonnet-4-6",
+    optimizer_effort: str | None = None,
+    max_token_cost: float | None = None,
+    explore_max_evals: int | None = None,
+    agent_sandbox: bool = True,
     live: bool = False,
     force: bool = False,
     optimizer: Callable[..., Any] | None = None,
     allow_dry_run: bool = False,
 ) -> SkillOptimizationResult:
-    """Optimize one SuperQode skill with GEPA and stage the best candidate."""
+    """Optimize one SuperQode skill and stage the best candidate.
+
+    ``gepa`` keeps the stable legacy integration. The agent engines and
+    ``omni`` require GEPA's engine-pluggable optimize_anything API.
+    """
 
     if not live and not allow_dry_run:
         raise ValueError("GEPA skill optimization requires --live so eval tasks produce scores.")
+    if engine not in SKILL_OPTIMIZER_ENGINES:
+        raise ValueError(f"Unsupported skill optimizer engine: {engine}")
+    if continuation_engine not in {"gepa", "autoresearch", "gepa-meta-harness"}:
+        raise ValueError(f"Unsupported Omni continuation engine: {continuation_engine}")
 
     root_path = Path(root).expanduser().resolve()
     source_skill = _resolve_skill(skill, root_path)
@@ -227,6 +247,7 @@ def optimize_skill_with_gepa(
     tasks = list(task_file["tasks"])
     if not tasks:
         raise ValueError("GEPA optimization requires at least one eval task")
+    train_tasks, val_tasks, test_tasks = _optimization_splits(tasks)
 
     harness_source = Path(harness_path).expanduser().resolve()
     # Validate early; candidate evals will write temporary derived specs.
@@ -258,9 +279,11 @@ def optimize_skill_with_gepa(
         sandbox_backend=sandbox_backend,
         live=live,
         skill_name=source_skill.name,
+        baseline_text=source_text,
+        max_edits=max_edits,
     )
 
-    if optimizer is None:
+    if optimizer is None and engine == "gepa":
         try:
             from gepa.optimize_anything import (  # type: ignore[import-not-found]
                 EngineConfig,
@@ -299,12 +322,14 @@ def optimize_skill_with_gepa(
             refiner=None,
         )
         optimizer = optimize_anything
+    elif optimizer is not None:
+        config = None
     else:
         config = None
 
     objective = (
-        f"Optimize the SuperQode skill `{source_skill.name}` so it improves held-out "
-        "harness eval score without changing the skill identity or adding unsafe behavior."
+        f"Optimize the SuperQode skill `{source_skill.name}` so it improves harness "
+        "evaluation quality without changing the skill identity or adding unsafe behavior."
     )
     background = (
         "The candidate is a complete markdown SKILL.md file. Preserve YAML frontmatter, "
@@ -314,16 +339,49 @@ def optimize_skill_with_gepa(
     )
 
     kwargs: dict[str, Any] = {
-        "seed_candidate": {"skill": source_text},
+        "seed_candidate": {"skill": source_text} if engine == "gepa" else source_text,
         "evaluator": evaluator.evaluate,
-        "dataset": tasks,
-        "valset": tasks,
+        "dataset": train_tasks,
+        "valset": val_tasks,
         "objective": objective,
         "background": background,
     }
+    if test_tasks and engine != "gepa":
+        kwargs["test_set"] = test_tasks
     if config is not None:
         kwargs["config"] = config
-    result = optimizer(**kwargs)
+    if optimizer is not None:
+        result = optimizer(**kwargs)
+    else:
+        result = _run_modern_optimizer(
+            engine=engine,
+            continuation_engine=continuation_engine,
+            seed_candidate=source_text,
+            evaluator=evaluator.evaluate,
+            dataset=train_tasks,
+            valset=val_tasks,
+            test_set=test_tasks,
+            objective=objective,
+            background=background,
+            output_dir=out,
+            max_evals=int(max_metric_calls),
+            explore_max_evals=explore_max_evals,
+            max_token_cost=max_token_cost if max_token_cost is not None else max_reflection_cost,
+            reflection_lm=reflection_lm,
+            optimizer_model=optimizer_model,
+            optimizer_effort=optimizer_effort,
+            agent_sandbox=agent_sandbox,
+            max_workers=max_workers,
+            seed=seed,
+            max_candidate_proposals=max_candidate_proposals,
+            candidate_selection_strategy=candidate_selection_strategy,
+            frontier_type=frontier_type,
+            acceptance_criterion=acceptance_criterion,
+            cache_evaluation=cache_evaluation,
+            use_merge=use_merge,
+            max_merge_invocations=max_merge_invocations,
+            reflection_minibatch_size=reflection_minibatch_size,
+        )
 
     best_candidate = _best_skill_text(result)
     staged_skill_path = staged_dir / "best_skill.md"
@@ -334,12 +392,32 @@ def optimize_skill_with_gepa(
         max_edits=max_edits,
     )
 
-    baseline_score, best_score = _gepa_scores(result)
+    baseline_score, best_score = _optimization_scores(result)
+    result_metadata = _result_metadata(result)
+    if live and test_tasks:
+        heldout_gate = _run_skill_heldout_gate(
+            evaluator=evaluator,
+            baseline_text=source_text,
+            candidate_text=best_candidate,
+            tasks=test_tasks,
+        )
+        result_metadata["heldout_gate"] = heldout_gate
+        baseline_score = heldout_gate["baseline_score"]
+        best_score = heldout_gate["candidate_score"]
+        if not heldout_gate["accepted"]:
+            errors = list(check.get("errors") or [])
+            errors.append("candidate failed the sealed held-out non-regression gate")
+            check = {**check, "ok": False, "errors": errors}
     total_metric_calls = getattr(result, "total_metric_calls", None)
+    if total_metric_calls is None:
+        total_metric_calls = result_metadata.get(
+            "omni_total_evals",
+            getattr(result, "total_evals", None),
+        )
     report_json_path = out / "report.json"
     report_md_path = out / "report.md"
     opt_result = SkillOptimizationResult(
-        engine="gepa",
+        engine=engine,
         skill_name=source_skill.name,
         output_dir=out,
         baseline_skill_path=baseline_skill_path,
@@ -350,6 +428,7 @@ def optimize_skill_with_gepa(
         best_score=best_score,
         total_metric_calls=int(total_metric_calls) if total_metric_calls is not None else None,
         check=check,
+        metadata=result_metadata,
     )
     report_json_path.write_text(json.dumps(opt_result.to_dict(), indent=2) + "\n", encoding="utf-8")
     report_md_path.write_text(render_skill_optimization_report(opt_result) + "\n", encoding="utf-8")
@@ -370,6 +449,8 @@ class _GEPASkillEvaluator:
         sandbox_backend: str,
         live: bool,
         skill_name: str,
+        baseline_text: str,
+        max_edits: int,
     ) -> None:
         self.source_harness_path = source_harness_path
         self.tasks = tasks
@@ -381,19 +462,43 @@ class _GEPASkillEvaluator:
         self.sandbox_backend = sandbox_backend
         self.live = live
         self.skill_name = skill_name
+        self.baseline_text = baseline_text
+        self.max_edits = max_edits
         self._lock = threading.Lock()
         self._counter = 0
+        self._baseline_scores: dict[str, float] = {}
 
     def evaluate(
-        self, candidate: dict[str, str], example: dict[str, Any]
+        self, candidate: str | dict[str, str], example: dict[str, Any]
     ) -> tuple[float, dict[str, Any]]:
-        skill_text = candidate.get("skill", "")
+        skill_text = (
+            str(candidate.get("skill", "")) if isinstance(candidate, dict) else str(candidate)
+        )
         with self._lock:
             self._counter += 1
             eval_id = self._counter
         task = self._task_by_id(str(example.get("id") or ""))
         run_dir = self.eval_dir / f"eval-{eval_id:04d}-{_safe_name(str(task.get('id') or 'task'))}"
         run_dir.mkdir(parents=True, exist_ok=True)
+        candidate_check = _check_skill_text(
+            baseline_text=self.baseline_text,
+            candidate_text=skill_text,
+            max_edits=self.max_edits,
+        )
+        if not candidate_check["ok"]:
+            return 0.0, {
+                "Input": {"Task": task},
+                "Feedback": {
+                    "Status": "invalid_candidate",
+                    "Errors": candidate_check["errors"],
+                    "Candidate check": candidate_check,
+                },
+                "scores": {
+                    "harness_score": 0.0,
+                    "valid_candidate": 0.0,
+                    "non_regression": 0.0,
+                },
+            }
         spec_path = run_dir / "harness.yaml"
         task_path = run_dir / "eval-tasks.yaml"
         _write_candidate_harness(
@@ -435,6 +540,17 @@ class _GEPASkillEvaluator:
         variant = payload.get("variants", [{}])[0]
         task_result = (variant.get("tasks") or [{}])[0]
         score = float(task_result.get("score") or 0.0)
+        task_id = str(task.get("id") or "")
+        if skill_text == self.baseline_text:
+            with self._lock:
+                self._baseline_scores[task_id] = score
+        baseline_score = self._baseline_scores.get(task_id)
+        non_regression = 0.0 if baseline_score == 1.0 and score < baseline_score else 1.0
+        usage = task_result.get("usage") or {}
+        cost = usage.get("cost_usd")
+        duration = float(task_result.get("duration_seconds") or 0.0)
+        cost_efficiency = 1.0 / (1.0 + max(0.0, float(cost or 0.0)))
+        latency_efficiency = 1.0 / (1.0 + max(0.0, duration))
         return score, {
             "Input": {
                 "Task ID": task.get("id"),
@@ -451,8 +567,19 @@ class _GEPASkillEvaluator:
                 "Task status": task_result.get("status"),
                 "Failure digest": task_result.get("failure_digest") or {},
                 "Score": score,
+                "Baseline score": baseline_score,
+                "Non-regression": bool(non_regression),
+                "Candidate check": candidate_check,
+                "Usage": usage,
+                "Duration seconds": duration,
             },
-            "scores": {"harness_score": score},
+            "scores": {
+                "harness_score": score,
+                "valid_candidate": 1.0,
+                "non_regression": non_regression,
+                "cost_efficiency": cost_efficiency,
+                "latency_efficiency": latency_efficiency,
+            },
         }
 
     def _task_by_id(self, task_id: str) -> dict[str, Any]:
@@ -481,8 +608,22 @@ def check_skill_candidate(
     if errors:
         return {"ok": False, "errors": errors}
 
-    baseline_text = baseline.read_text(encoding="utf-8")
-    candidate_text = candidate.read_text(encoding="utf-8")
+    return _check_skill_text(
+        baseline_text=baseline.read_text(encoding="utf-8"),
+        candidate_text=candidate.read_text(encoding="utf-8"),
+        max_edits=max_edits,
+        max_bytes=max_bytes,
+    )
+
+
+def _check_skill_text(
+    *,
+    baseline_text: str,
+    candidate_text: str,
+    max_edits: int,
+    max_bytes: int = 50_000,
+) -> dict[str, Any]:
+    errors: list[str] = []
     if not candidate_text.strip():
         errors.append("candidate skill is empty")
     if len(candidate_text.encode("utf-8")) > max_bytes:
@@ -744,6 +885,281 @@ def _gepa_scores(result: Any) -> tuple[float | None, float | None]:
     best_idx = int(getattr(result, "best_idx", 0) or 0)
     best = float(scores[best_idx]) if 0 <= best_idx < len(scores) else None
     return baseline, best
+
+
+def _optimization_scores(result: Any) -> tuple[float | None, float | None]:
+    """Normalize legacy GEPA and engine-pluggable Result score fields."""
+    legacy = _gepa_scores(result)
+    if legacy != (None, None):
+        return legacy
+    metadata = getattr(result, "metadata", None)
+    metadata = metadata if isinstance(metadata, dict) else {}
+    baseline_test = metadata.get(
+        "omni_original_baseline_test_score",
+        metadata.get("baseline_test_score"),
+    )
+    optimized_test = metadata.get("test_score")
+    if baseline_test is not None and optimized_test is not None:
+        return float(baseline_test), float(optimized_test)
+    best_score = getattr(result, "best_score", None)
+    return None, float(best_score) if best_score is not None else None
+
+
+def _optimization_splits(
+    tasks: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Create deterministic optimizer-visible and sealed task splits."""
+    held_in = [task for task in tasks if str(task.get("split") or "held-in") != "held-out"]
+    held_out = [task for task in tasks if str(task.get("split") or "held-in") == "held-out"]
+    if not held_in:
+        raise ValueError("Optimization requires at least one held-in eval task")
+    if len(held_in) < 3:
+        return list(held_in), list(held_in), held_out
+    val_size = max(1, len(held_in) // 5)
+    return held_in[:-val_size], held_in[-val_size:], held_out
+
+
+def _run_modern_optimizer(
+    *,
+    engine: str,
+    continuation_engine: str,
+    seed_candidate: str,
+    evaluator: Callable[..., Any],
+    dataset: list[dict[str, Any]],
+    valset: list[dict[str, Any]],
+    test_set: list[dict[str, Any]],
+    objective: str,
+    background: str,
+    output_dir: Path,
+    max_evals: int,
+    explore_max_evals: int | None,
+    max_token_cost: float | None,
+    reflection_lm: str,
+    optimizer_model: str,
+    optimizer_effort: str | None,
+    agent_sandbox: bool,
+    max_workers: int,
+    seed: int,
+    max_candidate_proposals: int | None,
+    candidate_selection_strategy: str,
+    frontier_type: str,
+    acceptance_criterion: str,
+    cache_evaluation: bool,
+    use_merge: bool,
+    max_merge_invocations: int,
+    reflection_minibatch_size: int | None,
+) -> Any:
+    try:
+        from gepa.optimize_anything import (
+            OptimizeAnythingConfig,
+            optimize_anything,
+            optimize_best_of,
+        )
+    except ImportError as exc:
+        raise RuntimeError(
+            "This optimizer requires GEPA's engine-pluggable optimize_anything API. "
+            "Install a GEPA release containing `OptimizeAnythingConfig` and "
+            f"`optimize_best_of` (the Omni API). Import failed: {exc}"
+        ) from exc
+
+    common = {
+        "evaluator": evaluator,
+        "dataset": dataset,
+        "valset": valset,
+        "objective": objective,
+        "background": background,
+    }
+    if test_set:
+        common["test_set"] = test_set
+
+    def make_config(
+        engine_name: str,
+        *,
+        eval_budget: int,
+        token_budget: float | None,
+        phase: str,
+    ):
+        public_name = engine_name
+        oa_engine = "meta_harness" if engine_name == "gepa-meta-harness" else engine_name
+        engine_config: dict[str, Any]
+        if oa_engine == "gepa":
+            engine_config = {
+                "engine": {
+                    "max_candidate_proposals": max_candidate_proposals,
+                    "max_workers": max(1, int(max_workers)),
+                    "parallel": max_workers > 1,
+                    "seed": int(seed),
+                    "display_progress_bar": False,
+                    "candidate_selection_strategy": candidate_selection_strategy,
+                    "frontier_type": frontier_type,
+                    "acceptance_criterion": acceptance_criterion,
+                    "cache_evaluation": cache_evaluation,
+                },
+                "reflection": {
+                    "reflection_lm": reflection_lm,
+                    "reflection_minibatch_size": reflection_minibatch_size,
+                    "module_selector": "all",
+                },
+                "merge": ({"max_merge_invocations": max_merge_invocations} if use_merge else None),
+                "refiner": None,
+            }
+        else:
+            engine_config = {"model": optimizer_model}
+            if optimizer_effort:
+                engine_config["effort"] = optimizer_effort
+        phase_dir = output_dir / "oa" / phase / public_name
+        return OptimizeAnythingConfig(
+            engine=oa_engine,
+            name=f"superqode-skill-{phase}-{public_name}",
+            max_evals=eval_budget,
+            max_token_cost=token_budget,
+            max_concurrency=max(1, int(max_workers)),
+            output_dir=phase_dir,
+            run_dir=str(phase_dir / "engine"),
+            sandbox=agent_sandbox,
+            engine_config=engine_config,
+        )
+
+    if engine != "omni":
+        return optimize_anything(
+            seed_candidate,
+            **common,
+            config=make_config(
+                engine,
+                eval_budget=max_evals,
+                token_budget=max_token_cost,
+                phase="single",
+            ),
+        )
+
+    if max_evals < 4:
+        raise ValueError("Omni requires --max-metric-calls of at least 4")
+    explore_evals = explore_max_evals or max(1, max_evals // 4)
+    continuation_evals = max_evals - (3 * explore_evals)
+    if continuation_evals < 1:
+        raise ValueError(
+            "Omni exploration budgets leave no continuation budget; lower "
+            "--explore-max-evals or raise --max-metric-calls"
+        )
+    explore_token_cost = max_token_cost / 4 if max_token_cost is not None else None
+    continuation_token_cost = (
+        max_token_cost - (3 * explore_token_cost)
+        if max_token_cost is not None and explore_token_cost is not None
+        else None
+    )
+    explore_configs = [
+        make_config(
+            "gepa-meta-harness" if item == "meta_harness" else item,
+            eval_budget=explore_evals,
+            token_budget=explore_token_cost,
+            phase="explore",
+        )
+        for item in OMNI_EXPLORATION_ENGINES
+    ]
+    explore = optimize_best_of(
+        seed_candidate,
+        **common,
+        configs=explore_configs,
+        max_workers=len(explore_configs),
+    )
+    continuation = optimize_anything(
+        explore.best_candidate,
+        **common,
+        config=make_config(
+            continuation_engine,
+            eval_budget=continuation_evals,
+            token_budget=continuation_token_cost,
+            phase="continue",
+        ),
+    )
+    explore_results = (getattr(explore, "metadata", {}) or {}).get("all_results", [])
+    continuation_metadata = getattr(continuation, "metadata", {}) or {}
+    continuation.metadata = continuation_metadata
+    explore_rows = [
+        {
+            "engine": (getattr(item, "metadata", {}) or {}).get("engine"),
+            "best_score": getattr(item, "best_score", None),
+            "total_evals": getattr(item, "total_evals", None),
+            "total_cost": (getattr(item, "metadata", {}) or {}).get("total_cost"),
+        }
+        for item in explore_results
+    ]
+    continuation_row = {
+        "engine": continuation_metadata.get("engine") or continuation_engine,
+        "best_score": getattr(continuation, "best_score", None),
+        "total_evals": getattr(continuation, "total_evals", None),
+        "total_cost": continuation_metadata.get("total_cost"),
+    }
+    all_rows = [*explore_rows, continuation_row]
+    continuation.metadata["omni"] = True
+    continuation.metadata["omni_continuation_engine"] = continuation_engine
+    continuation.metadata["omni_explore"] = explore_rows
+    continuation.metadata["omni_continuation"] = continuation_row
+    continuation.metadata["omni_total_evals"] = sum(
+        int(row["total_evals"]) for row in all_rows if row.get("total_evals") is not None
+    )
+    continuation.metadata["omni_total_cost"] = sum(
+        float(row["total_cost"]) for row in all_rows if row.get("total_cost") is not None
+    )
+    explore_metadata = getattr(explore, "metadata", {}) or {}
+    if explore_metadata.get("baseline_test_score") is not None:
+        continuation.metadata["omni_original_baseline_test_score"] = explore_metadata[
+            "baseline_test_score"
+        ]
+    return continuation
+
+
+def _result_metadata(result: Any) -> dict[str, Any]:
+    metadata = getattr(result, "metadata", None)
+    if not isinstance(metadata, dict):
+        return {}
+    keys = (
+        "engine",
+        "omni",
+        "omni_continuation_engine",
+        "omni_explore",
+        "omni_continuation",
+        "omni_total_evals",
+        "omni_total_cost",
+        "budget",
+        "total_cost",
+        "wall_time",
+        "output_dir",
+        "baseline_test_score",
+        "test_score",
+        "omni_original_baseline_test_score",
+    )
+    return {key: metadata[key] for key in keys if key in metadata}
+
+
+def _run_skill_heldout_gate(
+    *,
+    evaluator: _GEPASkillEvaluator,
+    baseline_text: str,
+    candidate_text: str,
+    tasks: list[dict[str, Any]],
+) -> dict[str, Any]:
+    baseline_scores: dict[str, float] = {}
+    candidate_scores: dict[str, float] = {}
+    regressions: list[str] = []
+    for task in tasks:
+        task_id = str(task.get("id") or "")
+        baseline_score, _ = evaluator.evaluate(baseline_text, task)
+        candidate_score, _ = evaluator.evaluate(candidate_text, task)
+        baseline_scores[task_id] = baseline_score
+        candidate_scores[task_id] = candidate_score
+        if baseline_score > candidate_score:
+            regressions.append(task_id)
+    baseline_avg = sum(baseline_scores.values()) / len(baseline_scores)
+    candidate_avg = sum(candidate_scores.values()) / len(candidate_scores)
+    return {
+        "accepted": not regressions and candidate_avg >= baseline_avg,
+        "baseline_score": baseline_avg,
+        "candidate_score": candidate_avg,
+        "baseline_scores": baseline_scores,
+        "candidate_scores": candidate_scores,
+        "regressions": regressions,
+    }
 
 
 def _write_candidate_harness(

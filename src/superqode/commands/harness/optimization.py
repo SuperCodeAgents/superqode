@@ -521,3 +521,115 @@ def harness_optimize_ledger(run_dir, json_output):
         click.echo(json.dumps(rows, indent=2))
         return
     click.echo(render_metaharness_ledger(rows))
+
+
+@harness.command("optimize-omni")
+@click.option("--spec", "spec_path", type=click.Path(exists=True, path_type=Path), required=True)
+@click.option("--tasks", "tasks_path", type=click.Path(exists=True, path_type=Path), required=True)
+@click.option(
+    "--output",
+    "output_dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Directory for staged HarnessSpec optimization artifacts",
+)
+@click.option(
+    "--engine",
+    type=click.Choice(["gepa", "autoresearch", "gepa-meta-harness", "omni"]),
+    default="omni",
+    show_default=True,
+)
+@click.option(
+    "--continuation-engine",
+    type=click.Choice(["gepa", "autoresearch", "gepa-meta-harness"]),
+    default="gepa",
+    show_default=True,
+)
+@click.option("--provider", envvar="SUPERQODE_PROVIDER", default="openai", show_default=True)
+@click.option(
+    "--model", "model_name", envvar="SUPERQODE_MODEL", default="gpt-4o-mini", show_default=True
+)
+@click.option("--runtime", "runtime_name", default=None)
+@click.option(
+    "--working-dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=Path("."),
+)
+@click.option("--sandbox", "sandbox_backend", default="local", show_default=True)
+@click.option("--reflection-lm", default="openai/gpt-5.1", show_default=True)
+@click.option("--optimizer-model", default="claude-sonnet-4-6", show_default=True)
+@click.option("--optimizer-effort", default=None)
+@click.option("--max-evals", default=20, show_default=True, type=int)
+@click.option("--explore-max-evals", default=None, type=int)
+@click.option("--max-token-cost", default=None, type=float)
+@click.option("--max-workers", default=1, show_default=True, type=int)
+@click.option("--agent-sandbox/--no-agent-sandbox", default=True, show_default=True)
+@click.option("--live", is_flag=True, help="Execute real HarnessSpec eval rollouts")
+@click.option("--force", is_flag=True)
+@click.option("--json", "json_output", is_flag=True)
+def harness_optimize_omni(
+    spec_path,
+    tasks_path,
+    output_dir,
+    engine,
+    continuation_engine,
+    provider,
+    model_name,
+    runtime_name,
+    working_dir,
+    sandbox_backend,
+    reflection_lm,
+    optimizer_model,
+    optimizer_effort,
+    max_evals,
+    explore_max_evals,
+    max_token_cost,
+    max_workers,
+    agent_sandbox,
+    live,
+    force,
+    json_output,
+):
+    """Optimize a complete HarnessSpec with GEPA's guarded Omni pipeline."""
+    from datetime import datetime
+
+    from superqode.harness import optimize_harness_with_omni, render_harness_omni_result
+
+    if not live:
+        raise click.ClickException("Harness Omni optimization requires --live")
+    target_output = output_dir or (
+        Path(".superqode")
+        / "harness-optimizations"
+        / f"{Path(spec_path).stem}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    )
+    try:
+        result = optimize_harness_with_omni(
+            spec_path=spec_path,
+            tasks_path=tasks_path,
+            output_dir=target_output,
+            engine=engine,
+            continuation_engine=continuation_engine,
+            provider=provider,
+            model=model_name,
+            runtime=runtime_name,
+            working_dir=working_dir,
+            sandbox_backend=sandbox_backend,
+            reflection_lm=reflection_lm,
+            optimizer_model=optimizer_model,
+            optimizer_effort=optimizer_effort,
+            max_evals=max_evals,
+            explore_max_evals=explore_max_evals,
+            max_token_cost=max_token_cost,
+            max_workers=max_workers,
+            agent_sandbox=agent_sandbox,
+            live=live,
+            force=force,
+        )
+    except Exception as exc:
+        raise click.ClickException(str(exc)) from exc
+    if json_output:
+        click.echo(json.dumps(result.to_dict(), indent=2))
+    else:
+        click.echo(render_harness_omni_result(result))
+    if not result.accepted:
+        raise click.exceptions.Exit(2)

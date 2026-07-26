@@ -175,7 +175,7 @@ curl -LsSf https://super-agentic.ai/superqode-install.sh |
 ```
 
 Release automation can install an exact published version with
-`SUPERQODE_VERSION=0.2.40`.
+`SUPERQODE_VERSION=0.2.50`.
 
 ## Installation for Developers
 

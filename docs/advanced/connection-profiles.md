@@ -36,21 +36,31 @@ Runs **Grok Build**, xAI's own coding agent, on an eligible SuperGrok or X Premi
 
 To run **SuperQode's own harness** on the same subscription instead, use `:grok api [model]`. That imports the CLI session token into SuperQode's auth store and routes through the `grok-cli` provider (CLI chat proxy), so `core`/`workbench` and SuperQode's tools drive Grok 4.5.
 
-### 8. Z.AI GLM API (connector: byok, runtime: builtin)
+### 8. GitHub Copilot SDK (connector: runtime, runtime: copilot-sdk)
+
+Uses the official GitHub Copilot SDK with the signed-in Copilot account or an
+explicit GitHub token. Requires the optional `copilot-sdk` extra.
+
+### 9. Z.AI GLM API (connector: byok, runtime: builtin)
 
 Uses the Z.AI general API through the builtin SuperQode harness. Requires
 `ZAI_API_KEY`.
 
-### 9. Other Harnesses (connector: harness-picker)
+### 10. Qwen Code (connector: acp, agent: qwen)
+
+Runs QwenLM's first-party Qwen Code agent through its stable ACP mode. Requires
+the `qwen` command and authentication from `qwen auth`.
+
+### 11. Kimi Code (connector: acp, agent: kimi)
+
+Runs Moonshot AI's first-party Kimi Code agent through `kimi acp`. Requires the
+`kimi` command and a completed Kimi Code `/login`.
+
+### 12. Other Harnesses (connector: harness-picker)
 
 Opens a focused list of optional harness integrations that are neither main
 connection profiles nor ACP agents. Hugging Face Tau appears here with its live
 installation status.
-
-### 10. GitHub Copilot SDK (connector: runtime, runtime: copilot-sdk)
-
-Uses the official GitHub Copilot SDK with the signed-in Copilot account or an
-explicit GitHub token. Requires the optional `copilot-sdk` extra.
 
 ## TUI Usage
 
@@ -71,6 +81,8 @@ Direct shortcuts:
 - `:runtime antigravity-sdk` - optional direct Antigravity SDK/API-key runtime
 - `:connect grok` - Grok Build, xAI's own coding agent, on your subscription (ACP)
 - `:grok api [model]` - SuperQode's harness on the same subscription (opt-in)
+- `:connect qwen-code` - QwenLM's first-party Qwen Code agent over ACP
+- `:connect kimi-code` - Moonshot AI's first-party Kimi Code agent over ACP
 - `:connect byok` - open the cloud provider picker
 - `:connect byok <provider>/<model>` - connect to a cloud model directly
 - `:connect <model>` - connect by model name alone (e.g. `:connect gpt-5.6`); the provider is resolved from the catalog, preferring first-party providers over gateway mirrors
@@ -113,6 +125,8 @@ superqode connect setup deepseek --json
 - Antigravity -> handoff (no runtime)
 - Grok subscription (`:connect grok`) -> Grok Build ACP subprocess (`grok agent stdio`)
 - Grok via SuperQode harness (`:grok api`) -> `grok-cli` provider + CLI session token
+- Qwen Code -> Qwen Code ACP subprocess (`qwen --acp`)
+- Kimi Code -> Kimi Code ACP subprocess (`kimi acp`)
 - Advanced -> user picks runtime
 
 When --connect implies a runtime, it sets SUPERQODE_RUNTIME but does not override an explicit --runtime flag.

@@ -1586,6 +1586,7 @@ def test_tui_static_commands_include_harness_subcommands():
     assert ":skillopt export" in COMMANDS
     assert ":skillopt check" in COMMANDS
     assert ":harness optimize" in COMMANDS
+    assert ":harness optimize-omni" in COMMANDS
     assert ":harness optimize-inspect" in COMMANDS
     assert ":harness optimize-ledger" in COMMANDS
     assert ":local optimize" in COMMANDS
@@ -1615,6 +1616,7 @@ def test_tui_static_commands_include_harness_subcommands():
     assert ":skillopt export" in slash_values
     assert ":skillopt check" in slash_values
     assert ":harness optimize" in slash_values
+    assert ":harness optimize-omni" in slash_values
     assert ":harness optimize-inspect" in slash_values
     assert ":harness optimize-ledger" in slash_values
     assert ":local optimize" in slash_values

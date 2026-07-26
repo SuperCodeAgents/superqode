@@ -1,6 +1,9 @@
 # Running, Measuring, and Optimizing a Harness
 
-Running, measuring, and optimizing a harness are separate operations. SuperQode performs execution and measurement. The optional `metaharness` integration performs iterative optimization.
+Running, measuring, and optimizing a harness are separate operations.
+SuperQode performs execution and measurement. It offers two staged outer-loop
+optimizers: the existing optional `metaharness` integration and guarded GEPA
+Omni optimization.
 
 For the broader picture across local model routing, harness specs, markdown
 skills, and custom optimizers, see [Optimization Story](optimization.md).
@@ -9,7 +12,7 @@ skills, and custom optimizers, see [Optimization Story](optimization.md).
 | --- | --- | --- |
 | **Run** | "Do the work with this harness." | SuperQode (`superqode --harness ...`) |
 | **Measure** | "Is this harness good right now?" | SuperQode (`harness test` / `eval` / `auto-bench`) |
-| **Optimize** | "Make this harness better over many tries." | `superqode harness optimize` + `metaharness` (optional, recommended) |
+| **Optimize** | "Make this harness better over many tries." | `harness optimize` with `metaharness`, or `harness optimize-omni` with GEPA |
 
 ## Run and measure: SuperQode
 
@@ -74,11 +77,120 @@ Useful options:
 
 If `metaharness` is unavailable, `harness optimize` reports the required installation command. Optimization is not required for harness execution or measurement.
 
+## Optimize with GEPA Omni
+
+`harness optimize-omni` treats the complete YAML HarnessSpec as the candidate
+artifact. Omni explores with GEPA, AutoResearch, and GEPA meta-harness in
+parallel and continues from the strongest result:
+
+```bash
+superqode harness optimize-omni \
+  --spec superqode.local.yaml \
+  --tasks tasks.yaml \
+  --max-evals 20 \
+  --max-token-cost 4 \
+  --live
+```
+
+This path is intentionally staging-only. Before any rollout, SuperQode parses
+and audits each candidate against the baseline's `optimization` policy.
+After optimization it runs a separate held-out baseline-versus-candidate
+seesaw gate. The live specification is never overwritten.
+
+Use this path when you want several optimization strategies to compete on the
+same eval contract. Keep `harness optimize` when you want the existing
+standalone metaharness project, file-surface export, and explicit apply flow.
+
+### Tiny subscription experiment
+
+For the guided path, run the checked-in script. It performs local preflight
+checks, prints the exact bounded command, and asks before making any model call:
+
+```bash
+# One-evaluation subscription smoke test (recommended first)
+scripts/run_tiny_omni_experiment.sh \
+  --spec examples/harnesses/omni-tiny-local.yaml
+
+# Release-quality bounded Omni run
+scripts/run_tiny_omni_experiment.sh \
+  --spec examples/harnesses/omni-tiny-local.yaml \
+  --mode omni
+```
+
+The script uses `uv run --with` to load the pinned, tested GEPA Omni commit for
+the command, so it does not require a permanent GEPA installation. It stops with
+instructions when Claude is signed out, Ollama is unavailable, or the chosen
+model is not installed. Pass `--help` to see path and output options. The
+prepared example uses `qwen3.5:9b` for both local rollouts and GEPA reflection.
+Smoke mode uses one held-in and one held-out plumbing task. Omni mode uses three
+held-in decision cases and two distinct sealed held-out cases.
+
+Start with a single AutoResearch evaluation. This verifies Claude subscription
+authentication and the end-to-end staging path before spending the minimum
+four-evaluation Omni budget. It is a plumbing check, not optimization evidence:
+
+```bash
+env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
+  superqode harness optimize-omni \
+    --spec path/to/your-harness.yaml \
+    --tasks examples/evals/omni-tiny.yaml \
+    --engine autoresearch \
+    --provider ollama \
+    --model qwen3.5:9b \
+    --optimizer-model haiku \
+    --max-evals 1 \
+    --max-token-cost 0.10 \
+    --output .superqode/harness-optimizations/subscription-smoke \
+    --live
+```
+
+For a release experiment, give each of the four Omni phases enough budget for
+one baseline and one candidate pass over the three optimizer-visible cases:
+
+```bash
+env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
+  superqode harness optimize-omni \
+    --spec path/to/your-harness.yaml \
+    --tasks examples/evals/omni-release.yaml \
+    --engine omni \
+    --continuation-engine gepa \
+    --provider ollama \
+    --model qwen3.5:9b \
+    --reflection-lm ollama/qwen3.5:9b \
+    --optimizer-model haiku \
+    --max-evals 24 \
+    --explore-max-evals 6 \
+    --max-token-cost 2 \
+    --max-workers 1 \
+    --output .superqode/harness-optimizations/omni-tiny \
+    --live
+```
+
+The 24-evaluation budget gives six evaluation units to GEPA, AutoResearch, and
+GEPA meta-harness, followed by six for GEPA continuation. The final
+baseline-versus-candidate gate adds four short local-model rollouts across two
+sealed cases. The three explorers still start in parallel; `--max-workers 1`
+bounds candidate evaluation concurrency inside each engine.
+
+The optimizer-model cap is an API-price-equivalent guard passed to Claude
+Code's print mode. It does not require an API key, but it still consumes your
+subscription allowance and can use extra usage if you enabled that separately
+in your Claude account. `haiku` minimizes Claude usage, while the rollout model
+and GEPA reflection model remain local. Before running, sign in through
+`claude`, check `/status`, and start Ollama. Override `--model` if you want a
+different installed model.
+
+The supplied release task file remains a controlled demonstration rather than
+a statistical benchmark. Replace it with representative project tasks before
+making production claims. The command never modifies the source HarnessSpec.
+
 ## Operation selection
 
 - Use **Run** to execute tasks with a configured harness.
 - Use **Measure** to assess one harness or compare multiple harnesses with `harness test` and `harness eval`.
 - Use **Optimize** to generate and evaluate changes to the harness and its associated scripts with the optional `metaharness` package.
+- Use **Optimize with Omni** for a staged, policy-audited complete-spec search
+  with parallel GEPA engines and a sealed held-out gate.
 
 Example end-to-end flow:
 
@@ -93,6 +205,8 @@ superqode --harness ...                        # run the improved harness
 ## Related
 
 - [Harness System](harness-system.md): the full HarnessSpec reference.
+- [GEPA Omni Integration Experiment](gepa-omni-experiment.md): reproducible
+  subscription-plus-local release evidence.
 - [Harness Commands](../cli-reference/harness-commands.md): `test`, `eval`, `auto-bench`, and the rest.
 - [Bring Your Own Harness](../getting-started/bring-your-own-harness.md): author and edit a harness.
 - [metaharness](https://github.com/SuperagenticAI/metaharness): the optional optimization tool.

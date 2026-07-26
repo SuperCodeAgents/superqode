@@ -1,8 +1,24 @@
 # Getting Started
 
-SuperQode is the open-source, terminal-first Agent Engineering framework for your code factory, with first-class support for local and open models. It gives builders a TUI and CLI for building, connecting, orchestrating, evaluating, governing, and optimizing coding harnesses, with explicit model choice, tool access, sandbox policy, approvals, sessions, events, and repeatable HarnessSpec files.
+SuperQode is the open-source, terminal-first Agent Engineering framework for your code factory, with first-class support for local and open models. Start by using it as a normal coding agent: open a repository, connect the agent or model you already use, and ask for coding work. You can switch the active harness during the session without giving up the familiar coding-agent workflow.
 
-This guide gets you from install to a useful first run.
+Harness authoring, evaluation, and optimization come later. They let you turn a
+useful interactive setup into a repository-owned, measured, and improvable run
+contract.
+
+## The Developer Journey
+
+Follow the documentation in this order:
+
+| Stage | What you do | Start here |
+| --- | --- | --- |
+| 1. Use | Install SuperQode and use it like another terminal coding agent | [Installation](installation.md) and [Your First Session](first-session.md) |
+| 2. Choose | Connect any supported coding agent, model provider, local model, or optional harness | [Connection Methods and Vendors](../concepts/modes.md) |
+| 3. Switch | Change harnesses during a session while preserving or deliberately forking context | [Your First Session: Choose Or Switch A Harness](first-session.md#3-choose-or-switch-a-harness) |
+| 4. Build | Create a repository-owned HarnessSpec when the default or existing harnesses are not enough | [Bring Your Own Harness](bring-your-own-harness.md) |
+| 5. Evaluate | Measure the harness against repeatable tasks and held-out checks | [Running, Measuring, and Optimizing a Harness](../advanced/harness-optimization.md) |
+| 6. Optimize | Use MetaHarness or GEPA Omni only after the evaluation contract is meaningful | [Optimization Story](../advanced/optimization.md) |
+| 7. Promote | Stage, canary, activate, or roll back a proven harness | [Harness Promotion](../advanced/harness-promotion.md) |
 
 ---
 
@@ -18,21 +34,23 @@ This guide gets you from install to a useful first run.
 
     [:octicons-arrow-right-24: Install now](installation.md)
 
+-   **Use It As A Coding Agent**
+
+    ---
+
+    Connect an agent or model, ask for coding work, and switch harnesses during
+    the session.
+
+    [:octicons-arrow-right-24: First session](first-session.md)
+
 -   **Quick Start**
 
     ---
 
-    Run the TUI, create a harness, run a headless task, and inspect events.
+    See the complete install, interactive, headless, harness, and inspection
+    path in one guide.
 
     [:octicons-arrow-right-24: Quick start](quickstart.md)
-
--   **First Session**
-
-    ---
-
-    Walk through a normal interactive coding session.
-
-    [:octicons-arrow-right-24: First session](first-session.md)
 
 -   **Configuration**
 

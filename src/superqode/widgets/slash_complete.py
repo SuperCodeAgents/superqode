@@ -99,6 +99,11 @@ DEFAULT_COMMANDS: list[SlashCommand] = [
         ":harness optimize", "Optimize a HarnessSpec through metaharness", category="workflow"
     ),
     SlashCommand(
+        ":harness optimize-omni",
+        "Stage a HarnessSpec candidate with GEPA Omni",
+        category="workflow",
+    ),
+    SlashCommand(
         ":harness mine-failures",
         "Mine self-improvement failures from harness JSON",
         category="workflow",

@@ -5,6 +5,48 @@ MCP, A2A, BYOK, and SDK runtimes. The `:connect` picker exposes the methods and
 the primary product profiles. Vendor-specific commands remain available for
 direct selection.
 
+## Start With The Outcome
+
+SuperQode has three related selectors:
+
+| Goal | Open | What it selects |
+| --- | --- | --- |
+| Use a coding agent or model | `:connect` | Account, external coding agent, provider, model, or vendor runtime |
+| Change the complete working behavior | `:harness` | Built-in, project, vendor, ACP, optional, installed, or registry harness |
+| Change only the execution backend | `:runtime list` | Native or framework-specific runtime adapter |
+
+For a first session, run `superqode`, choose `:connect`, and start coding. Use
+`:harness` when you want another agent or run contract. Building a custom
+HarnessSpec is a later step.
+
+## Harness Choices
+
+The Harness Switcher is the centralized inventory for runnable harnesses:
+
+```text
+:harness
+:harness all
+:harness current
+```
+
+| Harness source | Examples | Ownership |
+| --- | --- | --- |
+| SuperQode native | Workbench, coding and no-tool templates, model presets | SuperQode owns the tool loop and HarnessSpec policy |
+| Vendor coding agents | Codex, GitHub Copilot, Antigravity, Grok, Kimi Code, Qwen Code | Vendor runtime or first-party agent owns the underlying agent behavior |
+| ACP agents | OpenCode, Claude Code, Gemini CLI, GLM Agent, Poolside, and the complete ACP catalog | External ACP process owns its agent loop |
+| Optional harness integrations | Hugging Face Tau | External harness runs through SuperQode's Harness Protocol adapter |
+| Project HarnessSpecs | `harness.yaml`, `.superqode/harnesses/*.yaml` | Repository owns the complete run contract |
+| Installed Python harnesses | Package-provided HarnessSpec and protocol adapters | Installed package owns the adapter; repository can still select policy |
+| Registry harnesses | Harnesses installed from the SuperQode registry | Registry artifact becomes a local selectable harness |
+
+Switching can preserve the current conversation or fork an independent branch:
+
+```text
+:harness switch workbench
+:harness switch qwen-code --fork
+:sessions switch
+```
+
 ## Connection Methods
 
 | Method | Connects SuperQode to | Primary command | Execution ownership |
@@ -198,6 +240,19 @@ superqode providers doctor openai
 superqode providers guide openai
 superqode models --provider openai
 ```
+
+Model lists change more frequently than released documentation. The
+authoritative current inventory is the in-product catalog:
+
+```bash
+superqode models
+superqode models --provider <provider>
+superqode providers list
+```
+
+The picker combines curated built-in routes with live discovery where a
+provider exposes it. Harness model policy can then pin a primary model and
+fallbacks without changing the connection documentation.
 
 See [BYOK Providers](../providers/byok.md) for API-key variables and detailed
 provider configuration.

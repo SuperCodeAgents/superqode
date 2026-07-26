@@ -2671,7 +2671,13 @@ class CommandImplMixin:
             self._show_harness_events(log, subargs)
             return
 
-        if sub in ("improve", "optimize", "optimize-inspect", "optimize-ledger"):
+        if sub in (
+            "improve",
+            "optimize",
+            "optimize-omni",
+            "optimize-inspect",
+            "optimize-ledger",
+        ):
             try:
                 tokens = shlex.split(subargs or "")
             except ValueError as exc:
@@ -2680,6 +2686,11 @@ class CommandImplMixin:
             if sub == "optimize" and not tokens:
                 log.add_info(
                     "Usage: :harness optimize --spec <path> --tasks <path> [--export-only]"
+                )
+                return
+            if sub == "optimize-omni" and not tokens:
+                log.add_info(
+                    "Usage: :harness optimize-omni --spec <path> --tasks <path> --live"
                 )
                 return
             if sub == "improve" and not tokens:

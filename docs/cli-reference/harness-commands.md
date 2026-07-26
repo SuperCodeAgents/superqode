@@ -38,6 +38,7 @@ superqode harness COMMAND [OPTIONS]
 | `candidates` | Inspect accepted/rejected self-improvement attempts |
 | `improve` | Export and optionally run a failure-guided harness improvement project |
 | `optimize` | Export and optionally run a meta-harness optimization project |
+| `optimize-omni` | Stage a guarded complete-HarnessSpec candidate with GEPA Omni |
 | `run` | Run a task through a spec |
 | `registry` | Local publish/list/install hub for harness specs |
 | `import-agent` | Compile concise SuperQode `agent.yaml` into a spec |
@@ -652,6 +653,57 @@ superqode harness optimize-ledger mh-project/runs/superqode-optimize
 When `--trace-evidence` is omitted, SuperQode writes `trace-evidence.md` from the current spec and eval task file. The generated evidence includes the harness runtime, workflow, model policy, permission posture, and task prompts so the optimizer has a useful starting snapshot. Add `--test-result` or `--eval-result` to include previous scorecards and failure digests from prior runs.
 
 Use `harness optimize-inspect RUN_DIR` to summarize a completed meta-harness run. Use `harness optimize-ledger RUN_DIR` to list candidates, objective values, validation state, outcomes, and changed files. Both commands support `--json`. The TUI harness sidebar also shows the latest local meta-harness run under `.superqode/metaharness` or `mh-project` when artifacts are present.
+
+### `harness optimize-omni`
+
+Optimize a complete HarnessSpec through GEPA's engine-pluggable API. By
+default, Omni runs GEPA, AutoResearch, and GEPA meta-harness in parallel, then
+continues from the best candidate with a fresh GEPA engine.
+
+```bash
+superqode harness optimize-omni \
+  --spec harness.yaml \
+  --tasks eval-tasks.yaml \
+  --engine omni \
+  --max-evals 20 \
+  --max-token-cost 4 \
+  --live
+```
+
+The task file must contain at least one `split: held-in` task and one
+`split: held-out` task. Held-out tasks are sealed from optimization and used
+for a final seesaw gate. Every proposed YAML candidate is parsed and audited
+before rollout; permission widening, protected-surface changes, check
+weakening, and out-of-policy edits score zero.
+
+The command never edits `--spec`. It writes the baseline, staged candidate,
+optimizer artifacts, candidate audit, held-out results, and reports under
+`.superqode/harness-optimizations/`. A failed audit or held-out regression
+exits with status 2 while retaining all artifacts for inspection.
+
+| Option | Description |
+| --- | --- |
+| `--engine TEXT` | `gepa`, `autoresearch`, `gepa-meta-harness`, or `omni` |
+| `--continuation-engine TEXT` | Fresh engine used after Omni exploration |
+| `--max-evals INTEGER` | Total evaluation budget |
+| `--explore-max-evals INTEGER` | Per-engine Omni exploration budget |
+| `--max-token-cost FLOAT` | Optimizer-model USD cap |
+| `--reflection-lm TEXT` | Reflection model for the GEPA engine |
+| `--optimizer-model TEXT` | Claude model for agent engines |
+| `--agent-sandbox / --no-agent-sandbox` | Sandbox agent-engine subprocesses |
+| `--output PATH` | Staging directory |
+| `--live` | Required; execute real HarnessSpec eval rollouts |
+| `--force` | Replace a non-empty output directory |
+| `--json` | Emit JSON |
+
+This path needs a GEPA build containing `OptimizeAnythingConfig` and
+`optimize_best_of`. AutoResearch and GEPA meta-harness additionally require
+the Claude CLI. See [Skill Optimization](../advanced/skill-optimization.md#install)
+for installation details.
+
+For a subscription-backed, low-usage smoke test and the minimum four-evaluation
+Omni command, see
+[Tiny subscription experiment](../advanced/harness-optimization.md#tiny-subscription-experiment).
 
 ### `harness promote`
 

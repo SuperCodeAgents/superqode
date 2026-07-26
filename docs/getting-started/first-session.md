@@ -1,6 +1,9 @@
 # Your First Session
 
-This guide walks through a normal SuperQode TUI session: connect a model or agent, load a harness, ask for a repository task, approve tool calls when needed, and inspect what happened.
+This guide walks through SuperQode's first and primary use case: use it as a
+normal terminal coding agent, connect the agent or model you prefer, switch the
+active harness when the task changes, ask for repository work, approve tool
+calls when needed, and inspect what happened.
 
 The TUI keeps prompts, tool activity, approvals, file changes, and session state visible in one terminal.
 
@@ -73,11 +76,37 @@ For modal keyboard navigation, run `:vim on`. Press `i` to enter a task and `Esc
 
 ---
 
-## 3. Load Or Create A Harness
+## 3. Choose Or Switch A Harness
 
 A harness defines the run contract: runtime, model policy, tools, sandbox policy, approvals, events, and output handling.
 
-For the default coding setup:
+Open the unified Harness Switcher:
+
+```text
+:harness
+:harness switch
+```
+
+The picker shows built-in harnesses, project HarnessSpecs, vendor coding
+agents, ACP agents, optional integrations such as Hugging Face Tau, installed
+Python harnesses, registry harnesses, and model presets. A selection applies to
+the next turn.
+
+Switch directly or create an independent branch:
+
+```text
+:harness switch workbench
+:harness switch kimi-code --fork
+:sessions switch
+```
+
+Select a harness with the arrow keys and Enter, or press `F` to fork before
+switching. `:sessions switch` restores the harness, model, and conversation
+history attached to a saved session.
+
+You do not need to author a HarnessSpec before using SuperQode. When you are
+ready to own the run contract for the repository, create the default coding
+setup:
 
 ```bash
 superqode harness init my-coder --template coding --output harness.yaml
@@ -191,21 +220,6 @@ superqode harness graph <run-id> --json
 
 ## 7. Switch Runtime Or Provider
 
-Switch harnesses without discarding the current conversation:
-
-```text
-:harness
-:harness switch
-:harness switch workbench
-:sessions switch
-```
-
-The first two commands open the interactive Harness Switcher. Select a harness
-with the arrow keys and Enter, or press `F` to create an independent session
-branch before switching. The direct command activates Workbench without opening
-the picker. `:sessions switch` opens the saved-session picker. Selecting a session restores the
-harness, model, and conversation history attached to it.
-
 List available runtimes:
 
 ```text
@@ -250,9 +264,7 @@ Make the smallest safe fix and run the configured unit test.
 
 ```bash
 cd ~/projects/my-app
-superqode harness init my-coder --template coding --output harness.yaml
-superqode harness doctor --spec harness.yaml
-superqode --harness harness.yaml
+superqode
 ```
 
 Inside the TUI:
@@ -260,10 +272,20 @@ Inside the TUI:
 ```text
 :connect
 :status
+:harness
 Summarize this repository and suggest the smallest safe improvement.
 Find one low-risk cleanup, make the smallest fix, and run the narrowest useful test.
 :approve
 Summarize what changed.
+```
+
+When the interactive setup is useful enough to make repeatable, create the
+repository-owned harness:
+
+```bash
+superqode harness init my-coder --template coding --output harness.yaml
+superqode harness doctor --spec harness.yaml
+superqode --harness harness.yaml
 ```
 
 ---
@@ -299,8 +321,10 @@ Summarize what changed.
 
 ## Next Steps
 
-1. [Quick Start](quickstart.md)
-2. [Harness System](../advanced/harness-system.md)
-3. [Terminal User Interface](../advanced/tui.md)
-4. [Runtime Backends](../runtimes.md)
-5. [Configuration Guide](configuration.md)
+1. [Connection Methods and Vendors](../concepts/modes.md)
+2. [Quick Start](quickstart.md)
+3. [Bring Your Own Harness](bring-your-own-harness.md)
+4. [Harness System](../advanced/harness-system.md)
+5. [Terminal User Interface](../advanced/tui.md)
+6. [Runtime Backends](../runtimes.md)
+7. [Configuration Guide](configuration.md)

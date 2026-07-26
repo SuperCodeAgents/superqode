@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.50] - 2026-07-26
+
+### Added
+
+- **GEPA Omni harness optimization** - Added guarded complete-HarnessSpec
+  exploration across GEPA, AutoResearch, and GEPA MetaHarness, followed by a
+  fresh continuation phase, candidate policy audit, and sealed held-out gate.
+- **Subscription-plus-local experiment** - Added a reproducible runner, pinned
+  GEPA commit, local `qwen3.5:9b` harness, bounded evaluation contracts, and a
+  detailed release experiment showing 24 optimizer evaluations and a held-out
+  improvement from `0.0` to `1.0` without an Anthropic API key.
+- **GEPA Omni field report** - Added a personal, reproducible account of the
+  integration, the bounded subscription-plus-local experiment, its measured
+  results, and the limitations that keep the feature experimental.
+
+### Changed
+
+- **Omni accounting** - Aggregate evaluation counts and proposer cost across
+  all explorers and the continuation phase instead of reporting only the final
+  continuation engine.
+- **Release metadata** - Bumped package, runtime, lockfile, ACP registry,
+  installer example, and package checks to `0.2.50`.
+
 ## [0.2.40] - 2026-07-25
 
 ### Added

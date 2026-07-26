@@ -1,0 +1,87 @@
+version: 1
+name: omni-tiny-local
+description: Deliberately small local harness for the bounded GEPA Omni experiment.
+flavor: no_tool
+
+runtime:
+  backend: builtin
+
+model_policy:
+  primary: qwen3.5:9b
+  fallbacks:
+    - qwen3.5:9b
+  profile: no-tool-reasoning
+  temperature: 0.0
+  reasoning: low
+  config:
+    provider: ollama
+    max_iterations: 1
+
+execution_policy:
+  sandbox: none
+  approval_profile: deny
+  allow_read: false
+  allow_write: false
+  allow_shell: false
+  allow_network: false
+  allowed_commands: []
+  blocked_categories:
+    - tools
+    - filesystem
+    - shell
+    - network
+
+agents:
+  - id: release-decider
+    role: concise release decision reviewer
+    system_prompt: |
+      State whether the described change should proceed and briefly explain why.
+      Keep the response concise; no fixed response template is currently required.
+    tools: []
+    skills: []
+    max_iterations: 1
+
+workflow:
+  mode: single
+  max_task_depth: 1
+  parallelism: 1
+  merge_strategy: summary
+
+context:
+  instruction_files: []
+  session_storage: .superqode/sessions/omni-tiny
+  compaction:
+    strategy: prompt-only
+  memory:
+    enabled: false
+
+checks:
+  enabled: false
+  fail_on_error: false
+  custom_steps: []
+
+observability:
+  events: true
+  traces: false
+  run_store: memory
+
+optimization:
+  enabled: true
+  require_human_apply: true
+  editable_surfaces:
+    - agents
+    - model_policy
+    - workflow
+  protected_surfaces:
+    - execution_policy
+    - checks
+    - approvals
+    - sandbox
+  heldout_fraction: 0.5
+  max_candidate_edits: 3
+
+metadata:
+  example: omni-tiny-local
+  purpose: bounded GEPA Omni subscription experiment
+  local_provider: ollama
+  local_model: qwen3.5:9b

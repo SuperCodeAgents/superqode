@@ -276,12 +276,20 @@ superqode connect acp kimi
 Or from the TUI:
 
 ```text
+:connect kimi-code
 :connect acp kimi
 ```
 
-This starts `kimi acp`. Kimi CLI then owns model selection, tools, authentication,
-and its agent loop. The `kimi-coding` SuperQode harness is not applied to an ACP
-session.
+The named `kimi-code` connection and explicit `acp kimi` route both start
+`kimi acp`. Kimi Code also appears in the unified Harness Switcher:
+
+```text
+:harness switch kimi-code
+:harness switch kimi-code --fork
+```
+
+Kimi CLI then owns model selection, tools, authentication, and its agent loop.
+The `kimi-coding` SuperQode harness is not applied to an ACP session.
 
 See the [Kimi Code documentation](https://www.kimi.com/code/docs/en/) for current
 membership setup and the [ACP provider guide](acp.md) for SuperQode's ACP boundary.

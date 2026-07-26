@@ -24,9 +24,10 @@ hide:
   <a href="https://github.com/SuperagenticAI/superqode"><img src="https://img.shields.io/github/stars/SuperagenticAI/superqode?style=flat-square&color=64748b" alt="GitHub stars"></a>
 </p>
 
-[Build Your First Harness](getting-started/bring-your-own-harness.md){ .md-button .md-button--primary }
+[Start Coding](getting-started/first-session.md){ .md-button .md-button--primary }
+[Choose an Agent, Model, or Harness](concepts/modes.md){ .md-button }
+[Build Your First Harness](getting-started/bring-your-own-harness.md){ .md-button }
 [Optimize Local Models](local-agentic-coding.md){ .md-button }
-[Read Harness Engineering](harness-engineering.md){ .md-button }
 
 <img src="assets/superqode-hero.png" alt="SuperQode Agent Engineering terminal workbench" class="sq-hero-image" />
 
@@ -53,15 +54,41 @@ uv tool install superqode      # persistent install
 uvx superqode                  # run once without installing
 ```
 
-The command starts the interactive TUI. Connect a model with one of the following commands:
+The command starts the interactive TUI. Connect the coding agent or model you
+already use:
 
 ```text
-:connect local ollama <open-model>      # a local server you run
-:connect byok <provider> <model>        # a hosted provider with an API key
-:connect acp <agent>                    # an installed ACP coding agent
+:connect                               # open the complete connection picker
+:connect codex                         # Codex subscription
+:connect copilot                       # GitHub Copilot SDK
+:connect kimi-code                     # Kimi Code through its official ACP server
+:connect qwen-code                     # Qwen Code through its official ACP server
+:connect acp <agent>                   # any installed ACP coding agent
+:connect local ollama <open-model>     # a local server you run
+:connect byok <provider> <model>       # a hosted provider with an API key
 ```
 
-For noninteractive execution and CI, see the headless examples below.
+Ask for repository work as you would in another coding agent:
+
+```text
+Summarize this repository and identify the smallest safe improvement.
+```
+
+Switch the complete harness without leaving the session:
+
+```text
+:harness
+:harness switch
+:harness switch qwen-code --fork
+```
+
+The Harness Switcher includes SuperQode's native harnesses, project
+HarnessSpecs, vendor and ACP coding agents, model presets, installed and
+registry harnesses, and optional integrations such as Hugging Face Tau.
+
+For noninteractive execution and CI, see the headless examples below. Build a
+repository-owned HarnessSpec only when you want to make the working behavior
+repeatable and reviewable.
 
 For local and open models, generate a repository-owned starter harness:
 
@@ -72,6 +99,19 @@ superqode --harness superqode.local.yaml
 
 Use `local init` to detect the current system and generate a default HarnessSpec.
 Use `local build` to select a specific model, endpoint, or model pack.
+
+---
+
+## A progressive way to adopt SuperQode
+
+| Stage | Developer outcome | Documentation |
+| --- | --- | --- |
+| Use | Work in a repository with a familiar coding-agent experience | [Your First Session](getting-started/first-session.md) |
+| Choose and switch | Select any supported agent, model, provider, or harness and switch during the session | [All Connections](concepts/modes.md) |
+| Build | Create a repository-owned HarnessSpec for repeatable behavior | [Bring Your Own Harness](getting-started/bring-your-own-harness.md) |
+| Evaluate | Measure behavior with tasks, scorecards, and regression gates | [Run, Measure, Optimize](advanced/harness-optimization.md) |
+| Optimize | Generate staged candidates only after the evaluation contract is useful | [Optimization Story](advanced/optimization.md) |
+| Promote | Canary, activate, and roll back a proven harness | [Harness Promotion](advanced/harness-promotion.md) |
 
 ---
 

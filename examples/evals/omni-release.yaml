@@ -1,0 +1,52 @@
+metadata:
+  id: omni-release
+  name: Bounded Omni release experiment
+  description: Three held-in and two sealed cases for release-decision generalization.
+
+tasks:
+  - id: held-in-docs-ready
+    split: held-in
+    prompt: |
+      A documentation-only change has completed all required checks. There are
+      no unresolved security, migration, or rollback concerns. Give the release
+      decision in two short lines.
+    expect_contains:
+      - "DECISION: yes"
+      - "REASON:"
+
+  - id: held-in-tests-failing
+    split: held-in
+    prompt: |
+      A code change still has required tests failing. Give the release decision
+      in two short lines.
+    expect_contains:
+      - "DECISION: no"
+      - "REASON:"
+
+  - id: held-in-security-review-missing
+    split: held-in
+    prompt: |
+      An authentication change passes unit tests but its required security
+      review is incomplete. Give the release decision in two short lines.
+    expect_contains:
+      - "DECISION: no"
+      - "REASON:"
+
+  - id: held-out-ready-with-rollback
+    split: held-out
+    prompt: |
+      A dependency update passes every required check, has completed security
+      review, and has a tested rollback plan. Give the release decision in two
+      short lines.
+    expect_contains:
+      - "DECISION: yes"
+      - "REASON:"
+
+  - id: held-out-migration-blocker
+    split: held-out
+    prompt: |
+      A database change passes tests but the required production migration and
+      rollback plans are missing. Give the release decision in two short lines.
+    expect_contains:
+      - "DECISION: no"
+      - "REASON:"

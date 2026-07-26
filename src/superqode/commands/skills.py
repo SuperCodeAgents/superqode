@@ -2,8 +2,6 @@
 
 import json
 from pathlib import Path
-import click
-import click
 
 import click
 
@@ -16,7 +14,19 @@ def skills():
 
 @skills.command("optimize")
 @click.argument("skill")
-@click.option("--engine", type=click.Choice(["gepa"]), default="gepa", show_default=True)
+@click.option(
+    "--engine",
+    type=click.Choice(["gepa", "autoresearch", "gepa-meta-harness", "omni"]),
+    default="gepa",
+    show_default=True,
+)
+@click.option(
+    "--continuation-engine",
+    type=click.Choice(["gepa", "autoresearch", "gepa-meta-harness"]),
+    default="gepa",
+    show_default=True,
+    help="Fresh engine used for Omni's continuation phase",
+)
 @click.option(
     "--harness", "harness_path", type=click.Path(exists=True, path_type=Path), required=True
 )
@@ -45,6 +55,31 @@ def skills():
 @click.option("--max-metric-calls", default=20, show_default=True, type=int)
 @click.option("--max-candidate-proposals", default=None, type=int)
 @click.option("--max-reflection-cost", default=None, type=float)
+@click.option(
+    "--max-token-cost",
+    default=None,
+    type=float,
+    help="Optimizer-model USD cap; divided across Omni stages",
+)
+@click.option(
+    "--explore-max-evals",
+    default=None,
+    type=int,
+    help="Per-engine Omni exploration eval budget (default: total budget / 4)",
+)
+@click.option(
+    "--optimizer-model",
+    default="claude-sonnet-4-6",
+    show_default=True,
+    help="Claude model used by GEPA's agent engines",
+)
+@click.option("--optimizer-effort", default=None, help="Claude CLI effort for agent engines")
+@click.option(
+    "--agent-sandbox/--no-agent-sandbox",
+    default=True,
+    show_default=True,
+    help="OS-sandbox GEPA agent-engine subprocesses",
+)
 @click.option("--minibatch-size", default=None, type=int)
 @click.option("--max-workers", default=1, show_default=True, type=int)
 @click.option("--seed", default=0, show_default=True, type=int)
@@ -78,6 +113,7 @@ def skills():
 def skills_optimize(
     skill,
     engine,
+    continuation_engine,
     harness_path,
     tasks_path,
     output_dir,
@@ -91,6 +127,11 @@ def skills_optimize(
     max_metric_calls,
     max_candidate_proposals,
     max_reflection_cost,
+    max_token_cost,
+    explore_max_evals,
+    optimizer_model,
+    optimizer_effort,
+    agent_sandbox,
     minibatch_size,
     max_workers,
     seed,
@@ -105,16 +146,14 @@ def skills_optimize(
     force,
     json_output,
 ):
-    """Optimize a markdown skill with a staged GEPA run."""
+    """Optimize a markdown skill with a staged GEPA or Omni run."""
     from datetime import datetime
 
     from superqode.skillopt import optimize_skill_with_gepa, render_skill_optimization_result
 
-    if engine != "gepa":
-        raise click.ClickException(f"Unsupported skills optimizer engine: {engine}")
     if not live:
         raise click.ClickException(
-            "GEPA optimization requires --live so harness eval tasks produce real scores."
+            "Skill optimization requires --live so harness eval tasks produce real scores."
         )
     target_output = output_dir or (
         Path(".superqode")
@@ -148,6 +187,13 @@ def skills_optimize(
             cache_evaluation=cache_evaluation,
             use_merge=use_merge,
             max_merge_invocations=max_merge_invocations,
+            engine=engine,
+            continuation_engine=continuation_engine,
+            optimizer_model=optimizer_model,
+            optimizer_effort=optimizer_effort,
+            max_token_cost=max_token_cost,
+            explore_max_evals=explore_max_evals,
+            agent_sandbox=agent_sandbox,
             live=live,
             force=force,
         )

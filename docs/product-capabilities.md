@@ -18,18 +18,21 @@ The primary interfaces are the CLI and TUI. Headless commands, local APIs, brows
 | Native harnesses | Core, Workbench, coding, no-tool, and model-family policy profiles | [Harness Engineering](harness-engineering.md) |
 | Harness ownership | Repository-owned YAML, version control, inspectable policy, and portable execution | [Bring Your Own Harness](getting-started/bring-your-own-harness.md) |
 | Harness selection | Built-in catalog, local registry, Python packages, imported agents, and TUI switcher | [Harness Commands](cli-reference/harness-commands.md) |
+| In-session harness switching | Same-session transitions, explicit forks, continuity state, and restoration through the Harness Switcher | [Your First Session](getting-started/first-session.md#3-choose-or-switch-a-harness) |
 | Session continuity | Persistent sessions, same-session harness switching, forks, handoffs, and lineage | [Session Management](advanced/session-management.md) |
 | Session sharing | Portable exports, imports, revocation, local artifacts, and switchboard tree sharing | [Session Sharing](advanced/session-sharing.md) |
 | Coding-agent connections | Native clients, ACP agents, subscription CLIs, SDK runtimes, BYOK providers, and local servers | [Connection Methods and Vendors](concepts/modes.md) |
 | Model connections | Local engines, BYOK providers, subscription runtimes, model profiles, and fallbacks | [Models and Providers](providers/index.md) |
 | Agent catalog | Official ACP Registry cache, bundled offline metadata, installation checks, store views, and free-model discovery | [Agents Commands](cli-reference/agents-commands.md) |
+| First-party China coding agents | Kimi Code and Qwen Code through their official ACP servers, with named connection profiles and Harness Switcher entries | [Connection Methods and Vendors](concepts/modes.md#named-product-and-vendor-routes) |
 | Model catalog and artifacts | models.dev metadata, Hugging Face search, downloads, cached artifacts, MLX conversion, and capability filters | [Model Catalog](advanced/model-catalog.md) |
 | Provider diagnostics | Readiness, setup guides, recommendations, smoke tests, live free-route scans, and local server inspection | [Provider Commands](cli-reference/provider-commands.md) |
 | Local inference | Ollama, LM Studio, MLX, DwarfStar, llama.cpp, vLLM, SGLang, TGI, and DS4 | [Local Models](providers/local.md) |
 | Poolside Laguna S 2.1 | Shared GGUF discovery, DwarfStar and llama.cpp launch paths, model policy, reasoning preservation, and TUI variants | [DwarfStar and Laguna](providers/local.md#dwarfstar-ds4) |
 | Harness Protocol | Versioned lifecycle, event envelope, conformance checks, adapters, and session export | [Harness Protocol v1](advanced/harness-protocol.md) |
 | Runtime adapters | Builtin, OpenAI Agents, Google ADK, Codex SDK, GitHub Copilot SDK, Claude Agent SDK, Antigravity SDK and CLI, DeepAgents, and PydanticAI | [Runtime Backends](runtimes.md) |
-| Harness backends | Native runtime adapters, RLM Code, Google Agent Engine, Anthropic managed agents, and backend capability diagnostics | [Harness System](advanced/harness-system.md) |
+| Harness backends | Native runtime adapters, Hugging Face Tau, RLM Code, Google Agent Engine, Anthropic managed agents, and backend capability diagnostics | [Harness System](advanced/harness-system.md) |
+| Hugging Face Tau | Optional event-first Python harness, native provider/model/session commands, Harness Protocol events, and a read-only safety boundary | [Hugging Face Tau](advanced/tau.md) |
 | Tool policy | Repository reads, search, edits, shell, MCP, network, diagnostics, image tools, and validation | [Tools Catalog](advanced/tools-catalog.md) |
 | Tool profiles | Core, Workbench, no-tool, build, plan, and review registries with per-tool permissions | [Tools Catalog](advanced/tools-catalog.md) |
 | Safety and governance | Permissions, sandboxes, trust checks, approvals, contextual policy, budgets, and credential controls | [Safety and Permissions](advanced/safety-permissions.md) |

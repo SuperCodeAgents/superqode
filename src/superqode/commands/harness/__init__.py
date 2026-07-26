@@ -64,6 +64,7 @@ from .candidates import (
 from .optimization import (
     harness_improve,
     harness_optimize,
+    harness_optimize_omni,
     harness_optimize_inspect,
     harness_optimize_ledger,
 )

@@ -17,8 +17,8 @@ agent unpredictable.
 | Layer | Artifact | Best tool | Use when |
 |---|---|---|---|
 | Model route | Provider, model, runtime, local endpoint | `superqode local optimize` | You want the best local/open model routing for planner, implementer, reviewer, and utility roles. |
-| Harness | `harness.yaml`, instructions, checks, routing, policies | `superqode harness optimize` | The harness itself needs better workflow, context, permissions, checks, or model policy. |
-| Skill | `.agents/skills/.../SKILL.md` | `superqode skills optimize --engine gepa` | A reusable skill works, but misses recurring cases in eval tasks. |
+| Harness | `harness.yaml`, instructions, checks, routing, policies | `superqode harness optimize` or `harness optimize-omni` | The harness itself needs better workflow, context, permissions, checks, or model policy. |
+| Skill | `.agents/skills/.../SKILL.md` | `superqode skills optimize --engine gepa|omni` | A reusable skill works, but misses recurring cases in eval tasks. |
 | Custom workflow | Any text artifact with a measurable score | Native SuperQode eval contract, or a custom optimizer | You have a domain-specific artifact and can define a scorecard. |
 
 The core rule is simple: if you cannot measure it, do not optimize it yet.
@@ -29,6 +29,7 @@ The TUI exposes the same optimization surfaces:
 ```text
 :local optimize ...
 :harness optimize --spec harness.yaml --tasks eval-tasks.yaml
+:harness optimize-omni --spec harness.yaml --tasks eval-tasks.yaml --live
 :harness optimize-inspect <run_dir>
 :harness optimize-ledger <run_dir>
 :skills optimize <skill> --harness harness.yaml --tasks eval-tasks.yaml --live
@@ -81,16 +82,33 @@ Use harness optimization for:
 
 See [Running, Measuring, and Optimizing a Harness](harness-optimization.md).
 
+For a staging-only multi-engine search, use:
+
+```bash
+superqode harness optimize-omni \
+  --spec harness.yaml \
+  --tasks eval-tasks.yaml \
+  --max-evals 20 \
+  --max-token-cost 4 \
+  --live
+```
+
+Omni runs GEPA, AutoResearch, and GEPA meta-harness in parallel, selects the
+best candidate, and continues from it with a fresh engine. SuperQode rejects
+unsafe candidates before rollout and requires a sealed `split: held-out`
+non-regression gate before marking the staged result accepted.
+
 ## Skill Optimization
 
 Skill optimization improves one markdown skill while leaving the harness
-contract stable. SuperQode uses GEPA for this path.
+contract stable. SuperQode supports stable GEPA search and the engine-pluggable
+AutoResearch, GEPA meta-harness, and Omni paths.
 
 ```bash
 uv tool install "superqode[optimization]"
 
 superqode skills optimize review \
-  --engine gepa \
+  --engine omni \
   --harness harness.yaml \
   --tasks eval-tasks.yaml \
   --live \
@@ -185,8 +203,8 @@ metaharness paths.
 | Symptom | Use |
 |---|---|
 | The model is slow, weak, or routed badly | `superqode local optimize` |
-| The whole harness behaves poorly | `superqode harness optimize` |
-| One reusable instruction is missing or weak | `superqode skills optimize --engine gepa` |
+| The whole harness behaves poorly | `superqode harness optimize` or `harness optimize-omni` |
+| One reusable instruction is missing or weak | `superqode skills optimize --engine gepa` or `--engine omni` |
 | You need an offline research loop over sessions | SkillOpt-style staging, then SuperQode eval gates |
 | You have a domain-specific text artifact | Custom optimizer using the SuperQode eval contract |
 

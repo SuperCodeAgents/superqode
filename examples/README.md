@@ -30,6 +30,9 @@ superqode harness graph <run-id>
 | Google ADK-backed coding harness | `harnesses/google-adk.yaml` |
 | Gemma4 local-model coding profile | `harnesses/gemma4.yaml` |
 | DS4 fast local coding profile | `harnesses/ds4.yaml` |
+| Deliberately small local harness for the bounded GEPA Omni experiment | `harnesses/omni-tiny-local.yaml` |
+| Minimal held-in/held-out contract for a bounded Omni plumbing check | `evals/omni-tiny.yaml` |
+| Release experiment with three held-in and two sealed decision cases | `evals/omni-release.yaml` |
 
 ## Optional Backends
 
