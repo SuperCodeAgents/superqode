@@ -27,6 +27,7 @@ __all__ = [
     "environment_info",
     "running_context",
     "install_command",
+    "extra_install_command",
     "python_package_install_command",
     "missing_extra_hint",
 ]
@@ -158,6 +159,28 @@ def install_command(extra: str) -> str:
     # uv-tool (recommended) or system: install/refresh the global tool with the
     # extra so it lands in the same environment SuperQode runs from.
     return f"uv tool install {spec}"
+
+
+def extra_install_command(extra: str) -> str:
+    """Command installing ``superqode[extra]`` into the *running* interpreter.
+
+    ``install_command`` names what a user would type and leaves environment
+    discovery to their shell. An installer running inside SuperQode cannot: the
+    extra has to land in ``sys.executable``'s site-packages to be importable
+    without a restart. Naming the interpreter explicitly also stops uv from
+    resolving to a different environment than the one SuperQode runs from, which
+    it does whenever something like an active conda prefix outranks the venv.
+
+    ``uv tool install`` is deliberately not used here: it rebuilds the tool
+    environment underneath the running process.
+    """
+    python = shlex.quote(sys.executable)
+    if running_context() == "dev-checkout":
+        # Keep the editable checkout install and just add the extra to it.
+        if shutil.which("uv"):
+            return f'uv pip install --python {python} -e ".[{extra}]"'
+        return f'{python} -m pip install -e ".[{extra}]"'
+    return python_package_install_command(f"superqode[{extra}]")
 
 
 def python_package_install_command(requirement: str, *, python: str | None = None) -> str:

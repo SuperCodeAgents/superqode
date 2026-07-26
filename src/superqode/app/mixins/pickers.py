@@ -72,13 +72,22 @@ class PickerNavigationMixin:
                 return True
             return False
 
+        # 1a. A missing-dependency prompt sits on top of the runtime picker.
+        if self._prompts.is_active("dependency_install"):
+            options = self._DEPENDENCY_INSTALL_OPTIONS
+            if 1 <= num <= len(options):
+                self._prompts.select_index(num - 1)
+                return True
+            return False
+
         # 1b. Handle runtime selection
         if getattr(self, "_awaiting_runtime_selection", False):
             runtimes = getattr(self, "_runtime_selection_list", [])
             if runtimes and 1 <= num <= len(runtimes):
                 info = runtimes[num - 1]
                 if not info.installed:
-                    log.add_error(self._runtime_install_message(info.name, info.install_hint))
+                    if not self._show_dependency_install_picker(info.name, log):
+                        log.add_error(self._runtime_install_message(info.name, info.install_hint))
                     return True
                 if not info.implemented:
                     log.add_error(f"Runtime '{info.name}' is a stub and not yet usable.")
@@ -388,6 +397,168 @@ class PickerNavigationMixin:
             self._byok_highlighted_model_index = 0
             self._show_provider_models(provider_id, log, use_picker=False)
 
+    @property
+    def _awaiting_dependency_install(self) -> dict | None:
+        """Compatibility view of the prompt stack for truthiness checks.
+
+        Existing dispatch sites test this flag; backing it with the stack keeps
+        them working while the prompt itself is fully registry-driven.
+        """
+        spec = self._prompts.active
+        if spec is not None and spec.name == "dependency_install":
+            return spec.data
+        return None
+
+    @_awaiting_dependency_install.setter
+    def _awaiting_dependency_install(self, value) -> None:
+        # Only clearing is meaningful; the prompt is opened by pushing a spec.
+        if value is None and self._prompts.is_active("dependency_install"):
+            self._prompts.pop()
+
+    def _cancel_dependency_install(self) -> None:
+        """Esc on the install prompt returns to the runtime picker."""
+        log = self.query_one("#log", ConversationLog)
+        self._show_runtime_picker(log)
+
+    def _dependency_install_text_answer(self, text: str) -> bool:
+        """Accept a typed answer to the install prompt."""
+        log = self.query_one("#log", ConversationLog)
+        return self._handle_dependency_install_input(text, log)
+
+    #: Choices offered when a runtime's Python extra is missing.
+    _DEPENDENCY_INSTALL_OPTIONS = (
+        ("install", "Install it for me", "SuperQode runs the command and connects"),
+        ("manual", "I will install it myself", "show the command and go back"),
+        ("cancel", "Cancel", "return to the runtime picker"),
+    )
+
+    def _show_dependency_install_picker(
+        self,
+        runtime_name: str,
+        log: ConversationLog,
+        clear_log: bool = True,
+        *,
+        reset_highlight: bool = True,
+    ) -> bool:
+        """Offer an in-TUI install for a runtime's missing extra.
+
+        Returns False when the runtime is not backed by a SuperQode extra (an
+        external CLI, say), so callers can fall back to printed guidance.
+
+        ``reset_highlight`` is False when redrawing after a navigation key, which
+        must keep the selection the user just moved to.
+        """
+        from superqode.providers.env_introspect import environment_info, extra_install_command
+        from superqode.runtime import runtime_extra
+
+        extra = runtime_extra(runtime_name)
+        if not extra:
+            return False
+
+        from superqode.app.prompt_stack import PromptSpec
+
+        command = extra_install_command(extra)
+        env = environment_info()
+        # The runtime picker's Enter must not race this prompt's Enter.
+        self._awaiting_runtime_selection = False
+        if reset_highlight and not self._prompts.is_active("dependency_install"):
+            # Declared once: Enter, typed answers, Esc, arrows, and number keys
+            # are all routed from this single registration.
+            pending = {"runtime": runtime_name, "extra": extra, "command": command}
+            self._prompts.push(
+                PromptSpec(
+                    name="dependency_install",
+                    kind="picker",
+                    options=lambda: list(self._DEPENDENCY_INSTALL_OPTIONS),
+                    # The stack closes the prompt before dispatching, so the
+                    # choice data is captured here rather than read back off it.
+                    on_select=lambda option: self._apply_dependency_install_choice(
+                        option[0], pending=pending
+                    ),
+                    on_text=self._dependency_install_text_answer,
+                    on_cancel=self._cancel_dependency_install,
+                    render=self._rerender_dependency_install_picker,
+                    data=pending,
+                )
+            )
+
+        t = Text()
+        t.append("\n  ◈ ", style=f"bold {THEME['purple']}")
+        t.append(f"{runtime_name} is not installed\n\n", style=f"bold {THEME['text']}")
+        t.append("    It needs the ", style=THEME["muted"])
+        t.append(f"superqode[{extra}]", style=f"bold {THEME['cyan']}")
+        t.append(" extra.\n\n", style=THEME["muted"])
+        t.append("    Running from  ", style=THEME["muted"])
+        t.append(f"{env.label}\n", style=THEME["text"])
+        t.append("    Install into  ", style=THEME["muted"])
+        t.append(f"{env.target}\n\n", style=THEME["text"])
+        t.append(f"    {command}\n\n", style=THEME["cyan"])
+        t.append(self._dependency_install_option_lines())
+        t.append("  💡 ", style=THEME["muted"])
+        t.append("↑↓", style=THEME["cyan"])
+        t.append(" navigate  ", style=THEME["dim"])
+        t.append("Enter", style=THEME["cyan"])
+        t.append(" select  •  or type a number, e.g. ", style=THEME["dim"])
+        t.append("2", style=THEME["cyan"])
+        t.append("\n", style="")
+
+        log.auto_scroll = False
+        if clear_log:
+            log.clear()
+        log.write(t)
+        log.auto_scroll = True
+        self.set_timer(0.05, self._ensure_input_focus)
+        return True
+
+    def _dependency_install_option_lines(self) -> Text:
+        """Render the highlighted option list for the dependency prompt."""
+        highlighted = self._prompts.index
+        options = self._DEPENDENCY_INSTALL_OPTIONS
+        if not (0 <= highlighted < len(options)):
+            highlighted = 0
+
+        t = Text()
+        for index, (_key, label, description) in enumerate(options):
+            num = index + 1
+            if index == highlighted:
+                t.append("  ▶ ", style=f"bold {THEME['success']}")
+                t.append(
+                    f"[{num}] ", style=self._picker_link_style(f"bold {THEME['success']}", num)
+                )
+                t.append(label, style=f"bold {THEME['success']}")
+            else:
+                t.append(f"    [{num}] ", style=self._picker_link_style(THEME["dim"], num))
+                t.append(label, style=f"bold {THEME['text']}")
+            t.append("\n", style="")
+            t.append(f"        {description}\n", style=THEME["muted"])
+        t.append("\n", style="")
+        return t
+
+    def _rerender_dependency_install_picker(self) -> None:
+        """Redraw the prompt in place after a navigation key."""
+        pending = self._awaiting_dependency_install
+        if not isinstance(pending, dict):
+            return
+        log = self.query_one("#log", ConversationLog)
+        self._show_dependency_install_picker(
+            str(pending.get("runtime") or ""), log, reset_highlight=False
+        )
+
+    def action_navigate_dependency_install_up(self):
+        """Highlight the previous dependency choice (arrow up)."""
+        if self._prompts.is_active("dependency_install"):
+            self._prompts.navigate(-1)
+
+    def action_navigate_dependency_install_down(self):
+        """Highlight the next dependency choice (arrow down)."""
+        if self._prompts.is_active("dependency_install"):
+            self._prompts.navigate(1)
+
+    def action_select_highlighted_dependency_install(self):
+        """Act on the highlighted dependency choice (Enter key)."""
+        if self._prompts.is_active("dependency_install"):
+            self._prompts.select()
+
     def _show_runtime_picker(self, log: ConversationLog, clear_log: bool = True):
         """Show interactive runtime picker with highlighting and status."""
         from superqode.runtime import list_runtimes, resolve_runtime_name
@@ -518,7 +689,8 @@ class PickerNavigationMixin:
         info = runtimes[idx]
         if not info.installed:
             log = self.query_one("#log", ConversationLog)
-            log.add_error(self._runtime_install_message(info.name, info.install_hint))
+            if not self._show_dependency_install_picker(info.name, log):
+                log.add_error(self._runtime_install_message(info.name, info.install_hint))
             return
         if not info.implemented:
             log = self.query_one("#log", ConversationLog)

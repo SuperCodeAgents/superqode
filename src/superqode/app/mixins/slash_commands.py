@@ -74,6 +74,12 @@ class SlashCommandMixin:
 
         if c == "help":
             self._show_help(log)
+        elif c == "keys":
+            self._keys_cmd(log)
+        elif c == "search":
+            self._search_cmd(args, log)
+        elif c == "edit":
+            self._edit_last_message(log)
         elif c == "vim":
             self._vim_cmd(args, log)
         elif c == "set":

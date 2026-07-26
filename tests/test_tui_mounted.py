@@ -836,3 +836,318 @@ async def test_home_still_clears_the_badge_without_a_live_session():
         assert badge.provider == ""
         assert badge.model == ""
         assert badge.execution_mode == ""
+
+
+async def test_missing_runtime_offers_a_navigable_install_prompt(monkeypatch):
+    """Selecting an uninstalled runtime must offer choices, not a dead-end error."""
+    from superqode.runtime import RuntimeInfo
+
+    missing = RuntimeInfo(
+        name="codex-sdk",
+        description="OpenAI Codex Python SDK",
+        installed=False,
+        install_hint='uv tool install "superqode[codex-sdk]"',
+        implemented=True,
+        ready=False,
+    )
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._awaiting_runtime_selection = True
+        app._runtime_selection_list = [missing]
+        app._runtime_highlighted_index = 0
+        await pilot.pause()
+
+        app.action_select_highlighted_runtime()
+        await pilot.pause()
+
+        pending = app._awaiting_dependency_install
+        assert isinstance(pending, dict)
+        assert pending["runtime"] == "codex-sdk"
+        assert pending["extra"] == "codex-sdk"
+        # The command must pin the running interpreter, otherwise uv can resolve
+        # a different environment than the one SuperQode imports from.
+        assert "--python" in pending["command"] or "-m pip install" in pending["command"]
+        # Opening the prompt closes the picker underneath it so Enter is unambiguous.
+        assert app._awaiting_runtime_selection is False
+
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "Install it for me" in rendered
+        assert "I will install it myself" in rendered
+
+        # Arrow keys move the highlight, which now lives on the prompt stack.
+        assert app._prompts.index == 0
+        app.action_navigate_dependency_install_down()
+        await pilot.pause()
+        assert app._prompts.index == 1
+        app.action_navigate_dependency_install_up()
+        await pilot.pause()
+        assert app._prompts.index == 0
+
+
+async def test_choosing_manual_install_shows_the_command_without_installing():
+    """'I will install it myself' must not run anything."""
+    from superqode.runtime import RuntimeInfo
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        assert app._show_dependency_install_picker("codex-sdk", log) is True
+        await pilot.pause()
+
+        app._apply_dependency_install_choice("manual", log=log)
+        await pilot.pause()
+
+        assert app._awaiting_dependency_install is None
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "superqode[codex-sdk]" in rendered
+
+
+async def test_install_choice_runs_the_command_and_resumes(monkeypatch):
+    """Choosing install must run the command and then connect the runtime."""
+    import subprocess as _subprocess
+
+    # list_runtimes() probes the antigravity CLI with its own subprocess call,
+    # so record every invocation rather than assuming ours is the only one.
+    ran = []
+
+    def fake_run(argv, **kwargs):
+        ran.append(list(argv))
+        return _subprocess.CompletedProcess(argv, 0, "installed ok", "")
+
+    resumed = []
+
+    import superqode.runtime as _runtime_pkg
+
+    installed = _runtime_pkg.RuntimeInfo(
+        name="codex-sdk",
+        description="OpenAI Codex Python SDK",
+        installed=True,
+        install_hint=None,
+        implemented=True,
+        ready=True,
+    )
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        monkeypatch.setattr(_subprocess, "run", fake_run)
+        monkeypatch.setattr(app, "_runtime_cmd", lambda name, log: resumed.append(name))
+        # Stand in for the extra becoming importable after a real install.
+        monkeypatch.setattr(_runtime_pkg, "list_runtimes", lambda: [installed])
+
+        pending = {
+            "runtime": "codex-sdk",
+            "extra": "codex-sdk",
+            "command": "uv pip install --python /x/py 'superqode[codex-sdk]'",
+        }
+        await app._install_runtime_extra_then_continue(pending, log)
+        await pilot.pause()
+
+        assert ["uv", "pip", "install", "--python", "/x/py", "superqode[codex-sdk]"] in ran
+        # codex-sdk is self-contained, so it connects directly after installing.
+        assert resumed == ["codex-sdk"]
+
+
+async def test_install_that_leaves_nothing_importable_is_reported(monkeypatch):
+    """A zero exit code is not proof the extra is usable.
+
+    superqode[codex-sdk] once pinned openai-codex to a range holding only
+    pre-releases: the resolver happily installed an ancient SuperQode instead.
+    An install that cannot be imported afterwards must say so here rather than
+    failing later inside the runtime.
+    """
+    import subprocess as _subprocess
+
+    def fake_run(argv, **kwargs):
+        return _subprocess.CompletedProcess(argv, 0, "resolved something else", "")
+
+    resumed = []
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        monkeypatch.setattr(_subprocess, "run", fake_run)
+        monkeypatch.setattr(app, "_runtime_cmd", lambda name, log: resumed.append(name))
+
+        pending = {
+            "runtime": "codex-sdk",
+            "extra": "codex-sdk",
+            "command": "uv pip install --python /x/py 'superqode[codex-sdk]'",
+        }
+        await app._install_runtime_extra_then_continue(pending, log)
+        await pilot.pause()
+
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "still not importable" in rendered
+        assert resumed == []
+
+
+async def test_search_command_finds_transcript_text_without_vim_mode():
+    """:search must work for users who never enable Vim mode."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 30)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._welcome_active = False
+        log.clear()
+        log.add_info("first line about widgets")
+        log.add_info("second line about parsers")
+        await pilot.pause()
+
+        app._search_cmd("parsers", log)
+        await pilot.pause()
+
+        assert app._vim_search_query == "parsers"
+        assert app._vim_search_matches, "expected a match for text present in the transcript"
+        assert app._vim_enabled() is False
+
+
+async def test_bare_search_advances_to_the_next_match():
+    """Repeating :search must step through matches, not restart the search."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 30)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._welcome_active = False
+        log.clear()
+        for _ in range(3):
+            log.add_info("repeated needle here")
+        await pilot.pause()
+
+        app._search_cmd("needle", log)
+        await pilot.pause()
+        first = app._vim_search_index
+
+        app._search_cmd("", log)
+        await pilot.pause()
+
+        assert len(app._vim_search_matches) >= 2
+        assert app._vim_search_index != first
+
+
+async def test_keys_reference_covers_every_advertised_binding():
+    """:keys is generated from BINDINGS, so it cannot drift from the real keys."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._welcome_active = False
+        log.clear()
+
+        app._keys_cmd(log)
+        await pilot.pause()
+
+        rendered = "\n".join(line.text for line in log.lines)
+        advertised = [b.key for b in SuperQodeApp.BINDINGS if getattr(b, "show", False)]
+        assert advertised, "expected at least one footer binding"
+        for key in advertised:
+            assert key in rendered, f"{key} is advertised but missing from :keys"
+        assert "ctrl+f" in advertised  # the new search binding is discoverable
+
+
+async def test_edit_last_message_loads_it_back_into_the_prompt():
+    """Ctrl+P/:edit reword flow must repopulate the input, not resend blindly."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 30)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        prompt = app.query_one("#prompt-input", SelectionAwareInput)
+        app._last_user_message = "refactor the parser"
+        await pilot.pause()
+
+        app._edit_last_message(log)
+        await pilot.pause()
+
+        assert prompt.value == "refactor the parser"
+        assert prompt.cursor_position == len("refactor the parser")
+
+
+async def test_edit_last_message_refuses_while_the_agent_runs():
+    """Editing mid-run would race the in-flight turn."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 30)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        prompt = app.query_one("#prompt-input", SelectionAwareInput)
+        app._last_user_message = "refactor the parser"
+        app.is_busy = True
+        await pilot.pause()
+
+        app._edit_last_message(log)
+        await pilot.pause()
+
+        assert prompt.value == ""
+
+
+async def test_ctrl_f_and_ctrl_p_are_reachable_as_real_keypresses():
+    """Bindings must actually dispatch, not just exist as methods."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 30)) as pilot:
+        prompt = app.query_one("#prompt-input", SelectionAwareInput)
+        app._last_user_message = "an earlier prompt"
+        await pilot.pause()
+
+        await pilot.press("ctrl+f")
+        await pilot.pause()
+        assert prompt.value == ":search "
+
+        prompt.value = ""
+        await pilot.pause()
+        await pilot.press("ctrl+p")
+        await pilot.pause()
+        assert prompt.value == "an earlier prompt"
+
+
+async def test_no_color_env_var_degrades_the_whole_interface(monkeypatch):
+    """NO_COLOR must reach the render pipeline.
+
+    Textual installs a Monochrome filter when NO_COLOR is set, which is what
+    makes the ~1300 hardcoded hex literals throughout the UI degrade without
+    each one needing to be theme-aware. Nothing else pins that behavior, so a
+    Textual upgrade or a custom Console could silently remove it.
+    """
+    monkeypatch.setenv("NO_COLOR", "1")
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 30)) as pilot:
+        await pilot.pause()
+
+        assert app.no_color is True
+        filters = [type(f).__name__ for f in app._filters]
+        assert "Monochrome" in filters or "NoColor" in filters
+
+
+async def test_registry_driven_prompt_handles_every_key_path():
+    """One PromptSpec registration must cover arrows, Enter, numbers, and Esc.
+
+    Before the registry each of these lived in a separate dispatch site and had
+    to be wired by hand; missing one produced a prompt that could not be
+    cancelled or whose arrow keys did nothing.
+    """
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+
+        # Arrows.
+        app._show_dependency_install_picker("codex-sdk", log)
+        await pilot.pause()
+        assert app._prompts.is_active("dependency_install")
+        app._prompts.navigate(1)
+        assert app._prompts.index == 1
+
+        # Esc closes it and falls back to the runtime picker underneath.
+        assert app._prompts.cancel() is True
+        await pilot.pause()
+        assert app._prompts.active is None
+        assert app._awaiting_dependency_install is None
+
+        # Numbers select. Option 2 is "manual", which only prints the command.
+        app._show_dependency_install_picker("codex-sdk", log)
+        await pilot.pause()
+        app._prompts.select_index(1)
+        await pilot.pause()
+        assert app._prompts.active is None
+
+        # Typed answers route through the same spec.
+        app._show_dependency_install_picker("codex-sdk", log)
+        await pilot.pause()
+        assert app._prompts.handle_text("n") is True
+        await pilot.pause()
+        assert app._prompts.active is None

@@ -165,6 +165,30 @@ class MiscActionsMixin:
         input_widget.value = ""
         log.add_info(f"📥 Stashed draft ({len(self._draft_stash)} saved). Restore with :stash.")
 
+    def action_search_transcript(self) -> None:
+        """Start a transcript search (Ctrl+F).
+
+        Prefilling ``:search`` reuses the existing command path instead of
+        adding another modal prompt state, so Enter, Esc, and history keep
+        behaving exactly as they do for every other command.
+        """
+        from superqode.app.inputs import SelectionAwareInput
+
+        try:
+            prompt_input = self.query_one("#prompt-input", SelectionAwareInput)
+        except Exception:
+            return
+        prompt_input.value = ":search "
+        prompt_input.cursor_position = len(prompt_input.value)
+        prompt_input.focus()
+
+    def action_edit_last_message(self) -> None:
+        """Load the previous prompt back into the input to reword it (Ctrl+P)."""
+        log = self._conversation_log()
+        if log is None:
+            return
+        self._edit_last_message(log)
+
     def action_rewind(self) -> None:
         """Open the transcript/rewind overlay (Ctrl+R)."""
         log = self._conversation_log()

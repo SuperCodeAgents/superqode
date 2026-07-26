@@ -242,6 +242,10 @@ class EventHandlerMixin:
                 self._handle_harness_install_input("", log)
                 event.input.value = ""
                 return
+            if getattr(self, "_awaiting_dependency_install", None):
+                self.action_select_highlighted_dependency_install()
+                event.input.value = ""
+                return
             if getattr(self, "_awaiting_local_dep_install", None):
                 self._handle_local_dep_install_input("", log)
                 event.input.value = ""
@@ -392,6 +396,7 @@ class EventHandlerMixin:
                 or getattr(self, "_awaiting_harness_selection", False)
                 or getattr(self, "_awaiting_harness_confirmation", False)
                 or getattr(self, "_awaiting_harness_install", None)
+                or getattr(self, "_awaiting_dependency_install", None)
                 or getattr(self, "_awaiting_subscription_login", None)
             ):
                 # Cancel selection mode
@@ -408,6 +413,7 @@ class EventHandlerMixin:
                 self._awaiting_harness_selection = False
                 self._awaiting_harness_confirmation = False
                 self._awaiting_harness_install = None
+                self._awaiting_dependency_install = None
                 self._harness_wizard_state = None
                 self._awaiting_local_server_start = None
                 self._awaiting_local_dep_install = None
@@ -455,6 +461,9 @@ class EventHandlerMixin:
         # so a typed 'n'/options can never be swallowed by a stale picker flag.
         if getattr(self, "_awaiting_harness_install", None):
             if self._handle_harness_install_input(text, log):
+                return
+        if getattr(self, "_awaiting_dependency_install", None):
+            if self._handle_dependency_install_input(text, log):
                 return
         if getattr(self, "_awaiting_local_dep_install", None):
             if self._handle_local_dep_install_input(text, log):
@@ -524,7 +533,10 @@ class EventHandlerMixin:
                             break
                 if info is not None:
                     if not info.installed:
-                        log.add_error(self._runtime_install_message(info.name, info.install_hint))
+                        if not self._show_dependency_install_picker(info.name, log):
+                            log.add_error(
+                                self._runtime_install_message(info.name, info.install_hint)
+                            )
                         return
                     if not info.implemented:
                         log.add_error(f"Runtime '{info.name}' is a stub and not yet usable.")

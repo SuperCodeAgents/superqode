@@ -45,6 +45,11 @@ class HelperVimMixin:
             "action_navigate_runtime_down",
         ),
         (
+            "_awaiting_dependency_install",
+            "action_navigate_dependency_install_up",
+            "action_navigate_dependency_install_down",
+        ),
+        (
             "_awaiting_session_resume",
             "action_navigate_session_resume_up",
             "action_navigate_session_resume_down",

@@ -7,6 +7,7 @@ import os
 import subprocess
 import shutil
 import shlex
+import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -38,6 +39,140 @@ class CommandImplMixin:
             f"This command modifies: {env.target}\n"
             f"Run: {command}"
         )
+
+    def _apply_dependency_install_choice(
+        self, choice: str, *, pending: dict | None = None, log=None
+    ):
+        """Run the selected action from the missing-dependency prompt.
+
+        ``pending`` is passed explicitly because the prompt stack closes the
+        prompt before dispatching, so the choice handler is free to open the
+        next one without being buried underneath it.
+        """
+        if pending is None:
+            pending = self._awaiting_dependency_install
+        if not isinstance(pending, dict):
+            return
+        if log is None:
+            log = self.query_one("#log", ConversationLog)
+        runtime_name = str(pending.get("runtime") or "")
+        command = str(pending.get("command") or "")
+        self._awaiting_dependency_install = None
+
+        if choice == "manual":
+            text = Text()
+            text.append("\n  Run this yourself, then re-run ", style=THEME["muted"])
+            text.append(f":runtime {runtime_name}\n\n", style=THEME["cyan"])
+            text.append(f"    {command}\n\n", style=THEME["cyan"])
+            text.append(
+                "  It targets the interpreter SuperQode is running from, so the\n"
+                "  extra lands where it can be imported.\n",
+                style=THEME["muted"],
+            )
+            log.write(text)
+            return
+
+        if choice == "cancel":
+            log.add_info(f"Skipped installing {runtime_name}.")
+            self._show_runtime_picker(log)
+            return
+
+        self.run_worker(self._install_runtime_extra_then_continue(pending, log))
+
+    def _handle_dependency_install_input(self, text: str, log) -> bool:
+        """Resolve a typed answer to the missing-dependency prompt."""
+        pending = self._awaiting_dependency_install
+        if not isinstance(pending, dict):
+            return False
+
+        options = self._DEPENDENCY_INSTALL_OPTIONS
+        choice = text.strip().lower()
+        if choice == "":
+            index = self._prompts.index
+            if not (0 <= index < len(options)):
+                index = 0
+            self._apply_dependency_install_choice(options[index][0], pending=pending, log=log)
+            return True
+        if choice.isdigit() and 1 <= int(choice) <= len(options):
+            self._apply_dependency_install_choice(
+                options[int(choice) - 1][0], pending=pending, log=log
+            )
+            return True
+        if choice in {"y", "yes", "install", "ok"}:
+            self._apply_dependency_install_choice("install", pending=pending, log=log)
+            return True
+        if choice in {"n", "no", "cancel", "skip", "q"}:
+            self._apply_dependency_install_choice("cancel", pending=pending, log=log)
+            return True
+
+        log.add_error(f"Choose 1-{len(options)}, or press Enter for the highlighted option.")
+        return True
+
+    async def _install_runtime_extra_then_continue(self, pending: dict, log) -> None:
+        """Install a runtime's extra, then connect to it without a restart."""
+        import importlib
+
+        runtime_name = str(pending.get("runtime") or "")
+        command = str(pending.get("command") or "")
+        if not command or not runtime_name:
+            log.add_error("No installation command is available for this runtime.")
+            return
+
+        log.add_info(f"Installing {runtime_name} into SuperQode's current environment...")
+
+        def run_install() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                shlex.split(command),
+                cwd=Path.cwd(),
+                text=True,
+                capture_output=True,
+                timeout=1200,
+                check=False,
+            )
+
+        self.is_busy = True
+        try:
+            completed = await asyncio.to_thread(run_install)
+        except (OSError, subprocess.SubprocessError) as exc:
+            log.add_error(f"{runtime_name} installation failed: {exc}")
+            return
+        finally:
+            self.is_busy = False
+
+        output = "\n".join(
+            part.strip() for part in (completed.stdout, completed.stderr) if part.strip()
+        )
+        if completed.returncode != 0:
+            if hasattr(log, "add_shell"):
+                log.add_shell(command, output or "Installation failed.", False)
+            else:
+                log.add_error(output or "Installation failed.")
+            log.add_error(f"{runtime_name} installation exited with {completed.returncode}.")
+            return
+
+        importlib.invalidate_caches()
+        if hasattr(log, "add_shell"):
+            log.add_shell(command, output or "Installation completed.", True)
+        else:
+            log.add_info(output or "Installation completed.")
+
+        from superqode.runtime import list_runtimes
+
+        info = next((r for r in list_runtimes() if r.name == runtime_name), None)
+        if info is not None and not info.installed:
+            # A resolver can report success and still leave nothing importable,
+            # e.g. when an extra's pin only matches pre-releases. Say so here
+            # rather than failing later inside the runtime.
+            log.add_error(
+                f"{runtime_name} installed but is still not importable from {sys.executable}. "
+                "Check the output above, then restart SuperQode."
+            )
+            return
+
+        log.add_success(f"{runtime_name} installed. Continuing without restarting the TUI.")
+        self._runtime_cmd(runtime_name, log)
+        if runtime_name not in self._SELF_CONTAINED_RUNTIMES:
+            self._show_byok_providers(log)
 
     def _show_vendor_runtime_setup(self, log) -> None:
         """Show optional vendor SDK and external CLI setup without installing."""
@@ -262,6 +397,137 @@ class CommandImplMixin:
         direction = -1 if reverse else 1
         self._vim_search_index = (self._vim_search_index + direction) % len(matches)
         self._scroll_to_vim_search_match(log)
+
+    def _search_cmd(self, args: str, log: ConversationLog) -> None:
+        """Search the transcript from ``:search``, with no Vim mode required.
+
+        The matching, highlighting, and scrolling already exist for Vim's
+        ``/pattern``; this only makes them reachable for everyone else.
+        ``:search`` with no pattern advances to the next match, so repeating the
+        search never needs a modal keystroke.
+        """
+        query = (args or "").strip()
+        if not query:
+            if getattr(self, "_vim_search_matches", []):
+                self._vim_search_next(log)
+                return
+            log.add_info("Usage: :search <text>  (then :search again for the next match)")
+            return
+
+        reverse = False
+        if query.startswith("?"):
+            # Mirror Vim's ?pattern so muscle memory carries over.
+            reverse = True
+            query = query[1:].strip()
+        elif query.startswith("/"):
+            query = query[1:].strip()
+
+        self._vim_search(log, query, reverse=reverse)
+
+    def _keys_cmd(self, log: ConversationLog) -> None:
+        """Show the keyboard reference.
+
+        The global section is generated from ``BINDINGS`` so it cannot drift
+        from what the app actually binds; the contextual sections describe keys
+        that are only live inside a picker or prompt and have no binding entry.
+        """
+        t = Text()
+        t.append("\n  ⌨  ", style=f"bold {THEME['purple']}")
+        t.append("Keyboard Reference\n\n", style=f"bold {THEME['purple']}")
+
+        t.append("  ═══ Global ═══\n\n", style=f"bold {THEME['gold']}")
+        for binding in self._documented_global_bindings():
+            t.append(f"    {binding.key:<16}", style=THEME["cyan"])
+            t.append(f"{binding.description}\n", style=THEME["muted"])
+
+        t.append("\n  ═══ Scrolling ═══\n\n", style=f"bold {THEME['gold']}")
+        for key, description in (
+            ("PageUp/PageDown", "scroll the transcript one page"),
+            ("Ctrl+Home/End", "jump to the top or bottom"),
+            ("Ctrl+F", "search the transcript"),
+        ):
+            t.append(f"    {key:<16}", style=THEME["cyan"])
+            t.append(f"{description}\n", style=THEME["muted"])
+
+        t.append("\n  ═══ In a picker ═══\n\n", style=f"bold {THEME['gold']}")
+        for key, description in (
+            ("↑ ↓", "move the highlight"),
+            ("Enter", "choose the highlighted entry"),
+            ("1-9", "choose by number"),
+            ("Esc", "cancel and go back"),
+        ):
+            t.append(f"    {key:<16}", style=THEME["cyan"])
+            t.append(f"{description}\n", style=THEME["muted"])
+
+        t.append("\n  ═══ At the prompt ═══\n\n", style=f"bold {THEME['gold']}")
+        for key, description in (
+            (":", "run a SuperQode command, e.g. :connect"),
+            ("@", "reference a file by path"),
+            (">", "run a shell command"),
+            ("Tab", "accept the current completion"),
+            ("Ctrl+P", "edit your last message again"),
+            ("Ctrl+E", "open an external editor"),
+        ):
+            t.append(f"    {key:<16}", style=THEME["cyan"])
+            t.append(f"{description}\n", style=THEME["muted"])
+
+        if self._vim_enabled():
+            t.append("\n  ═══ Vim mode ═══\n\n", style=f"bold {THEME['gold']}")
+            for key, description in (
+                ("i", "insert mode"),
+                (":", "Ex command"),
+                ("/ ?", "search forward or backward"),
+                ("n N", "next or previous match"),
+                ("j k", "move the highlight in a picker"),
+            ):
+                t.append(f"    {key:<16}", style=THEME["cyan"])
+                t.append(f"{description}\n", style=THEME["muted"])
+
+        t.append("\n  Full command list: ", style=THEME["muted"])
+        t.append(":help\n", style=THEME["cyan"])
+        self._show_command_output(log, t)
+
+    @classmethod
+    def _documented_global_bindings(cls):
+        """Bindings advertised in the footer, de-duplicated in declared order."""
+        seen: set[str] = set()
+        documented = []
+        for binding in getattr(cls, "BINDINGS", []):
+            if not getattr(binding, "show", False):
+                continue
+            key = str(getattr(binding, "key", ""))
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            documented.append(binding)
+        return documented
+
+    def _edit_last_message(self, log: ConversationLog) -> None:
+        """Put the previous prompt back in the input so it can be reworded.
+
+        ``:retry`` re-sends the last message verbatim; this is the other half of
+        that, for when the prompt itself needs a change.
+        """
+        previous = self._last_user_message or log.get_last_message("user")
+        if not previous:
+            log.add_info("No previous message to edit.")
+            return
+        if getattr(self, "is_busy", False):
+            log.add_info("Agent is still running. Cancel or wait before editing.")
+            return
+
+        from superqode.app.inputs import SelectionAwareInput
+
+        try:
+            prompt_input = self.query_one("#prompt-input", SelectionAwareInput)
+        except Exception:
+            log.add_error("Could not reach the prompt input.")
+            return
+
+        prompt_input.value = previous
+        prompt_input.cursor_position = len(previous)
+        prompt_input.focus()
+        log.add_info("Loaded your last message for editing. Press Enter to send it again.")
 
     def _vim_search_feedback(self, log: ConversationLog, message: str) -> None:
         try:
@@ -1096,7 +1362,8 @@ class CommandImplMixin:
             return
         info = info_by_name[sub]
         if not info.installed:
-            log.add_error(self._runtime_install_message(sub, info.install_hint))
+            if not self._show_dependency_install_picker(sub, log):
+                log.add_error(self._runtime_install_message(sub, info.install_hint))
             return
         if not info.implemented:
             log.add_error(f"Runtime '{sub}' is a stub and not yet usable.")

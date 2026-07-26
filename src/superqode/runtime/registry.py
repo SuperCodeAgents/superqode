@@ -175,6 +175,21 @@ _OPTIONAL_PACKAGES: dict[str, tuple[str, str]] = {
 }
 
 
+def runtime_extra(name: str | None) -> str | None:
+    """Return the SuperQode extra providing ``name``, or None if it needs none.
+
+    Lets the TUI offer an in-place install for a missing runtime instead of
+    printing a command the user has to leave the app to run.
+    """
+    entry = _OPTIONAL_PACKAGES.get((name or "").strip().lower())
+    if entry is None:
+        return None
+    spec = entry[1]
+    if "[" not in spec:
+        return None
+    return spec.split("[", 1)[1].rstrip("]").strip() or None
+
+
 def create_runtime(name: str | None, **kwargs: Any) -> AgentRuntime:
     """Construct a runtime by name.
 

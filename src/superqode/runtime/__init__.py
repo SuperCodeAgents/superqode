@@ -23,6 +23,7 @@ from .registry import (
     known_runtime_names,
     list_runtimes,
     resolve_runtime_name,
+    runtime_extra,
 )
 
 __all__ = [
@@ -36,4 +37,5 @@ __all__ = [
     "known_runtime_names",
     "list_runtimes",
     "resolve_runtime_name",
+    "runtime_extra",
 ]

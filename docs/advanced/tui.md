@@ -186,6 +186,9 @@ Access via Command Palette (`Ctrl+K`) or Command Mode (`:`) in TUI:
 - `:memory` - Search, remember, and inspect project memory providers
 - `:sandbox` - Show or set the local command sandbox mode
 - `:help` - Show all available commands
+- `:keys` - Show the keyboard reference (also `Ctrl+F` to search, `Ctrl+P` to reword your last message)
+- `:search <text>` - Search the transcript; run `:search` again for the next match (also `Ctrl+F`)
+- `:edit` - Load your last message back into the prompt to reword it (also `Ctrl+P`)
 
 Tool and file-change output is collapsed by default so normal coding sessions stay readable. Agent thinking/session notes are also hidden by default. Use `Ctrl+T` when you want to see thinking logs, and use `:log verbose` before a task when you want full successful tool output, raw ACP agent session logs, and file names in the session report.
 
@@ -198,7 +201,7 @@ show status, or display its local help where supported.
 
 | Area | Built-in command roots |
 | --- | --- |
-| General operation | `:help`, `:status`, `:health`, `:doctor`, `:doctor-current`, `:diagnostics`, `:usage`, `:summary`, `:clear`, `:update`, `:demo`, `:exit`, `:quit`, `:q` |
+| General operation | `:help`, `:keys`, `:status`, `:health`, `:doctor`, `:doctor-current`, `:diagnostics`, `:usage`, `:summary`, `:clear`, `:update`, `:demo`, `:exit`, `:quit`, `:q` |
 | Connections and authentication | `:connect`, `:disconnect`, `:agents`, `:agent`, `:acp`, `:providers`, `:provider`, `:profiles`, `:auth`, `:models`, `:model`, `:catalog`, `:model-guide`, `:recommend`, `:hf` |
 | Vendor runtimes | `:codex`, `:copilot`, `:claude`, `:antigravity`, `:agy`, `:grok`, `:xai-grok`, `:runtime` |
 | Agent modes and context | `:chat`, `:build`, `:mode`, `:context`, `:thinking`, `:toggle_thinking`, `:compact`, `:retry`, `:redo`, `:compare`, `:prompt`, `:log` |
@@ -303,6 +306,25 @@ picker with `:theme`, or apply one directly with `:theme <name>`:
 ```
 
 The choice is saved to `~/.superqode/config.json` and applied on the next launch.
+
+## Accessibility
+
+`:theme high-contrast` maximizes legibility for low vision or a bright room.
+Where the other themes use low-contrast greys to de-emphasize text, this one
+keeps every text tone at or above the WCAG AAA ratio of 7:1 against the
+background, and keeps success, warning, error, and info distinct from one
+another.
+
+Set `NO_COLOR` to remove colour entirely:
+
+```bash
+NO_COLOR=1 superqode
+```
+
+SuperQode never uses colour as the only carrier of meaning. Status words such
+as `ready` and `needs setup` are spelled out, pickers mark the highlighted row
+with `▶` and a number, and diffs prefix lines with `+` and `-`, so a monochrome
+session loses no information.
 
 ## Export
 

@@ -1039,9 +1039,63 @@ THEME_GRUVBOX = Theme(
 )
 
 
+THEME_HIGH_CONTRAST = Theme(
+    name="high-contrast",
+    description="High contrast - Maximum legibility for low vision and bright rooms",
+    colors=ColorPalette(
+        # Pure black behind pure white is the highest contrast a terminal can
+        # offer (21:1). The other themes are stylistic; this one exists so the
+        # interface stays readable when the decorative palettes do not.
+        bg_void="#000000",
+        bg_surface="#000000",
+        bg_elevated="#000000",
+        bg_hover="#303030",
+        bg_active="#404040",
+        # Borders stay visible rather than blending into the background.
+        border_subtle="#808080",
+        border_default="#c0c0c0",
+        border_strong="#ffffff",
+        border_focus="#ffff00",
+        # Primary - Yellow, the most legible accent on black.
+        primary_dark="#c0c000",
+        primary="#ffff00",
+        primary_light="#ffff40",
+        primary_bright="#ffff80",
+        primary_glow="#ffffc0",
+        # Secondary - Cyan
+        secondary_dark="#00c0c0",
+        secondary="#00ffff",
+        secondary_light="#80ffff",
+        # Semantic colors kept maximally distinct from each other. Meaning is
+        # never carried by colour alone in the UI, so these only reinforce the
+        # symbols and labels that are already present.
+        success="#00ff00",
+        success_light="#80ff80",
+        warning="#ffff00",
+        warning_light="#ffff80",
+        error="#ff0000",
+        error_light="#ff8080",
+        info="#00ffff",
+        info_light="#80ffff",
+        # Text colors: no dim greys that disappear on a bright screen.
+        text_primary="#ffffff",
+        text_secondary="#ffffff",
+        text_muted="#e0e0e0",
+        text_dim="#c0c0c0",
+        text_ghost="#a0a0a0",
+        # Special
+        code_bg="#000000",
+        diff_add="#00ff00",
+        diff_remove="#ff0000",
+        diff_change="#ffff00",
+    ),
+)
+
+
 # Theme registry
 THEMES: Dict[str, Theme] = {
     "superqode": THEME_SUPERQODE,
+    "high-contrast": THEME_HIGH_CONTRAST,
     "tokyonight": THEME_TOKYONIGHT,
     "dracula": THEME_DRACULA,
     "nord": THEME_NORD,

@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.52] - 2026-07-27
+
+### Added
+
+- **Install a missing runtime without leaving the TUI** - Choosing a runtime
+  whose Python extra is not installed now opens a keyboard-navigable prompt
+  (install for me / install it myself / cancel) instead of printing a command
+  and stopping. Choosing to install runs it against the interpreter SuperQode
+  is running from, verifies the package is importable afterwards, and connects
+  without a restart.
+- **Transcript search without Vim mode** - `Ctrl+F` and `:search <text>` reuse
+  the existing Vim search engine, which was previously reachable only through
+  `/` in Vim normal mode. A bare `:search` advances to the next match.
+- **`:keys` keyboard reference** - Generated from the app's own bindings, so it
+  cannot drift from the keys that are actually bound.
+- **Reword the previous prompt** - `Ctrl+P` and `:edit` load your last message
+  back into the input. `:retry` still resends it unchanged.
+- **`high-contrast` theme** - An accessibility palette for low vision and bright
+  rooms, held to WCAG AAA (7:1) for every text tone and AA (4.5:1) for the
+  semantic colours by test. `NO_COLOR` is documented and now covered by a
+  regression test.
+
+### Changed
+
+- **`:disconnect` disconnects** - It previously only reset the view: BYOK,
+  local, and self-contained SDK sessions live on a separate object that was
+  never torn down, so the badge cleared while the runtime stayed connected. It
+  now cancels and closes the runtime, detaches the harness, clears the runtime
+  and harness environment variables, and returns to a freshly launched state.
+- **`:home` no longer looks disconnected** - It deliberately keeps the session
+  warm, so it now leaves the live model and provider on screen instead of
+  blanking a badge that described a connection still running. It also stops
+  resetting the session execution mode out from under that live session.
+- **Modal prompts declare their behavior once** - New prompt registry holding
+  the Enter, typed-answer, Esc, arrow, and number-key behavior of a prompt in a
+  single registration, replacing five hand-edited dispatch sites per prompt.
+  The missing-dependency prompt is migrated; the remaining prompts continue to
+  use the previous path.
+- **Release metadata** - Bumped package, runtime, lockfile, ACP registry,
+  installer example, and package checks to `0.2.52`.
+
 ## [0.2.51] - 2026-07-26
 
 ### Fixed

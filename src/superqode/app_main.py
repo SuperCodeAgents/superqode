@@ -36,6 +36,7 @@ from superqode.app.recipes import PromptCompletionCandidate, LocalRecipe  # noqa
 # Import from modular app package
 from superqode.app.css import APP_CSS
 from superqode.app.models import AgentInfo
+from superqode.app.prompt_stack import PromptSpec, PromptStack  # noqa: F401
 from superqode.app.suggester import CommandSuggester
 from superqode.app.widgets import (
     ColorfulStatusBar,
@@ -192,6 +193,7 @@ class SuperQodeApp(
         Binding("ctrl+t", "toggle_thinking", "Toggle Logs", show=True),
         Binding("ctrl+k", "command_palette", "Commands", show=True),
         Binding("ctrl+r", "rewind", "Rewind", show=True),
+        Binding("ctrl+f", "search_transcript", "Search", show=True),
         Binding("escape", "smart_cancel", "Cancel", show=True),
         Binding("pageup", "scroll_log_page_up", "Scroll Up", show=False),
         Binding("pagedown", "scroll_log_page_down", "Scroll Down", show=False),
@@ -264,6 +266,8 @@ class SuperQodeApp(
         Binding("ctrl+shift+c", "copy_response", "Copy", show=False),
         # External editor
         Binding("ctrl+e", "open_editor", "Editor", show=False),
+        # Reword and resend the previous prompt
+        Binding("ctrl+p", "edit_last_message", "Edit last message", show=False),
         # Focus input (always return focus to prompt)
         Binding("ctrl+i", "focus_input", "Focus Input", show=False),
         # Leader key
@@ -337,6 +341,9 @@ class SuperQodeApp(
 
     def __init__(self):
         super().__init__()
+        # Modal prompts declare their Enter/text/Esc/navigation behavior once
+        # here instead of being hand-registered across five dispatch sites.
+        self._prompts = PromptStack()
         # Apply the persisted accent theme before any widget renders so the
         # whole UI paints in the chosen palette from the first frame.
         self._current_theme = load_saved_theme()
@@ -853,6 +860,11 @@ class SuperQodeApp(
             self._awaiting_harness_install = None
             log = self.query_one("#log", ConversationLog)
             log.add_info("Harness installation cancelled.")
+            return
+        if getattr(self, "_awaiting_dependency_install", None):
+            self._awaiting_dependency_install = None
+            log = self.query_one("#log", ConversationLog)
+            log.add_info("Installation cancelled.")
             return
 
         # Then check if agent is running (ACP or BYOK)
