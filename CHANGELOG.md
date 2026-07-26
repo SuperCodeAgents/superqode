@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.51] - 2026-07-26
+
+### Fixed
+
+- **`codex-sdk` extra installed an old SuperQode** - `openai-codex` published
+  only pre-releases below `0.2.0` and then jumped to its first stable release,
+  `0.144.4`, which tracks the Codex CLI version line. The previous
+  `>=0.1.0b2,<0.2.0` pin therefore matched pre-releases only, and uv does not
+  accept pre-releases for transitive dependencies. Rather than failing,
+  `uv tool install "superqode[codex-sdk]"` backtracked past every current
+  release and installed `0.1.37`. Both the `codex-sdk` and `vendor-sdks` extras
+  now require `openai-codex>=0.144.4,<1.0.0`, so the extra resolves against the
+  stable SDK without a `--prerelease` flag.
+
+### Changed
+
+- **Welcome screen** - The welcome panel offers a single next step, `:connect`,
+  in place of the previous three-row `:connect` / `:harness` / `:work` block.
+- **Release metadata** - Bumped package, runtime, lockfile, ACP registry,
+  installer example, and package checks to `0.2.51`.
+
+### Added
+
+- **SuperQode website links** - Linked <https://super-agentic.ai/superqode/>
+  from the README header, badges, and footer, the documentation home page and
+  its badge row, the MkDocs footer icons, and the PyPI `Homepage` metadata.
+
 ## [0.2.50] - 2026-07-26
 
 ### Added

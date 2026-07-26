@@ -1,6 +1,6 @@
 [project]
 name = "superqode"
-version = "0.2.50"
+version = "0.2.51"
 description = "Agent Engineering for your code factory"
 readme = "README.md"
 license = "Apache-2.0"
@@ -107,7 +107,12 @@ openai-agents = [
     "openai-agents[litellm]>=0.17.4",
 ]
 codex-sdk = [
-    "openai-codex>=0.1.0b2,<0.2.0",
+    # openai-codex jumped from the 0.1.0bN betas straight to 0.144.4, its first
+    # stable release, and now tracks the Codex CLI version line. A cap of <0.2.0
+    # left only pre-releases in range: uv refuses pre-releases for transitive
+    # dependencies, so `uv tool install "superqode[codex-sdk]"` backtracked past
+    # every current release to an ancient superqode instead of failing loudly.
+    "openai-codex>=0.144.4,<1.0.0",
 ]
 copilot-sdk = [
     # Official GitHub Copilot SDK. The Python wheel manages a pinned Copilot
@@ -128,7 +133,8 @@ antigravity-sdk = [
 # Convenience bundle for users who actively use all supported vendor SDK
 # runtimes. Vendor CLIs such as Grok and agy remain separate installations.
 vendor-sdks = [
-    "openai-codex>=0.1.0b2,<0.2.0",
+    # Keep in step with the codex-sdk extra above.
+    "openai-codex>=0.144.4,<1.0.0",
     "github-copilot-sdk>=1.0.8,<2.0.0",
     "claude-agent-sdk>=0.2.9,<0.3.0",
     "google-antigravity>=0.1.8,<0.2.0",
