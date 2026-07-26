@@ -152,7 +152,7 @@ from the previous stage.
 Use SuperQode as a daily coding-agent harness from the TUI or CLI:
 
 ```bash
-superqode --tui
+superqode
 superqode --print "fix the failing test and summarize the change"
 superqode --runtime codex-sdk --print "review this repository"
 superqode --connect claude --print "summarize the last change"
@@ -368,7 +368,6 @@ my-harness = "my_package:run"
 ```
 
 ```bash
-pip install -e .
 superqode harness list
 superqode harness run my-harness "review this diff"
 superqode harness protocol conformance my-harness
@@ -560,21 +559,6 @@ SuperQode normalizes runtime-specific streams into one harness event graph:
 
 This gives teams one way to inspect and debug runs across different agent
 frameworks.
-
-## Documentation
-
-The README is the quick path. Detailed setup, concepts, commands, providers,
-and architecture live in the
-[full documentation](https://superagenticai.github.io/superqode/).
-
-- [Installation and optional runtimes](https://superagenticai.github.io/superqode/getting-started/installation/)
-- [Developer workflows](docs/developer-workflows.md)
-- [Connection methods and vendors](docs/concepts/modes.md)
-- [Harness system](docs/advanced/harness-system.md)
-- [Harness Protocol](docs/advanced/harness-protocol.md)
-- [Local context and compaction](docs/advanced/local-context.md)
-- [Multi-repository search and edit safety](docs/advanced/multi-repo-search.md)
-- [MCP command](docs/cli-reference/mcp-command.md)
 
 ## Contributing
 
