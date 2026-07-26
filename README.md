@@ -24,13 +24,20 @@
   <a href="https://github.com/SuperagenticAI/superqode/network/members"><img src="https://img.shields.io/github/forks/SuperagenticAI/superqode?style=flat-square" alt="Forks"></a>
   <a href="https://github.com/SuperagenticAI/superqode/issues"><img src="https://img.shields.io/github/issues/SuperagenticAI/superqode?style=flat-square" alt="Issues"></a>
   <a href="https://github.com/SuperagenticAI/superqode/pulls"><img src="https://img.shields.io/github/issues-pr/SuperagenticAI/superqode?style=flat-square" alt="PRs"></a>
+  <a href="https://super-agentic.ai/superqode/"><img src="https://img.shields.io/badge/website-super--agentic.ai-7c3aed?style=flat-square" alt="Website"></a>
 </p>
+
+<h3 align="center">
+  <a href="https://super-agentic.ai/superqode/">🌐 Visit the SuperQode Website →</a>
+</h3>
 
 <h3 align="center">
   <a href="https://superagenticai.github.io/superqode/">📚 Read the Full Documentation →</a>
 </h3>
 
 <p align="center">
+  <a href="https://super-agentic.ai/superqode/"><strong>Website</strong></a>
+  &nbsp;·&nbsp;
   <a href="https://superagenticai.github.io/superqode/getting-started/quickstart/"><strong>Quick Start</strong></a>
   &nbsp;·&nbsp;
   <a href="https://github.com/SuperagenticAI/superqode/discussions">Discussions</a>
@@ -580,6 +587,8 @@ uv run pytest
 
 <p align="center">
   <strong>Build a coding-agent harness you can inspect, govern, and improve.</strong><br>
+  <a href="https://super-agentic.ai/superqode/"><strong>🌐 SuperQode Website →</strong></a>
+  &nbsp;·&nbsp;
   <a href="https://superagenticai.github.io/superqode/"><strong>📚 Explore the Full Documentation →</strong></a>
   &nbsp;·&nbsp;
   <a href="https://superagenticai.github.io/superqode/getting-started/quickstart/"><strong>Get Started</strong></a>

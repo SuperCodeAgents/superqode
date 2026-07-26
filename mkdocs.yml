@@ -128,7 +128,11 @@ extra:
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/superqode/
     - icon: fontawesome/solid/globe
+      link: https://super-agentic.ai/superqode/
+      name: SuperQode website
+    - icon: fontawesome/solid/building
       link: https://super-agentic.ai
+      name: Superagentic AI
 
   generator: false
 

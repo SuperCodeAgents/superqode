@@ -355,8 +355,9 @@ def test_welcome_uses_agent_engineering_positioning():
 
     assert "AGENT ENGINEERING FOR YOUR CODE FACTORY" in text
     assert ":connect" in text
-    assert ":harness" in text
-    assert ":work" in text
+    # The welcome screen offers exactly one next step: connect.
+    assert ":harness" not in text
+    assert ":work" not in text
     assert ":init" not in text
     assert "Harnesses · Context · Memory · Tools · Evaluations · Control loops" in text
     assert "Build · Connect · Orchestrate · Evaluate · Optimize" in text
@@ -366,7 +367,7 @@ def test_welcome_uses_agent_engineering_positioning():
     assert "/work/repository" in text
     assert "Not selected" in text
     assert "Not connected" in text
-    assert "Next steps" in text
+    assert "Next step" in text
     assert "[1]" not in text
     assert "Ctrl+C" in text
     assert "Local/open models · Harnesses · ACP/MCP/A2A · BYOK/SDKs" not in text
@@ -383,7 +384,7 @@ def test_welcome_uses_agent_engineering_positioning():
     assert lines[lifecycle_index + 1] == ""
 
 
-def test_welcome_next_steps_follow_workspace_state():
+def test_welcome_shows_workspace_state_with_a_single_next_step():
     state = WelcomeState(
         repository="/work/repository",
         harness="review-harness",
@@ -398,9 +399,12 @@ def test_welcome_next_steps_follow_workspace_state():
     assert "anthropic/claude-opus" in text
     assert "Runtime" in text
     assert "acp" in text
-    assert "Task" in text
-    assert ":harness inspect" in text
-    assert "select a local, BYOK, or ACP connection" not in text
+    # The next step stays :connect whatever the workspace state is.
+    assert ":connect" in text
+    assert "select a local, BYOK, or ACP connection" in text
+    assert "Task" not in text
+    assert ":harness" not in text
+    assert ":work" not in text
 
 
 def test_welcome_compacts_for_narrow_terminals():

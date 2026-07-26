@@ -138,25 +138,8 @@ def render_welcome(
         items.append(Text("\n", style=""))
 
     next_text = Text(justify="left")
-    next_text.append("Next steps\n", style=f"bold {THEME['text']}")
-    if not state.connected:
-        steps = [
-            (":connect", "select a local, BYOK, or ACP connection", THEME["cyan"]),
-            (":harness", "load or create a repository HarnessSpec", THEME["purple"]),
-            (":work", "create or inspect a durable WorkOrder", THEME["gold"]),
-        ]
-    elif not state.harness:
-        steps = [
-            (":harness", "load or create a repository HarnessSpec", THEME["purple"]),
-            ("Task", "describe the repository change to execute", THEME["cyan"]),
-            (":work", "create or inspect a durable WorkOrder", THEME["gold"]),
-        ]
-    else:
-        steps = [
-            ("Task", "describe the repository change to execute", THEME["cyan"]),
-            (":work", "create or inspect a durable WorkOrder", THEME["gold"]),
-            (":harness inspect", "review the active HarnessSpec", THEME["purple"]),
-        ]
+    next_text.append("Next step\n", style=f"bold {THEME['text']}")
+    steps = [(":connect", "select a local, BYOK, or ACP connection", THEME["cyan"])]
     command_width = max(len(command) for command, _, _ in steps)
     for index, (command, description, color) in enumerate(steps):
         next_text.append(f"{command:<{command_width}}", style=f"bold {color}")
