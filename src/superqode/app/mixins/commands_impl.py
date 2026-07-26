@@ -2689,9 +2689,7 @@ class CommandImplMixin:
                 )
                 return
             if sub == "optimize-omni" and not tokens:
-                log.add_info(
-                    "Usage: :harness optimize-omni --spec <path> --tasks <path> --live"
-                )
+                log.add_info("Usage: :harness optimize-omni --spec <path> --tasks <path> --live")
                 return
             if sub == "improve" and not tokens:
                 log.add_info(

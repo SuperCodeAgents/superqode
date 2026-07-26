@@ -5,7 +5,7 @@
 <h1 align="center">SuperQode</h1>
 
 <p align="center">
-  <img src="assets/superqode-logo.png" alt="SuperQode logo" width="88">
+  <img src="assets/superqode-logo.png" alt="SuperQode logo" width="120">
 </p>
 
 <h3 align="center">Agent engineering for your code factory.</h3>
@@ -132,6 +132,137 @@ superqode --harness workbench --print "review this repository"
 superqode harness use workbench
 ```
 
+## Progressive Learning Path
+
+Use SuperQode in stages. Each stage builds on a working developer experience
+from the previous stage.
+
+| Stage | Goal | Start with |
+| --- | --- | --- |
+| 1. Use | Work in a repository with a normal terminal coding-agent workflow | [`superqode`](#get-started) |
+| 2. Connect | Select a coding agent, hosted provider, local model, or optional harness | [`:connect`](docs/concepts/modes.md) |
+| 3. Switch | Change harnesses during a session while preserving or forking context | [Choose a Harness](#choose-a-harness) |
+| 4. Build | Create a repository-owned HarnessSpec when you need repeatable behavior | [Create Your Own Harness](#create-your-own-harness) |
+| 5. Evaluate | Measure the harness with tasks, scorecards, and regression gates | [Evaluate and Optimize](#evaluate-and-optimize) |
+| 6. Optimize | Generate staged candidates after the evaluation contract is meaningful | [Evaluate and Optimize](#evaluate-and-optimize) |
+| 7. Operate | Coordinate durable, verified work across harnesses and repositories | [Code Factory Workflows](#code-factory-workflows) |
+
+## Developer Workflows
+
+Use SuperQode as a daily coding-agent harness from the TUI or CLI:
+
+```bash
+superqode --tui
+superqode --print "fix the failing test and summarize the change"
+superqode --runtime codex-sdk --print "review this repository"
+superqode --connect claude --print "summarize the last change"
+```
+
+Inside the TUI, start with `:help`. Common commands include:
+
+```text
+:connect codex        # Codex SDK with local Codex login
+:connect copilot      # GitHub Copilot SDK
+:connect claude       # Claude Agent SDK
+:connect antigravity  # signed-in Antigravity CLI
+:connect byok         # hosted provider or API-key path
+:connect local        # local model provider
+:connect acp          # installed and featured ACP coding agents
+:connect acp refresh  # refresh the cached official ACP Registry
+:mcp                  # tool and resource server connections
+:a2a                  # remote A2A agent connections
+:tree                 # saved session branches
+:share create         # portable session artifact
+:export markdown      # transcript export
+:trust doctor         # project plugin, MCP, and hook audit
+:plugins doctor       # plugin manifest validation
+:plan fix the tests   # planning-only review
+:plan approve         # execute the approved plan
+:memory providers     # memory provider status
+:memory remember ...  # explicit project memory
+:vim on               # optional Vim-like navigation
+```
+
+CLI equivalents:
+
+```bash
+superqode sessions tree
+superqode share create <session-id>
+superqode share import <artifact.superqode-share.json> --session-id imported
+superqode trust doctor
+superqode trust yes
+superqode plugins add ./my-plugin
+superqode plugins doctor
+superqode memory remember "Use pnpm in this repo" --kind preference
+superqode memory search "package manager"
+superqode memory providers
+```
+
+Find local inference paths and current zero-price model routes:
+
+```bash
+superqode providers scan-free
+superqode providers scan-free --live --source openrouter --limit 20
+```
+
+See [Developer Workflows](docs/developer-workflows.md) for the complete command
+set and [Connection Methods and Vendors](docs/concepts/modes.md) for the
+supported local, ACP, BYOK, SDK, MCP, and A2A paths.
+
+## Choose a Harness
+
+Open `:harness` in the TUI to select a built-in harness, a project
+`HarnessSpec`, or an installed adapter. The same choices are available from the
+CLI:
+
+```bash
+superqode harness list
+superqode harness show core
+superqode harness wizard
+superqode harness doctor --spec harness.yaml
+superqode harness run --spec harness.yaml --prompt "summarize the architecture"
+```
+
+Sessions remain durable when you switch harnesses. You can continue the same
+conversation or fork it for an independent attempt:
+
+```text
+:harness switch workbench
+:harness switch kimi-coding --fork
+:sessions switch
+```
+
+Other optional runtimes include OpenAI Agents SDK, Google ADK, Codex SDK,
+GitHub Copilot SDK, Claude Agent SDK, DeepAgents, PydanticAI, and RLM Code. See
+[runtime setup](https://superagenticai.github.io/superqode/getting-started/installation/#optional-dependencies)
+for installation commands and authentication guidance.
+
+### Harness Sessions
+
+The conversation session is durable and the active harness is replaceable.
+Switching harnesses keeps the same session ID and replays the stored context
+through the selected harness. Use `--fork` when the new harness should work on
+an independent copy of the conversation.
+
+```bash
+superqode --print --resume SESSION_ID --harness workbench "continue the task"
+superqode --print --fork SESSION_ID --harness kimi-coding "try another approach"
+```
+
+The harness catalog reports runtime mode, readiness, continuity, and model
+route. The session picker restores the latest harness, model, and conversation
+history for each saved session. Vendor-owned thread stores remain available
+through runtime commands such as `:codex sessions` and `:claude sessions`.
+
+### Common Harness Choices
+
+| Goal | Start with |
+| --- | --- |
+| Let SuperQode edit, search, and run shell commands under policy | `superqode harness init app --template coding` |
+| Evaluate model capability without repository access | `superqode harness init reasoner --template no-tool` |
+| Start from an Open Model family pack | `superqode harness list-templates` |
+| Generate a local-first harness for this machine | `superqode local init --repo .` |
+
 ## What SuperQode Does
 
 SuperQode makes the coding-agent harness an inspectable, repository-owned
@@ -190,60 +321,6 @@ SuperQode separates agent systems into interchangeable pieces:
 
 You can change any one of these pieces without rewriting the rest.
 
-## Choose a Harness
-
-Open `:harness` in the TUI to select a built-in harness, a project
-`HarnessSpec`, or an installed adapter. The same choices are available from the
-CLI:
-
-```bash
-superqode harness list
-superqode harness show core
-superqode harness wizard
-superqode harness doctor --spec harness.yaml
-superqode harness run --spec harness.yaml --prompt "summarize the architecture"
-```
-
-Sessions remain durable when you switch harnesses. You can continue the same
-conversation or fork it for an independent attempt:
-
-```text
-:harness switch workbench
-:harness switch kimi-coding --fork
-:sessions switch
-```
-
-Other optional runtimes include OpenAI Agents SDK, Google ADK, Codex SDK,
-GitHub Copilot SDK, Claude Agent SDK, DeepAgents, PydanticAI, and RLM Code. See
-[runtime setup](https://superagenticai.github.io/superqode/getting-started/installation/#optional-dependencies)
-for installation commands and authentication guidance.
-
-### Harness Sessions
-
-The conversation session is durable and the active harness is replaceable.
-Switching harnesses keeps the same session ID and replays the stored context
-through the selected harness. Use `--fork` when the new harness should work on
-an independent copy of the conversation.
-
-```bash
-superqode --print --resume SESSION_ID --harness workbench "continue the task"
-superqode --print --fork SESSION_ID --harness kimi-coding "try another approach"
-```
-
-The harness catalog reports runtime mode, readiness, continuity, and model
-route. The session picker restores the latest harness, model, and conversation
-history for each saved session. Vendor-owned thread stores remain available
-through runtime commands such as `:codex sessions` and `:claude sessions`.
-
-### Common Harness Choices
-
-| Goal | Start with |
-| --- | --- |
-| Let SuperQode edit, search, and run shell commands under policy | `superqode harness init app --template coding` |
-| Evaluate model capability without repository access | `superqode harness init reasoner --template no-tool` |
-| Start from an Open Model family pack | `superqode harness list-templates` |
-| Generate a local-first harness for this machine | `superqode local init --repo .` |
-
 ## Create Your Own Harness
 
 Use the interactive wizard:
@@ -300,6 +377,52 @@ superqode harness protocol conformance my-harness
 Use `doctor` before sharing a harness with a team. It checks backend
 availability, spec compatibility, sandbox policy, event-store readiness,
 approval support, MCP paths, and rich event graph support.
+
+## Evaluate and Optimize
+
+Run and measure the harness before attempting optimization:
+
+```bash
+superqode harness test --spec harness.yaml
+superqode harness eval --spec harness.yaml --tasks eval-tasks.yaml
+superqode harness auto-bench --spec harness.yaml --tasks eval-tasks.yaml
+```
+
+Evaluation records the current behavior. It does not modify the HarnessSpec.
+Compare a candidate against the baseline before adoption:
+
+```bash
+superqode harness eval \
+  --spec harness.yaml \
+  --variant candidate.yaml \
+  --tasks eval-tasks.yaml
+```
+
+Optimization is an optional outer loop. Use it only after the tasks and scoring
+contract represent the behavior that matters:
+
+```bash
+superqode harness optimize \
+  --spec harness.yaml \
+  --tasks eval-tasks.yaml \
+  --export-only
+
+superqode harness optimize-omni \
+  --spec harness.yaml \
+  --tasks eval-tasks.yaml \
+  --max-evals 20 \
+  --live
+```
+
+Candidates remain reviewable artifacts. GEPA Omni stages its selected
+HarnessSpec separately, audits allowed mutation surfaces, and runs a sealed
+held-out gate without replacing the live specification.
+
+Use the
+[harness evaluation and optimization guide](docs/advanced/harness-optimization.md)
+for task design, scorecards, MetaHarness, GEPA Omni, budgets, and result
+inspection. Use [Harness Promotion](docs/advanced/harness-promotion.md) to
+stage, canary, activate, or roll back an accepted harness.
 
 ## Local and Open Model Support
 
@@ -404,68 +527,6 @@ This is separate from adding external MCP tools to a harness through
 `runtime.config.mcp_servers`. See the
 [MCP command](docs/cli-reference/mcp-command.md) and
 [MCP configuration](docs/configuration/mcp-config.md) guides.
-
-## Developer Workflows
-
-Use SuperQode as a daily coding-agent harness from the TUI or CLI:
-
-```bash
-superqode --tui
-superqode --print "fix the failing test and summarize the change"
-superqode --runtime codex-sdk --print "review this repository"
-superqode --connect claude --print "summarize the last change"
-```
-
-Inside the TUI, start with `:help`. Common commands include:
-
-```text
-:connect codex        # Codex SDK with local Codex login
-:connect copilot      # GitHub Copilot SDK
-:connect claude       # Claude Agent SDK
-:connect antigravity  # signed-in Antigravity CLI
-:connect byok         # hosted provider or API-key path
-:connect local        # local model provider
-:connect acp          # installed and featured ACP coding agents
-:connect acp refresh  # refresh the cached official ACP Registry
-:mcp                  # tool and resource server connections
-:a2a                  # remote A2A agent connections
-:tree                 # saved session branches
-:share create         # portable session artifact
-:export markdown      # transcript export
-:trust doctor         # project plugin, MCP, and hook audit
-:plugins doctor       # plugin manifest validation
-:plan fix the tests   # planning-only review
-:plan approve         # execute the approved plan
-:memory providers     # memory provider status
-:memory remember ...  # explicit project memory
-:vim on               # optional Vim-like navigation
-```
-
-CLI equivalents:
-
-```bash
-superqode sessions tree
-superqode share create <session-id>
-superqode share import <artifact.superqode-share.json> --session-id imported
-superqode trust doctor
-superqode trust yes
-superqode plugins add ./my-plugin
-superqode plugins doctor
-superqode memory remember "Use pnpm in this repo" --kind preference
-superqode memory search "package manager"
-superqode memory providers
-```
-
-Find local inference paths and current zero-price model routes:
-
-```bash
-superqode providers scan-free
-superqode providers scan-free --live --source openrouter --limit 20
-```
-
-See [Developer Workflows](docs/developer-workflows.md) for the complete command
-set and [Connection Methods and Vendors](docs/concepts/modes.md) for the
-supported local, ACP, BYOK, SDK, MCP, and A2A paths.
 
 ## Harness Execution Model
 
