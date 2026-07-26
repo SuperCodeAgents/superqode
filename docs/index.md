@@ -141,6 +141,43 @@ Teams commonly face several related problems:
 
 SuperQode makes the harness a repository-owned engineering artifact, connects existing agents through native runtimes and ACP, and applies a consistent lifecycle for execution, evaluation, governance, evidence, delivery, and optimization.
 
+---
+
+## Where SuperQode fits
+
+The coding-agent market can be understood by asking two ownership questions:
+who controls the model, and who controls the harness around it? The harness is
+the complete agent loop, including its prompts, context strategy, tools, memory,
+permissions, workflow, and verification behavior.
+
+| Ecosystem pattern | Model choice | Harness ownership | Typical examples | Practical result |
+| --- | --- | --- | --- | --- |
+| **Closed model, closed harness** | Primarily the vendor's models | The vendor owns and evolves the agent loop | Vendor coding agents such as [Claude Code with Claude](https://docs.anthropic.com/en/docs/claude-code/getting-started) | A polished coding experience, with the model and harness lifecycle managed as one product |
+| **Open or selectable models, closed harness** | Several providers or model families may be available | The product vendor still controls the complete loop | Multi-model products such as [Cursor](https://docs.cursor.com/models/) | Model choice increases, but the team does not own the complete harness as a portable repository artifact |
+| **Open models, open harness** | Hosted, open-weight, or local models | The agent implementation is open source and configurable | [Cline](https://github.com/cline/cline), [OpenCode](https://github.com/anomalyco/opencode), and [Aider](https://aider.chat/docs/llms.html) | The team can inspect the source and select models, but usually operates the product's established agent loop |
+
+These categories describe control boundaries, not permanent labels. Products
+can support routes that cross categories. The deciding question for SuperQode
+is whether a team can store the complete working contract in its repository,
+run it across agents and models, measure it independently, and promote a proven
+revision.
+
+### Coding agents, static harnesses, meta-harnesses, and SuperQode
+
+| Layer | Primary purpose | What it provides | Relationship to SuperQode |
+| --- | --- | --- | --- |
+| **Coding agent** | Complete coding sessions | An interactive product with a built-in agent loop | SuperQode can connect supported coding agents and switch between them during a session |
+| **Static agent harness** | Run a configurable agent loop | A useful implementation with prompts, tools, and model settings defined by that product or framework | SuperQode can run its own native harness or connect external harnesses while keeping a common session, policy, and evidence layer |
+| **Meta-harness or optimizer** | Search for better prompts, code, configuration, or agent structure | Candidate generation and selection around an evaluator | SuperQode uses optimizers such as [MetaHarness and GEPA Omni](advanced/harness-optimization.md) as optional stages in a guarded lifecycle |
+| **SuperQode** | Engineer and operate the complete coding-agent lifecycle | Everyday coding, agent and model switching, repository-owned HarnessSpecs, evaluation, governance, optimization, and promotion | One terminal-first system from first session to an approved harness revision |
+
+SuperQode therefore does not require a team to abandon its current coding
+agents. A developer can use it as a normal coding agent first, connect the
+agents and models already available to the team, and adopt a repository-owned
+HarnessSpec only when repeatability and control are needed. Evaluation,
+optimization, and promotion come after the harness has a meaningful task
+contract.
+
 ## Build your code factory
 
 Build an organization-owned harness, select one from the catalog, or connect an existing coding agent through a native runtime or ACP. SuperQode operates them through one consistent system for orchestration, evaluation, governance, and optimization.
@@ -239,14 +276,6 @@ Agent Engineering treats the complete agent lifecycle as an engineering system. 
     Detect local engines, probe real context windows, generate starter harnesses, smoke test readiness, repair weak tool calls, and benchmark local candidates.
 
     [:octicons-arrow-right-24: Local Agentic Coding](local-agentic-coding.md)
-
--   :octicons-cpu-16:{ .lg .middle } **Poolside Laguna S 2.1**
-
-    ---
-
-    Run Poolside's official Q4_K_M GGUF through DwarfStar or a compatible llama.cpp build. SuperQode resolves one shared model artifact, applies Laguna model policy, preserves reasoning across tool turns, and exposes request-controlled, chat, and reasoner variants.
-
-    [:octicons-arrow-right-24: Laguna Local Inference](providers/local.md#dwarfstar-ds4)
 
 -   :octicons-workflow-16:{ .lg .middle } **Local dynamic workflows with RLM**
 

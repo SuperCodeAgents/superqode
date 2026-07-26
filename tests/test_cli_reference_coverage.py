@@ -196,7 +196,7 @@ def test_connection_reference_covers_methods_profiles_providers_and_agents():
     assert missing_profiles == []
     assert missing_providers == []
     assert missing_agents == []
-    assert "🔌 Connect Agents, Models & Harnesses:" in mkdocs
+    assert "🔌 Connect:" in mkdocs
     assert "🧭 All Connections: concepts/modes.md" in mkdocs
 
 
