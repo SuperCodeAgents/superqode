@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.55] - 2026-07-27
+
+### Added
+
+- **Kimi K3 across every host serving its open weights** - Moonshot published
+  the K3 weights on 2026-07-26, so the same model is now served by several
+  providers under a different id each. SuperQode offers the verified id for
+  `moonshot`, `baseten`, `fireworks`, `together`, `openrouter`, `siliconflow`,
+  and self-hosted `vllm` / `sglang`. Whichever route is used, the existing
+  `kimi` model pack still applies, so maximum reasoning and parallel tools
+  follow the model rather than the provider.
+- **Baseten provider** - First-class OpenAI-compatible host (`BASETEN_API_KEY`,
+  `https://inference.baseten.co/v1`), a day-0 host for Kimi K3 with 1M context
+  and native vision. Previously reachable only as a models.dev long-tail entry
+  with no curated metadata or example models.
+- **Modal provider** - Serverless GPU platform. Modal gives you your own
+  deployed endpoint rather than a shared inference API, so it ships without a
+  default base URL: point `MODAL_BASE_URL` at the deployment you created.
+- **Install a missing ACP agent from the picker** - Selecting an agent that is
+  not installed now offers to run its installer. SuperQode runs named
+  package-manager installs (`npm`, `cargo`, `go`, `uv tool`, `pipx`, `brew`)
+  and never runs installers that pipe a remote script into a shell, because
+  agreeing to install an agent is not agreement to execute an unreviewable
+  remote script. Failures print the installer's own output and stop, with no
+  retry, no sudo, and no changes to the user's toolchain.
+- **Keyboard selection for vendor model lists** - `:agy models`, `:claude
+  model`, `:copilot models`, and `:tau models` printed plain lists that
+  required retyping an id; `:claude model` printed numbers that did nothing.
+  All four now share one picker with arrows, Enter, and number selection.
+
+### Changed
+
+- **`:connect acp` lists the whole registry** - The default view showed only
+  featured agents, hiding roughly two thirds of the catalogue behind
+  `:connect acp all`. The full list is now the default, with
+  `:connect acp featured` and `:connect acp enterprise` to narrow it.
+- **Choosing to install a runtime yourself links the vendor's documentation** -
+  The manual choice now notes that SuperQode's command can go out of date and
+  links the vendor's own install documentation where one is known.
+- **Release metadata** - Bumped package, runtime, lockfile, ACP registry,
+  installer example, and package checks to `0.2.55`.
+
+### Fixed
+
+- **The ACP picker kept its view while navigating** - Arrow keys redrew the
+  list with default arguments, so moving the highlight inside a filtered view
+  silently reverted it to the default one.
+- **`pip install` in an agent's registry entry is reported, not run** - A bare
+  `pip install` targets whichever pip is first on PATH. SuperQode names the
+  `uv pip install` equivalent instead of running it or rewriting the command
+  the registry declared.
+
 ## [0.2.54] - 2026-07-27
 
 ### Changed
