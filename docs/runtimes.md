@@ -264,8 +264,8 @@ Cognition's Devin CLI has **two** routes, and ACP is the better one:
 `devin acp` speaks JSON-RPC over stdio and surfaces tool calls and permission
 requests in the TUI. The `devin-cli` runtime instead drives Devin's documented
 single-turn print mode, which emits prose and no structured events. Choose it
-when you want Devin as a harness for unattended runs — `superqode run`,
-benchmarks, scripted turns — rather than an interactive session.
+when you want Devin as a harness for unattended runs (`superqode run`,
+benchmarks, scripted turns) rather than an interactive session.
 
 Because a `--print` turn is unattended, a permission prompt would block with
 nobody to answer it. The runtime therefore starts Devin in `bypass` mode, which
@@ -279,8 +279,8 @@ Devin refuses to start rather than run unsandboxed). Both are overridable:
 | `SUPERQODE_DEVIN_CLI_SANDBOX` | on where supported | Set `0` to disable. Setting `1` never forces the flag onto a platform Devin cannot sandbox. |
 
 Model selection uses `devin --model` (`opus`, `sonnet`, `gpt`, `codex`,
-`gemini`, `swe`, or a pinned id). The official CLI owns sign-in — run
-`devin auth login` once — and SuperQode never reads or copies its credentials.
+`gemini`, `swe`, or a pinned id). The official CLI owns sign-in: run
+`devin auth login` once, and SuperQode never reads or copies its credentials.
 After the first turn the runtime pins the session id reported by
 `devin list --format json` and resumes it with `--resume`, falling back to
 `--continue` if that listing is not in a shape SuperQode recognises.
