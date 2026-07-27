@@ -3930,6 +3930,7 @@ class AgentRunMixin:
                 "antigravity-sdk": "Antigravity SDK",
                 "antigravity-cli": "Antigravity CLI",
                 "antigravity-managed": "Antigravity managed",
+                "devin-cli": "Devin CLI",
             }.get(runtime_name, runtime_name)
             return f"Runtime: {friendly} (agent-owned harness)"
         harness_name = ""

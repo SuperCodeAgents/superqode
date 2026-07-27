@@ -2126,6 +2126,8 @@ class DialogsMixin:
             "codex.openai.com": "📝",  # Memo/code
             "grok": "G",  # Grok Build
             "x.ai": "G",  # Grok Build
+            "devin": "👷",  # Construction worker (Devin, autonomous engineer)
+            "devin.ai": "👷",  # Construction worker
             "openclaw": "🦞",  # OpenClaw
             "openclaw.ai": "🦞",  # OpenClaw
             "goose": "🪿",  # Goose

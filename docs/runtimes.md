@@ -252,6 +252,39 @@ Gemini CLI remains listed under the generic ACP picker for enterprise/API-key AC
 users. For Google AI Pro, Ultra, and free Code Assist individual accounts, prefer
 Antigravity CLI.
 
+### Devin CLI
+
+Cognition's Devin CLI has **two** routes, and ACP is the better one:
+
+```text
+:connect acp devin      # preferred: structured tool calls, diffs, approvals
+:runtime devin-cli      # headless: devin --print, plain text only
+```
+
+`devin acp` speaks JSON-RPC over stdio and surfaces tool calls and permission
+requests in the TUI. The `devin-cli` runtime instead drives Devin's documented
+single-turn print mode, which emits prose and no structured events. Choose it
+when you want Devin as a harness for unattended runs — `superqode run`,
+benchmarks, scripted turns — rather than an interactive session.
+
+Because a `--print` turn is unattended, a permission prompt would block with
+nobody to answer it. The runtime therefore starts Devin in `bypass` mode, which
+auto-approves tool calls, and pairs it with `--sandbox` wherever Devin supports
+sandboxing (macOS; Linux with `bubblewrap` and `socat`; never Windows, where
+Devin refuses to start rather than run unsandboxed). Both are overridable:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SUPERQODE_DEVIN_CLI_PERMISSION_MODE` | `bypass` | `normal`, `accept-edits`, `bypass`, `dangerous`, `autonomous`, or `plan`. Any mode other than `bypass` can stall an unattended turn. |
+| `SUPERQODE_DEVIN_CLI_SANDBOX` | on where supported | Set `0` to disable. Setting `1` never forces the flag onto a platform Devin cannot sandbox. |
+
+Model selection uses `devin --model` (`opus`, `sonnet`, `gpt`, `codex`,
+`gemini`, `swe`, or a pinned id). The official CLI owns sign-in — run
+`devin auth login` once — and SuperQode never reads or copies its credentials.
+After the first turn the runtime pins the session id reported by
+`devin list --format json` and resumes it with `--resume`, falling back to
+`--continue` if that listing is not in a shape SuperQode recognises.
+
 ## Inspecting Available Runtimes
 
 ```bash

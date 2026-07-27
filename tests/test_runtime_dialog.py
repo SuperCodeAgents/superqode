@@ -25,6 +25,7 @@ def test_dialog_lists_current_runtimes():
         "antigravity-sdk",
         "antigravity-cli",
         "antigravity-managed",
+        "devin-cli",
         "pydanticai",
     }
 

@@ -972,6 +972,7 @@ class SuperQodeApp(
             "antigravity-sdk",
             "antigravity-cli",
             "antigravity-managed",
+            "devin-cli",
         }
     )
 

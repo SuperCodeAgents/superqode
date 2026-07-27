@@ -158,6 +158,7 @@ AGENT_COLORS = {
     "claude-code": "#d97706",  # Anthropic Orange
     "codex": "#10b981",  # Green
     "grok": "#e5e7eb",  # xAI neutral, readable on the dark TUI
+    "devin": "#93c5fd",  # Cognition navy, lightened for the dark TUI
     "junie": "#fe315d",  # JetBrains Pink
     "goose": "#8b5cf6",  # Block Purple
     "kimi": "#5b21b6",  # Moonshot Deep Purple
@@ -180,6 +181,7 @@ AGENT_ICONS = {
     "claude-code": "🧡",  # Orange heart - Anthropic's warm AI
     "codex": "📜",  # Scroll
     "grok": "G",  # Grok Build
+    "devin": "👷",  # Construction worker - Cognition's autonomous engineer
     "junie": "🧠",  # Brain - JetBrains intelligence
     "goose": "🦆",  # Duck - Block's Goose
     "kimi": "🌙",  # Moon - Moonshot AI's Kimi

@@ -417,6 +417,14 @@ class ConnectMixin:
                     (":runtime list", "to compare available runtime routes"),
                 ),
             },
+            "devin-cli": {
+                "auth": "devin auth login, managed by the Devin CLI",
+                "model": "managed by Devin CLI (--model)",
+                "commands": (
+                    (":connect acp devin", "for the richer ACP path with tool calls"),
+                    (":runtime list", "to compare available runtime routes"),
+                ),
+            },
         }
         details = connection_details.get(
             runtime_name,

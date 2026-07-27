@@ -1,31 +1,109 @@
+# Official Devin CLI agent entry.
+# https://docs.devin.ai/cli
+
 identity = "devin.ai"
 name = "Devin"
 short_name = "devin"
 url = "https://docs.devin.ai/cli"
 protocol = "acp"
 author_name = "Cognition"
-author_url = "https://cognition.ai"
+author_url = "https://cognition.com"
 publisher_name = "SuperQode"
 publisher_url = "https://github.com/SuperagenticAI/superqode"
 type = "coding"
-description = "Cognition's Devin CLI coding agent through its native ACP server."
-tags = ["official-acp", "enterprise"]
+description = "Cognition's Devin CLI coding agent, connected through its native ACP server."
+tags = ["cognition", "devin", "official-acp", "subscription", "enterprise"]
 catalog_tier = "enterprise"
 run_command."*" = "devin acp"
 
 help = '''
 # Devin
 
-Devin exposes an ACP server from the installed Devin CLI.
+Devin is Cognition's coding agent. SuperQode starts its native ACP server with:
 
-## Installation
+```bash
+devin acp
+```
 
-Install and authenticate the Devin CLI using Cognition's documentation:
-https://docs.devin.ai/cli
+`devin acp` speaks JSON-RPC over stdio and is meant to be launched by an
+ACP-aware client, so run it through SuperQode rather than by hand.
 
-Start the ACP server with `devin acp`.
+## Install
+
+```bash
+# macOS / Linux / WSL
+curl -fsSL https://cli.devin.ai/install.sh | bash
+
+# macOS (Homebrew)
+brew install --cask devin-cli
+```
+
+On Windows use the installer or PowerShell — the install script does not work
+under Git Bash or CMD. Devin Desktop already bundles the CLI for Enterprise
+users.
+
+Restart your terminal after installing so `devin` lands on PATH.
+
+## Sign in
+
+Devin CLI requires an authenticated Devin account before ACP will connect:
+
+```bash
+devin auth login
+devin auth status
+```
+
+The official CLI owns its credential store — SuperQode never reads, copies, or
+refreshes Devin tokens. If `:connect acp devin` fails to hand shake, check
+`devin auth status` first.
+
+Then connect with `:connect acp devin` or `superqode --connect acp devin`.
+
+## Models
+
+Devin CLI is model-agnostic and routes to Anthropic, OpenAI, Google, and
+Cognition's own SWE models. Short names (`opus`, `sonnet`, `gpt`, `codex`,
+`gemini`, `swe`) always resolve to the newest release in that family.
+
+Pick one before connecting, since the choice belongs to the CLI:
+
+```bash
+devin --model opus            # per invocation
+```
+
+Or set a default in `~/.config/devin/config.json`:
+
+```json
+{ "agent": { "model": "swe-1-6-fast" } }
+```
+
+`/model` also switches models inside a native `devin` session.
+
+## Permissions
+
+Devin applies its own permission layer underneath ACP. `--permission-mode`
+accepts `normal`, `dangerous`, and `bypass`, and the config file takes
+`permissions.allow` / `deny` / `ask` rules such as `Read(**)` or `Exec(sudo)`.
+SuperQode's own approval prompts still apply on top of whatever Devin allows.
+
+## Config files
+
+Devin reads configuration in this order, most specific last:
+
+1. `~/.config/devin/config.json` (`%APPDATA%\devin\config.json` on Windows)
+2. `.devin/config.json` — project settings, committed
+3. `.devin/config.local.json` — local overrides, gitignored
+
+Devin's `mcpServers` block uses the same schema shape as Claude Code, so MCP
+servers configured for one generally transfer to the other.
+
+## Notes
+
+The Devin CLI is proprietary and distributed as a prebuilt binary; there is no
+SDK to embed, so ACP is the supported integration path. Cloud-only features
+(Playbooks, Secrets, scheduled sessions) are not exposed over the CLI.
 '''
 
 [actions."*".install]
-command = ""
-description = "Follow the Devin CLI installation guide"
+command = "curl -fsSL https://cli.devin.ai/install.sh | bash"
+description = "Install the official Devin CLI"

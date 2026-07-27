@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.57] - 2026-07-27
+
+### Added
+
+- **`devin-cli` runtime** - Cognition's Devin CLI can now be used as a
+  SuperQode harness for unattended work (`:runtime devin-cli`,
+  `superqode --runtime devin-cli`), driving Devin's documented single-turn
+  print mode. The ACP route (`:connect acp devin`) remains the better choice
+  for interactive use: `devin acp` surfaces structured tool calls, diffs, and
+  permission requests, while `--print` emits prose only. Pick the runtime when
+  you want Devin behind `superqode run`, benchmarks, or scripted turns.
+  Sessions carry across turns: the runtime pins the id reported by
+  `devin list --format json` and resumes it with `--resume`, falling back to
+  `--continue` when that listing is not in a recognised shape. The official CLI
+  owns sign-in (`devin auth login`) and SuperQode never reads or copies its
+  credentials.
+
+  Because a `--print` turn is unattended, an approval prompt would block with
+  nobody to answer it, so the runtime starts Devin in `bypass` mode and pairs
+  it with `--sandbox` wherever Devin supports sandboxing - macOS, and Linux
+  with `bubblewrap` and `socat`. Windows never receives the flag, since Devin
+  refuses to start rather than run unsandboxed. Override with
+  `SUPERQODE_DEVIN_CLI_PERMISSION_MODE` and `SUPERQODE_DEVIN_CLI_SANDBOX`;
+  setting the latter to `1` never forces sandboxing onto a platform that
+  cannot honour it.
+
+### Changed
+
+- **Devin's ACP catalog entry is no longer a stub** - The agent picker showed
+  no install line for Devin at all, because the entry carried an empty install
+  command. It now declares the official installer, documents `devin auth login`
+  as a prerequisite for the ACP handshake, and covers model selection
+  (`--model opus|sonnet|gpt|codex|gemini|swe`), permission modes, and the
+  three-level config precedence (`~/.config/devin/config.json`,
+  `.devin/config.json`, `.devin/config.local.json`). Devin's `mcpServers` block
+  shares Claude Code's schema shape, so MCP servers generally transfer between
+  them. Devin also picked up a catalog icon and colour instead of falling back
+  to the generic agent glyph.
+
 ## [0.2.56] - 2026-07-27
 
 ### Fixed

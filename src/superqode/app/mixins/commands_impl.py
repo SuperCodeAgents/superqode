@@ -1587,6 +1587,7 @@ class CommandImplMixin:
                     "antigravity-sdk": "google",
                     "antigravity-cli": "google",
                     "antigravity-managed": "google",
+                    "devin-cli": "devin",
                 }.get(sub, "openai")
                 pure.connect(provider=provider, model="", working_directory=Path.cwd())
                 self._announce_self_contained_connection(sub, log)

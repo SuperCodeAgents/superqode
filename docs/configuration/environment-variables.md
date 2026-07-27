@@ -55,6 +55,8 @@ Every `SUPERQODE_*` variable in one place. Most behavior is configurable per-har
 | `SUPERQODE_ANTIGRAVITY_AGENT` | agent id | `antigravity-preview-05-2026` | Override the Google-hosted Antigravity managed agent ID. |
 | `SUPERQODE_ANTIGRAVITY_MODEL` | model id | agent default | Choose a model supported by the managed Antigravity agent. |
 | `SUPERQODE_ANTIGRAVITY_MAX_TOTAL_TOKENS` | int | unset | Cap input, output, and thinking tokens for each managed Antigravity interaction. |
+| `SUPERQODE_DEVIN_CLI_PERMISSION_MODE` | Devin permission mode | `bypass` | Mode for `devin --print` turns. Anything other than `bypass` can stall an unattended turn on an approval prompt. |
+| `SUPERQODE_DEVIN_CLI_SANDBOX` | `0`/`1` | on where supported | Disable `devin --sandbox`. Setting `1` never forces it onto a platform Devin cannot sandbox. |
 | `OLLAMA_HOST` etc. | URL | per-provider | Local server endpoints (see [Local Models](../providers/local.md)). |
 
 Provider API keys (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, ...) follow each provider's standard names. See [BYOK Providers](../providers/byok.md).

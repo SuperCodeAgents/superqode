@@ -137,6 +137,11 @@ def _antigravity_managed_factory(**kwargs) -> AgentRuntime:
     return module.AntigravityManagedRuntime(**kwargs)
 
 
+def _devin_cli_factory(**kwargs) -> AgentRuntime:
+    module = importlib.import_module("superqode.runtime.devin_cli")
+    return module.DevinCLIRuntime(**kwargs)
+
+
 _FACTORIES: dict[str, Callable[..., AgentRuntime]] = {
     "builtin": _builtin_factory,
     "adk": _adk_factory,
@@ -148,6 +153,7 @@ _FACTORIES: dict[str, Callable[..., AgentRuntime]] = {
     "antigravity-sdk": _antigravity_sdk_factory,
     "antigravity-cli": _antigravity_cli_factory,
     "antigravity-managed": _antigravity_managed_factory,
+    "devin-cli": _devin_cli_factory,
 }
 
 _DESCRIPTIONS: dict[str, str] = {
@@ -161,6 +167,7 @@ _DESCRIPTIONS: dict[str, str] = {
     "antigravity-sdk": "Google Antigravity SDK (Gemini API key)",
     "antigravity-cli": "Google Antigravity CLI (Google Sign-In)",
     "antigravity-managed": "Google-hosted Antigravity agent (Gemini API key)",
+    "devin-cli": "Cognition Devin CLI (devin auth login)",
 }
 
 _OPTIONAL_PACKAGES: dict[str, tuple[str, str]] = {
@@ -187,6 +194,7 @@ _DOCUMENTATION_URLS: dict[str, str] = {
     "claude-agent-sdk": "https://docs.claude.com/en/api/agent-sdk/overview",
     "antigravity-sdk": "https://antigravity.google/docs/cli-install",
     "antigravity-cli": "https://antigravity.google/docs/cli-install",
+    "devin-cli": "https://docs.devin.ai/cli",
 }
 
 
@@ -249,6 +257,15 @@ def list_runtimes() -> list[RuntimeInfo]:
                 if status.version_text
                 else None
             )
+            install_hint = None if installed else status.issue
+            implemented = True
+        elif name == "devin-cli":
+            from .devin_status import probe_devin_cli
+
+            status = probe_devin_cli()
+            installed = status.installed
+            ready = status.compatible
+            status_detail = status.detail
             install_hint = None if installed else status.issue
             implemented = True
         elif name == "antigravity-managed":

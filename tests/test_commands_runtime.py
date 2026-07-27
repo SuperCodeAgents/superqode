@@ -50,6 +50,7 @@ def test_list_json_emits_array(runner, monkeypatch):
         "antigravity-sdk",
         "antigravity-cli",
         "antigravity-managed",
+        "devin-cli",
         "pydanticai",
     }
     # Exactly one entry is marked active.

@@ -159,6 +159,7 @@ class HelpersMixin(
                         "antigravity-sdk": "antigravity",
                         "antigravity-cli": "antigravity",
                         "antigravity-managed": "antigravity",
+                        "devin-cli": "devin",
                     }.get(runtime_name, runtime_name)
                 else:
                     harness = str(pure.get_status().get("harness", {}).get("id") or "")
@@ -673,6 +674,7 @@ class HelpersMixin(
                 "antigravity-sdk": "antigravity",
                 "antigravity-cli": "antigravity",
                 "antigravity-managed": "antigravity",
+                "devin-cli": "devin",
             }.get(runtime_name, runtime_name)
         except Exception:  # noqa: BLE001 - status chrome must never break connect
             pass
