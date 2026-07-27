@@ -18,20 +18,20 @@ def fake_catalog(monkeypatch):
     saved_p, saved_m = dict(client._providers), dict(client._models)
     client._providers = {
         "anthropic": ProviderInfo(id="anthropic", name="Anthropic", env_vars=["ANTHROPIC_API_KEY"]),
-        "baseten": ProviderInfo(
-            id="baseten",
-            name="Baseten",
-            env_vars=["BASETEN_API_KEY"],
-            api_url="https://inference.baseten.co/v1",
-            doc_url="https://docs.baseten.co",
+        "novita": ProviderInfo(
+            id="novita",
+            name="Novita",
+            env_vars=["NOVITA_API_KEY"],
+            api_url="https://inference.novita.co/v1",
+            doc_url="https://docs.novita.co",
         ),
     }
     client._models = {
-        "baseten": {
+        "novita": {
             "llama-70b": ModelInfo(
                 id="llama-70b",
                 name="Llama 70B",
-                provider="baseten",
+                provider="novita",
                 context_window=128000,
                 capabilities=[ModelCapability.TOOLS],
             )
@@ -49,16 +49,16 @@ def _run(args, env=None):
 
 
 def test_setup_dynamic_provider_json(fake_catalog):
-    res = _run(["connect", "setup", "baseten", "--json"], env={"BASETEN_API_KEY": ""})
+    res = _run(["connect", "setup", "novita", "--json"], env={"NOVITA_API_KEY": ""})
     assert res.exit_code == 0, res.output
     data = json.loads(res.output)
-    assert data["id"] == "baseten"
+    assert data["id"] == "novita"
     assert data["curated"] is False and data["dynamic"] is True
     assert data["routing"] == "openai-compatible"
-    assert data["env_vars"] == ["BASETEN_API_KEY"]
-    assert data["default_base_url"] == "https://inference.baseten.co/v1"
+    assert data["env_vars"] == ["NOVITA_API_KEY"]
+    assert data["default_base_url"] == "https://inference.novita.co/v1"
     assert data["example_models"] == ["llama-70b"]
-    assert data["connect_command"] == "superqode connect byok baseten <model>"
+    assert data["connect_command"] == "superqode connect byok novita <model>"
 
 
 def test_setup_curated_provider_text(fake_catalog):
@@ -75,11 +75,11 @@ def test_setup_unknown_provider_errors(fake_catalog):
 
 
 def test_setup_warns_when_key_missing(fake_catalog):
-    res = _run(["connect", "setup", "baseten"], env={"BASETEN_API_KEY": ""})
-    assert "Set BASETEN_API_KEY" in res.output
+    res = _run(["connect", "setup", "novita"], env={"NOVITA_API_KEY": ""})
+    assert "Set NOVITA_API_KEY" in res.output
 
 
 def test_setup_key_configured_no_warning(fake_catalog):
-    res = _run(["connect", "setup", "baseten"], env={"BASETEN_API_KEY": "sk-xyz"})
+    res = _run(["connect", "setup", "novita"], env={"NOVITA_API_KEY": "sk-xyz"})
     assert "✓ set" in res.output
     assert "⚠" not in res.output

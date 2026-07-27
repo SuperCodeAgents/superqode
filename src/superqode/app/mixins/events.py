@@ -242,8 +242,8 @@ class EventHandlerMixin:
                 self._handle_harness_install_input("", log)
                 event.input.value = ""
                 return
-            if getattr(self, "_awaiting_dependency_install", None):
-                self.action_select_highlighted_dependency_install()
+            if getattr(self, "_prompts", None) is not None and self._prompts.active is not None:
+                self._prompts.select()
                 event.input.value = ""
                 return
             if getattr(self, "_awaiting_local_dep_install", None):
@@ -462,8 +462,10 @@ class EventHandlerMixin:
         if getattr(self, "_awaiting_harness_install", None):
             if self._handle_harness_install_input(text, log):
                 return
-        if getattr(self, "_awaiting_dependency_install", None):
-            if self._handle_dependency_install_input(text, log):
+        # Any registry-driven prompt gets typed answers routed to it; prompts
+        # without their own text handler fall back to number selection.
+        if getattr(self, "_prompts", None) is not None and self._prompts.active is not None:
+            if self._prompts.handle_text(text):
                 return
         if getattr(self, "_awaiting_local_dep_install", None):
             if self._handle_local_dep_install_input(text, log):

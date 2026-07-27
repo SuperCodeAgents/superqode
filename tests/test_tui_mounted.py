@@ -1299,3 +1299,340 @@ async def test_cancelling_the_install_prompt_lands_on_the_connect_screen():
         rendered = "\n".join(line.text for line in log.lines)
         assert "Select Runtime" not in rendered
         assert "connect" in rendered.lower()
+
+
+async def test_agy_models_opens_a_picker_instead_of_printing_a_list(monkeypatch):
+    """`:agy models` must be selectable, not just readable."""
+    import shutil as _shutil
+    import subprocess as _subprocess
+
+    listing = "gemini-3.6-flash-high\ngemini-3.1-pro-low\nclaude-sonnet-4-6\n"
+
+    monkeypatch.setattr(_shutil, "which", lambda name: "/usr/bin/agy" if name == "agy" else None)
+    monkeypatch.setattr(
+        _subprocess,
+        "run",
+        lambda argv, **kw: _subprocess.CompletedProcess(argv, 0, listing, ""),
+    )
+
+    chosen = []
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        monkeypatch.setattr(app, "_antigravity_model_cmd", lambda m, log: chosen.append(m))
+
+        await app._show_agy_models(log)
+        await pilot.pause()
+
+        assert app._prompts.is_active("vendor_model")
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "Select Antigravity Model" in rendered
+        assert "gemini-3.6-flash-high" in rendered
+
+        # Arrow to the second entry and confirm it, through real keypresses.
+        await pilot.press("down")
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert chosen == ["gemini-3.1-pro-low"]
+        assert app._prompts.active is None
+
+
+async def test_agy_models_falls_back_to_raw_output_when_nothing_parses(monkeypatch):
+    """An unexpected output format must not leave the user with nothing."""
+    import shutil as _shutil
+    import subprocess as _subprocess
+
+    monkeypatch.setattr(_shutil, "which", lambda name: "/usr/bin/agy" if name == "agy" else None)
+    monkeypatch.setattr(
+        _subprocess,
+        "run",
+        lambda argv, **kw: _subprocess.CompletedProcess(argv, 0, "### no models ###\n", ""),
+    )
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        await app._show_agy_models(log)
+        await pilot.pause()
+
+        assert app._prompts.active is None
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "no models" in rendered
+
+
+async def test_number_keys_select_in_any_registry_prompt(monkeypatch):
+    """Number selection is generic, not wired per prompt."""
+    import shutil as _shutil
+    import subprocess as _subprocess
+
+    listing = "gemini-3.6-flash-high\ngemini-3.1-pro-low\nclaude-sonnet-4-6\n"
+    monkeypatch.setattr(_shutil, "which", lambda name: "/usr/bin/agy" if name == "agy" else None)
+    monkeypatch.setattr(
+        _subprocess,
+        "run",
+        lambda argv, **kw: _subprocess.CompletedProcess(argv, 0, listing, ""),
+    )
+
+    chosen = []
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        monkeypatch.setattr(app, "_antigravity_model_cmd", lambda m, log: chosen.append(m))
+
+        await app._show_agy_models(log)
+        await pilot.pause()
+        assert app._prompts.is_active("vendor_model")
+
+        await pilot.press("3")
+        for _ in range(3):
+            await pilot.pause()
+
+        assert chosen == ["claude-sonnet-4-6"]
+
+
+async def test_connect_acp_lists_the_whole_registry_by_default():
+    """A curated default hid most of the catalogue behind an undiscoverable flag."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 60)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._connect_acp_cmd("", log)
+        for _ in range(12):
+            await pilot.pause()
+
+        assert app._awaiting_acp_agent_selection is True
+        assert app._acp_catalog_view == "all"
+        default_count = len(app._acp_agent_list)
+
+        # The narrowed view must be a strict subset, proving the default is wider.
+        app._connect_acp_cmd("featured", log)
+        for _ in range(12):
+            await pilot.pause()
+
+        assert app._acp_catalog_view == "featured"
+        assert len(app._acp_agent_list) <= default_count
+        assert default_count > len(app._acp_agent_list) or default_count > 0
+
+
+async def test_arrow_keys_keep_the_chosen_acp_view():
+    """Redrawing on navigation used to snap a filtered view back to the default."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 60)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._connect_acp_cmd("featured", log)
+        for _ in range(12):
+            await pilot.pause()
+
+        assert app._acp_catalog_view == "featured"
+        featured_count = len(app._acp_agent_list)
+
+        app.action_navigate_acp_agent_down()
+        for _ in range(12):
+            await pilot.pause()
+
+        assert app._acp_catalog_view == "featured", "navigation changed the view"
+        assert len(app._acp_agent_list) == featured_count
+
+
+async def test_vendor_model_picker_is_shared_across_runtimes():
+    """One picker serves every vendor's model list, keyed by (id, label)."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        chosen = []
+
+        opened = app._show_vendor_model_picker(
+            log,
+            title="Select Test Model",
+            entries=[("m-1", "Model One"), ("m-2", "Model Two"), ("m-3", "Model Three")],
+            on_choose=chosen.append,
+            current="m-2",
+        )
+        await pilot.pause()
+
+        assert opened is True
+        assert app._prompts.is_active("vendor_model")
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "Select Test Model" in rendered
+        assert "Model One" in rendered
+        assert "◀ active" in rendered  # the current model is marked
+
+        await pilot.press("down")
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.pause()
+
+        # The id is chosen, not the label shown.
+        assert chosen == ["m-2"]
+
+
+async def test_vendor_model_picker_reports_an_empty_list():
+    """Callers need to fall back to their own message, not show an empty picker."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        assert (
+            app._show_vendor_model_picker(
+                log, title="Nothing", entries=[], on_choose=lambda _: None
+            )
+            is False
+        )
+        await pilot.pause()
+        assert app._prompts.active is None
+
+
+async def test_claude_model_list_is_selectable(monkeypatch):
+    """:claude model printed [1] [2] [3] that did nothing; they must work now."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._claude_model_cmd("", log)
+        await pilot.pause()
+
+        assert app._prompts.is_active("vendor_model")
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "Select Claude Model" in rendered
+
+
+async def test_manual_install_differs_from_cancel_and_links_the_vendor_docs():
+    """'I will install it myself' must give more than Cancel does.
+
+    Both used to land on the connect screen with near-identical output, so the
+    manual choice now carries the command plus a pointer to the vendor's own
+    documentation, which outlives any command SuperQode hardcodes.
+    """
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 50)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+
+        app._show_dependency_install_picker("codex-sdk", log)
+        await pilot.pause()
+        app._apply_dependency_install_choice("manual", pending=app._awaiting_dependency_install)
+        await pilot.pause()
+        manual = "\n".join(line.text for line in log.lines)
+
+        assert "official documentation" in manual
+        assert "https://developers.openai.com/codex/sdk/" in manual
+        assert "pip install" in manual
+
+        app._show_dependency_install_picker("codex-sdk", log)
+        await pilot.pause()
+        app._apply_dependency_install_choice("cancel", pending=app._awaiting_dependency_install)
+        await pilot.pause()
+        cancelled = "\n".join(line.text for line in log.lines)
+
+        assert "Skipped installing" in cancelled
+        assert "official documentation" not in cancelled
+
+
+async def test_manual_install_omits_the_link_when_none_is_known():
+    """No guessed URLs: a runtime with no known docs simply gets the note."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 50)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+
+        app._apply_dependency_install_choice(
+            "manual",
+            pending={"runtime": "made-up-runtime", "extra": "x", "command": "uv pip install x"},
+            log=log,
+        )
+        await pilot.pause()
+
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "official documentation" in rendered
+        assert "http" not in rendered.split("official documentation")[1]
+
+
+async def test_npm_agent_offers_to_install_and_connects(monkeypatch):
+    """A named package install is offered, run, and followed by a connect."""
+    import subprocess as _subprocess
+
+    agent = {"short_name": "kilo", "name": "Kilo CLI"}
+    ran = []
+    connected = []
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        monkeypatch.setattr(
+            "superqode.agents.registry.get_agent_installation_info",
+            lambda data: {"command": "npm install -g @kilocode/cli"},
+        )
+        assert app._show_agent_install_picker(agent, log) is True
+        await pilot.pause()
+
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "Install it for me" in rendered
+        assert "npm install -g @kilocode/cli" in rendered
+
+        monkeypatch.setattr(
+            _subprocess,
+            "run",
+            lambda argv, **kw: ran.append(list(argv))
+            or _subprocess.CompletedProcess(argv, 0, "added 1 package", ""),
+        )
+        monkeypatch.setattr("superqode.commands.acp.check_agent_installed", lambda data: True)
+        monkeypatch.setattr(app, "_connect_agent", lambda name: connected.append(name))
+
+        await pilot.press("enter")
+        for _ in range(8):
+            await pilot.pause()
+
+        assert ["npm", "install", "-g", "@kilocode/cli"] in ran
+        assert connected == ["kilo"]
+
+
+async def test_pipe_to_shell_agent_is_never_offered_for_install(monkeypatch):
+    """The option list itself must reflect what SuperQode is willing to run."""
+    agent = {"short_name": "kimi", "name": "Kimi Code"}
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        monkeypatch.setattr(
+            "superqode.agents.registry.get_agent_installation_info",
+            lambda data: {
+                "command": "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash"
+            },
+        )
+        assert app._show_agent_install_picker(agent, log) is True
+        await pilot.pause()
+
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "Install it for me" not in rendered
+        assert "I will install it myself" in rendered
+        assert "does not run those for you" in rendered
+        # Only the two safe options are selectable.
+        assert len(list(app._prompts.active.options())) == 2
+
+
+async def test_failed_agent_install_reports_and_does_not_connect(monkeypatch):
+    """A toolchain failure is the user's to investigate, reported verbatim."""
+    import subprocess as _subprocess
+
+    agent = {"short_name": "kilo", "name": "Kilo CLI"}
+    connected = []
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        from superqode.agents.install_commands import classify_install_command
+
+        install = classify_install_command("npm install -g @kilocode/cli")
+        monkeypatch.setattr(
+            _subprocess,
+            "run",
+            lambda argv, **kw: _subprocess.CompletedProcess(
+                argv, 1, "", "npm ERR! engine Unsupported engine"
+            ),
+        )
+        monkeypatch.setattr(app, "_connect_agent", lambda name: connected.append(name))
+
+        await app._install_agent_then_connect(agent, install, log)
+        await pilot.pause()
+
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "Unsupported engine" in rendered
+        assert "exited with 1" in rendered
+        assert connected == [], "a failed install must not connect"

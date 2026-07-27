@@ -60,6 +60,8 @@ class CommandImplMixin:
         self._awaiting_dependency_install = None
 
         if choice == "manual":
+            from superqode.runtime import runtime_documentation_url
+
             # The connect picker clears the log, so the command is written after
             # it: the user lands on a screen they can act from without losing
             # the one thing they asked for.
@@ -71,11 +73,23 @@ class CommandImplMixin:
             text.append(f"    {command}\n\n", style=THEME["cyan"])
             text.append(
                 "  It targets the interpreter SuperQode is running from, so the\n"
-                "  extra lands where it can be imported. Then run ",
+                "  extra lands where it can be imported.\n\n",
                 style=THEME["muted"],
             )
+            text.append(
+                "  This command can go out of date. Check the vendor's latest\n"
+                "  official documentation for the current install steps",
+                style=THEME["muted"],
+            )
+            docs_url = runtime_documentation_url(runtime_name)
+            if docs_url:
+                text.append(":\n    ", style=THEME["muted"])
+                text.append(f"{docs_url}\n", style=THEME["cyan"])
+            else:
+                text.append(".\n", style=THEME["muted"])
+            text.append("\n  Then run ", style=THEME["muted"])
             text.append(f":runtime {runtime_name}", style=THEME["cyan"])
-            text.append(" to connect,\n  or pick another option above.\n", style=THEME["muted"])
+            text.append(" to connect, or pick another option above.\n", style=THEME["muted"])
             log.write(text)
             return
 
@@ -87,6 +101,108 @@ class CommandImplMixin:
             return
 
         self.run_worker(self._install_runtime_extra_then_continue(pending, log))
+
+    def _apply_agent_install_choice(self, choice: str, *, agent_data: dict, install, log=None):
+        """Run the selected action from the ACP agent install prompt."""
+        if log is None:
+            log = self.query_one("#log", ConversationLog)
+        name = str(agent_data.get("name") or agent_data.get("short_name") or "agent")
+
+        if choice == "manual":
+            self._show_connect_type_picker(log)
+            text = Text()
+            text.append(f"\n  Install {name} yourself with:\n\n", style=THEME["muted"])
+            text.append(f"    {install.raw}\n\n", style=THEME["cyan"])
+            if install.reason:
+                text.append(f"  {install.reason}\n\n", style=THEME["muted"])
+            text.append(
+                "  Installers change. Check the vendor's own documentation for the\n"
+                "  current steps, then run ",
+                style=THEME["muted"],
+            )
+            text.append(f":connect acp {agent_data.get('short_name') or ''}", style=THEME["cyan"])
+            text.append(" to connect.\n", style=THEME["muted"])
+            log.write(text)
+            return
+
+        if choice == "cancel":
+            self._show_connect_type_picker(log)
+            log.add_info(f"Skipped installing {name}. Choose a connection above.")
+            return
+
+        self.run_worker(self._install_agent_then_connect(agent_data, install, log))
+
+    async def _install_agent_then_connect(self, agent_data: dict, install, log) -> None:
+        """Install an ACP agent, then connect when it becomes available.
+
+        Failures are reported exactly as the package manager reported them.
+        SuperQode does not retry, escalate to sudo, or adjust the user's
+        toolchain: a Node version problem is theirs to see and decide about.
+        """
+        name = str(agent_data.get("name") or agent_data.get("short_name") or "agent")
+        argv = install.argv
+        if not argv:
+            log.add_error(f"No runnable install command for {name}.")
+            return
+
+        log.add_info(f"Installing {name}: {install.command}")
+
+        def run_install() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                argv,
+                cwd=Path.cwd(),
+                text=True,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                timeout=1800,
+                check=False,
+            )
+
+        self.is_busy = True
+        try:
+            completed = await asyncio.to_thread(run_install)
+        except FileNotFoundError:
+            log.add_error(
+                f"{argv[0]} was not found. Install {argv[0]} first, or choose "
+                "'I will install it myself'."
+            )
+            return
+        except (OSError, subprocess.SubprocessError) as exc:
+            log.add_error(f"{name} installation failed: {exc}")
+            return
+        finally:
+            self.is_busy = False
+
+        output = "\n".join(
+            part.strip() for part in (completed.stdout, completed.stderr) if part and part.strip()
+        )
+        if completed.returncode != 0:
+            if hasattr(log, "add_shell"):
+                log.add_shell(install.command, output or "Installation failed.", False)
+            else:
+                log.add_error(output or "Installation failed.")
+            log.add_error(
+                f"{name} installation exited with {completed.returncode}. "
+                "The output above is from the installer, not SuperQode."
+            )
+            return
+
+        if hasattr(log, "add_shell"):
+            log.add_shell(install.command, output or "Installation completed.", True)
+
+        from superqode.commands.acp import check_agent_installed
+
+        if not check_agent_installed(agent_data):
+            # A clean exit code does not prove the launcher is on PATH; say so
+            # rather than failing later inside the connect attempt.
+            log.add_error(
+                f"{name} installed but its launcher is still not on PATH. "
+                "Open a new shell or check the installer output above."
+            )
+            return
+
+        log.add_success(f"{name} installed. Connecting...")
+        self._connect_agent(str(agent_data.get("short_name") or ""))
 
     def _handle_dependency_install_input(self, text: str, log) -> bool:
         """Resolve a typed answer to the missing-dependency prompt."""
@@ -1836,14 +1952,20 @@ class CommandImplMixin:
             log.add_error(f"Unknown Tau provider: {selected or 'no default provider'}")
             log.add_info("Run :tau providers to see configured providers.")
             return
+        if self._show_vendor_model_picker(
+            log,
+            title=f"Select Tau Model ({provider.name})",
+            entries=[(model, model) for model in provider.models],
+            # Tau addresses models as provider/model, so keep that form.
+            on_choose=lambda chosen: self._tau_model_cmd(f"{provider.name}/{chosen}", log),
+            current=str(provider.default_model or ""),
+            retry_hint="Run :tau models to choose again.",
+        ):
+            return
+
         text = Text()
         text.append(f"\n  Tau models for {provider.name}\n\n", style=f"bold {THEME['text']}")
-        for model in provider.models:
-            marker = "▸" if model == provider.default_model else " "
-            text.append(f"  {marker} ", style=THEME["success"] if marker.strip() else THEME["dim"])
-            text.append(f"{model}\n", style=THEME["cyan"])
-        text.append("\n  Select with ", style=THEME["muted"])
-        text.append(f":tau model {provider.name}/<model>\n", style=THEME["cyan"])
+        text.append("  No models are configured for this provider.\n", style=THEME["muted"])
         log.write(text)
 
     def _tau_model_cmd(self, reference: str, log) -> None:
@@ -1956,15 +2078,7 @@ class CommandImplMixin:
             self.run_worker(self._copilot_models_cmd(log), exclusive=False)
         elif sub == "model":
             if rest:
-                try:
-                    runtime = self._copilot_runtime_or_connect(log)
-                    runtime.set_model(rest)
-                    if getattr(self, "_pure_mode", None) is not None:
-                        self._pure_mode.session.model = rest
-                    self._set_status_model(rest)
-                    log.add_success(f"GitHub Copilot model set to {rest}")
-                except Exception as exc:  # noqa: BLE001
-                    log.add_error(f"Could not set GitHub Copilot model: {exc}")
+                self._copilot_model_cmd(rest, log)
             else:
                 self.run_worker(self._copilot_models_cmd(log), exclusive=False)
         elif sub in {"sessions", "threads"}:
@@ -2049,6 +2163,18 @@ class CommandImplMixin:
         text.append("copilot login\n", style=THEME["cyan"])
         log.write(text)
 
+    def _copilot_model_cmd(self, model: str, log) -> None:
+        """Set the GitHub Copilot model, from the picker or an explicit id."""
+        try:
+            runtime = self._copilot_runtime_or_connect(log)
+            runtime.set_model(model)
+            if getattr(self, "_pure_mode", None) is not None:
+                self._pure_mode.session.model = model
+            self._set_status_model(model)
+            log.add_success(f"GitHub Copilot model set to {model}")
+        except Exception as exc:  # noqa: BLE001
+            log.add_error(f"Could not set GitHub Copilot model: {exc}")
+
     async def _copilot_models_cmd(self, log) -> None:
         try:
             runtime = self._copilot_runtime_or_connect(log)
@@ -2056,21 +2182,24 @@ class CommandImplMixin:
         except Exception as exc:  # noqa: BLE001
             log.add_error(f"Could not list GitHub Copilot models: {exc}")
             return
+        active = getattr(runtime, "active_model", "")
+        entries = [
+            (str(item.get("id") or ""), str(item.get("name") or item.get("id") or ""))
+            for item in models or []
+        ]
+        if self._show_vendor_model_picker(
+            log,
+            title="Select GitHub Copilot Model",
+            entries=entries,
+            on_choose=lambda chosen: self._copilot_model_cmd(chosen, log),
+            current=str(active or ""),
+            retry_hint="Run :copilot models to choose again.",
+        ):
+            return
+
         text = Text()
         text.append("\n  GitHub Copilot models\n\n", style=f"bold {THEME['text']}")
-        if not models:
-            text.append(
-                "  No models were returned for this Copilot account.\n", style=THEME["muted"]
-            )
-        active = getattr(runtime, "active_model", "")
-        for item in models:
-            model_id = str(item.get("id") or "")
-            marker = "▸" if model_id == active else " "
-            text.append(f"  {marker} ", style=THEME["success" if marker.strip() else "dim"])
-            text.append(f"{model_id:30}", style=THEME["cyan"])
-            text.append(f"{item.get('name') or model_id}\n", style=THEME["muted"])
-        text.append("\n  Select with ", style=THEME["muted"])
-        text.append(":copilot model <id>\n", style=THEME["cyan"])
+        text.append("  No models were returned for this Copilot account.\n", style=THEME["muted"])
         log.write(text)
 
     async def _copilot_sessions_cmd(self, log) -> None:
@@ -2274,12 +2403,12 @@ class CommandImplMixin:
             else:
                 self._run_agy_native(["agent"], log, "Antigravity agents")
         elif sub in {"models", "ls-models"}:
-            self._run_agy_native(["models"], log, "Antigravity models")
+            self.run_worker(self._show_agy_models(log), exclusive=False)
         elif sub == "model":
             if rest:
                 self._antigravity_model_cmd(rest, log)
             else:
-                self._run_agy_native(["models"], log, "Antigravity models")
+                self.run_worker(self._show_agy_models(log), exclusive=False)
         elif sub in {"effort", "thinking"}:
             self._antigravity_effort_cmd(rest, log)
         elif sub == "changelog":
@@ -2329,6 +2458,56 @@ class CommandImplMixin:
             self._agy_cli_cmd(command_parts, log, label, timeout=timeout),
             exclusive=False,
         )
+
+    async def _show_agy_models(self, log) -> None:
+        """List Antigravity models in a picker rather than as plain output.
+
+        ``agy models`` prints one model per line. Falling back to that raw
+        output keeps the command useful when the format changes or the list
+        cannot be read.
+        """
+        agy = shutil.which("agy")
+        if not agy:
+            log.add_error(
+                "Antigravity CLI was not found. Install it from "
+                "https://antigravity.google/docs/cli-install"
+            )
+            return
+
+        def _run() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [agy, "models"],
+                cwd=Path.cwd(),
+                text=True,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                check=False,
+                timeout=120,
+            )
+
+        try:
+            completed = await asyncio.to_thread(_run)
+        except (OSError, subprocess.SubprocessError) as exc:
+            log.add_error(f"Could not list Antigravity models: {exc}")
+            return
+
+        if completed.returncode != 0:
+            output = "\n".join(p for p in (completed.stdout, completed.stderr) if p).strip()
+            log.add_error(f"Antigravity models failed with exit code {completed.returncode}.")
+            if output:
+                log.write(Text(output + "\n", style=THEME["text"], overflow="fold"))
+            return
+
+        models = [
+            line.strip()
+            for line in (completed.stdout or "").splitlines()
+            # Skip headings and decoration so only real model ids are offered.
+            if line.strip() and not line.strip().startswith(("#", "-", "="))
+        ]
+        if not self._show_antigravity_model_picker(models, log):
+            log.add_info("No Antigravity models were listed.")
+            if completed.stdout:
+                log.write(Text(completed.stdout, style=THEME["text"], overflow="fold"))
 
     async def _agy_cli_cmd(
         self,

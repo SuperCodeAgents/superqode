@@ -245,10 +245,33 @@ providers:
 
 | Provider | API Key Variable | Notes |
 |----------|------------------|-------|
+| `baseten` | `BASETEN_API_KEY` | OpenAI-compatible Model APIs and dedicated inference |
 | `openrouter` | `OPENROUTER_API_KEY` | 95+ models |
 | `together` | `TOGETHER_API_KEY` | Open models |
 | `groq` | `GROQ_API_KEY` | Fast inference |
 | `fireworks` | `FIREWORKS_API_KEY` | Open models |
+| `modal` | `MODAL_API_KEY` | Serverless GPUs; set `MODAL_BASE_URL` to your own deployment |
+
+### Kimi K3
+
+Kimi K3 is an open-weight model, so the same weights are served under a
+different id by each host. Use the id belonging to the provider you connect to:
+
+| Provider | Model id |
+|----------|----------|
+| `moonshot` | `kimi-k3` |
+| `baseten` | `moonshot-ai/Kimi-K3` |
+| `fireworks` | `accounts/fireworks/models/kimi-k3` |
+| `together` | `moonshotai/Kimi-K3` |
+| `openrouter` | `moonshotai/kimi-k3` |
+| `siliconflow` | `moonshotai/Kimi-K3` |
+| `vllm`, `sglang` | `moonshotai/Kimi-K3-MXFP4` |
+
+Self-hosting is a datacenter exercise rather than a laptop one: the MXFP4
+weights are roughly 594GB and Moonshot recommends 64 or more accelerators, so
+`vllm` and `sglang` are the supported self-serve paths. Whichever route is
+used, SuperQode applies the same `kimi` model pack (maximum reasoning,
+parallel tools).
 
 ### Local Providers
 

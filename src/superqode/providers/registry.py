@@ -387,11 +387,49 @@ PROVIDERS: Dict[str, ProviderDef] = {
         litellm_prefix="siliconflow/",
         docs_url="https://siliconflow.cn/",
         example_models=[
+            "moonshotai/Kimi-K3",
             "deepseek-ai/DeepSeek-V3",
             "Qwen/Qwen2.5-72B-Instruct",
             "meta-llama/Llama-3.3-70B-Instruct",
         ],
-        notes="Chinese model aggregator. Good pricing.",
+        notes="Chinese model aggregator. Good pricing. Serves Kimi K3 open weights.",
+    ),
+    "baseten": ProviderDef(
+        id="baseten",
+        name="Baseten",
+        tier=ProviderTier.TIER1,
+        category=ProviderCategory.MODEL_HOSTS,
+        env_vars=["BASETEN_API_KEY"],
+        litellm_prefix="openai/",
+        base_url_env="BASETEN_BASE_URL",
+        default_base_url="https://inference.baseten.co/v1",
+        docs_url="https://docs.baseten.co/development/model-apis/overview",
+        example_models=[
+            # Baseten spells the publisher with a hyphen, unlike every other
+            # host of the same weights.
+            "moonshot-ai/Kimi-K3",
+        ],
+        notes=(
+            "OpenAI-compatible Model APIs and dedicated inference. Day-0 host for "
+            "Kimi K3 open weights: 1M context with native vision."
+        ),
+        dynamic=True,
+    ),
+    "modal": ProviderDef(
+        id="modal",
+        name="Modal",
+        tier=ProviderTier.TIER2,
+        category=ProviderCategory.MODEL_HOSTS,
+        env_vars=["MODAL_API_KEY"],
+        litellm_prefix="openai/",
+        base_url_env="MODAL_BASE_URL",
+        docs_url="https://modal.com/docs/examples/vllm_inference",
+        notes=(
+            "Serverless GPU platform. Unlike a shared inference API, you deploy the "
+            "model and get your own endpoint, so set MODAL_BASE_URL to the URL your "
+            "deployment exposes. Day-0 recipes exist for Kimi K3."
+        ),
+        dynamic=True,
     ),
     "baidu": ProviderDef(
         id="baidu",
@@ -435,6 +473,7 @@ PROVIDERS: Dict[str, ProviderDef] = {
         litellm_prefix="openrouter/",
         docs_url="https://openrouter.ai/",
         example_models=[
+            "moonshotai/kimi-k3",
             "anthropic/claude-sonnet-4",
             "openai/gpt-4o",
             f"google/{LATEST_GOOGLE_FLASH_MODEL}",
@@ -451,6 +490,7 @@ PROVIDERS: Dict[str, ProviderDef] = {
         litellm_prefix="together_ai/",
         docs_url="https://api.together.xyz/",
         example_models=[
+            "moonshotai/Kimi-K3",
             "meta-llama/Llama-3.3-70B-Instruct-Turbo",
             "Qwen/Qwen2.5-Coder-32B-Instruct",
             "deepseek-ai/DeepSeek-R1",
@@ -488,6 +528,7 @@ PROVIDERS: Dict[str, ProviderDef] = {
         litellm_prefix="fireworks_ai/",
         docs_url="https://fireworks.ai/",
         example_models=[
+            "accounts/fireworks/models/kimi-k3",
             "accounts/fireworks/models/llama-v3p3-70b-instruct",
             "accounts/fireworks/models/qwen2p5-coder-32b-instruct",
             "accounts/fireworks/models/deepseek-r1",
@@ -751,6 +792,7 @@ PROVIDERS: Dict[str, ProviderDef] = {
         litellm_prefix="openai/",
         docs_url="https://docs.vllm.ai/",
         example_models=[
+            "moonshotai/Kimi-K3-MXFP4",
             "meta-llama/Llama-3.3-70B-Instruct",
         ],
         notes="High-throughput serving. PagedAttention.",
@@ -787,6 +829,7 @@ PROVIDERS: Dict[str, ProviderDef] = {
         litellm_prefix="openai/",
         docs_url="https://github.com/sgl-project/sglang",
         example_models=[
+            "moonshotai/Kimi-K3-MXFP4",
             "meta-llama/Llama-3.3-70B-Instruct",
         ],
         notes="Fast structured generation. RadixAttention.",

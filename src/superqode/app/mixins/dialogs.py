@@ -2049,8 +2049,8 @@ class DialogsMixin:
         log: ConversationLog,
         clear_log: bool = True,
         *,
-        include_all: bool = False,
-        catalog_tier: str = "featured",
+        include_all: bool = True,
+        catalog_tier: str = "all",
     ):
         """Show the curated ACP picker or a requested catalog tier."""
         # Schedule async execution
@@ -2067,8 +2067,8 @@ class DialogsMixin:
         log: ConversationLog,
         clear_log: bool = True,
         *,
-        include_all: bool = False,
-        catalog_tier: str = "featured",
+        include_all: bool = True,
+        catalog_tier: str = "all",
     ):
         """Show ACP agents with installed agents first and catalog grouping."""
         import traceback
@@ -2172,8 +2172,11 @@ class DialogsMixin:
                 return (0, priority, agent_data["name"])
             return (1, 999, agent_data["name"])
 
-        # Build the active view. ``all`` exposes the complete registry; the
-        # default view presents featured agents only.
+        # Build the active view. The default shows the complete registry so no
+        # agent is hidden; ``featured`` and ``enterprise`` narrow it on request.
+        # Remembered so arrow-key redraws keep the view the user chose instead
+        # of snapping back to the default.
+        self._acp_catalog_view = "all" if include_all else catalog_tier
         installed_sorted = sorted(installed, key=sort_key)
         visible_groups: list[tuple[str, list]] = []
         if include_all:
@@ -2184,8 +2187,14 @@ class DialogsMixin:
             ]
         elif catalog_tier == "enterprise":
             visible_groups = [("Enterprise", sorted(missing_by_tier["enterprise"], key=sort_key))]
-        else:
+        elif catalog_tier == "featured":
             visible_groups = [("Featured", sorted(missing_by_tier["featured"], key=sort_key))]
+        else:
+            visible_groups = [
+                ("Featured", sorted(missing_by_tier["featured"], key=sort_key)),
+                ("Enterprise", sorted(missing_by_tier["enterprise"], key=sort_key)),
+                ("Other registry agents", sorted(missing_by_tier["all"], key=sort_key)),
+            ]
         visible_groups = [(label, items) for label, items in visible_groups if items]
         all_agents = installed_sorted + [item for _, items in visible_groups for item in items]
 
@@ -2292,12 +2301,16 @@ class DialogsMixin:
         t.append(f"    Use ", style=THEME["dim"])
         t.append(f":connect acp <name>", style=THEME["pink"])
         t.append(f" to connect by name\n", style=THEME["dim"])
-        if not include_all:
+        if include_all:
             t.append("    Use ", style=THEME["dim"])
-            t.append(":connect acp all", style=THEME["cyan"])
-            t.append(" for the complete registry or ", style=THEME["dim"])
+            t.append(":connect acp featured", style=THEME["cyan"])
+            t.append(" or ", style=THEME["dim"])
             t.append(":connect acp enterprise", style=THEME["cyan"])
-            t.append(" for enterprise agents\n", style=THEME["dim"])
+            t.append(" to narrow this list\n", style=THEME["dim"])
+        else:
+            t.append("    Use ", style=THEME["dim"])
+            t.append(":connect acp", style=THEME["cyan"])
+            t.append(" for every registry agent\n", style=THEME["dim"])
         t.append("    Use ", style=THEME["dim"])
         t.append(":connect acp refresh", style=THEME["cyan"])
         t.append(" to refresh the official registry cache\n", style=THEME["dim"])

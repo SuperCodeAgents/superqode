@@ -126,6 +126,12 @@ class SelectionAwareInput(TextArea):
         Note: BYOK model selection and local model selection are excluded -
         users should type model names/numbers in the input field for those.
         """
+        prompts = getattr(app, "_prompts", None)
+        if prompts is not None and prompts.active is not None:
+            # Registry-driven prompts are short, numbered option lists, so a
+            # digit selects immediately rather than being typed into the input.
+            return True
+
         return (
             getattr(app, "_awaiting_acp_agent_selection", False)
             or getattr(app, "_awaiting_byok_provider", False)

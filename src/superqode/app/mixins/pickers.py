@@ -72,11 +72,11 @@ class PickerNavigationMixin:
                 return True
             return False
 
-        # 1a. A missing-dependency prompt sits on top of the runtime picker.
-        if self._prompts.is_active("dependency_install"):
-            options = self._DEPENDENCY_INSTALL_OPTIONS
-            if 1 <= num <= len(options):
-                self._prompts.select_index(num - 1)
+        # 1a. A registry-driven prompt sits on top of whatever opened it, so it
+        # claims the number keys. Handled generically: every prompt registered
+        # in the stack gets number selection without another branch here.
+        if self._prompts.active is not None:
+            if self._prompts.select_index(num - 1):
                 return True
             return False
 
@@ -396,6 +396,214 @@ class PickerNavigationMixin:
             # Reset model highlight index when entering a new provider
             self._byok_highlighted_model_index = 0
             self._show_provider_models(provider_id, log, use_picker=False)
+
+    def _show_agent_install_picker(
+        self,
+        agent_data: dict,
+        log: ConversationLog,
+        *,
+        reset_highlight: bool = True,
+    ) -> bool:
+        """Offer to install a missing ACP agent, when its installer is one we run.
+
+        Commands that pipe a remote script into a shell are shown but never
+        offered, so the option list itself reflects what SuperQode will do.
+        """
+        from superqode.agents.install_commands import classify_install_command
+        from superqode.agents.registry import get_agent_installation_info
+        from superqode.app.prompt_stack import PromptSpec
+
+        raw = str((get_agent_installation_info(agent_data) or {}).get("command", "") or "")
+        install = classify_install_command(raw)
+        if not install.raw:
+            return False
+
+        short_name = str(agent_data.get("short_name") or "")
+        name = str(agent_data.get("name") or short_name)
+
+        options: list[tuple[str, str, str]] = []
+        if install.runnable:
+            options.append(("install", "Install it for me", f"SuperQode runs {install.command}"))
+        options.append(("manual", "I will install it myself", "show the command and go back"))
+        options.append(("cancel", "Cancel", "return to the connection screen"))
+
+        if reset_highlight and not self._prompts.is_active("agent_install"):
+            self._prompts.push(
+                PromptSpec(
+                    name="agent_install",
+                    kind="picker",
+                    options=lambda: list(options),
+                    on_select=lambda option: self._apply_agent_install_choice(
+                        option[0], agent_data=agent_data, install=install
+                    ),
+                    on_cancel=lambda: self._show_connect_type_picker(
+                        self.query_one("#log", ConversationLog)
+                    ),
+                    render=self._rerender_agent_install_picker,
+                    data={"agent": agent_data, "install": install, "options": options},
+                )
+            )
+
+        highlighted = self._prompts.index
+        t = Text()
+        t.append("\n  ◈ ", style=f"bold {THEME['purple']}")
+        t.append(f"{name} is not installed\n\n", style=f"bold {THEME['text']}")
+        t.append(f"    {install.raw}\n\n", style=THEME["cyan"])
+        if install.reason:
+            t.append(f"    {install.reason}\n\n", style=THEME["warning"])
+
+        for index, (_key, label, description) in enumerate(options):
+            num = index + 1
+            if index == highlighted:
+                t.append("  ▶ ", style=f"bold {THEME['success']}")
+                t.append(
+                    f"[{num}] ", style=self._picker_link_style(f"bold {THEME['success']}", num)
+                )
+                t.append(label, style=f"bold {THEME['success']}")
+            else:
+                t.append(f"    [{num}] ", style=self._picker_link_style(THEME["dim"], num))
+                t.append(label, style=f"bold {THEME['text']}")
+            t.append("\n", style="")
+            t.append(f"        {description}\n", style=THEME["muted"])
+
+        t.append("\n  💡 ", style=THEME["muted"])
+        t.append("↑↓", style=THEME["cyan"])
+        t.append(" navigate  ", style=THEME["dim"])
+        t.append("Enter", style=THEME["cyan"])
+        t.append(" select  •  or type a number\n", style=THEME["dim"])
+
+        log.auto_scroll = False
+        log.clear()
+        log.write(t)
+        log.auto_scroll = True
+        self.set_timer(0.05, self._ensure_input_focus)
+        return True
+
+    def _rerender_agent_install_picker(self) -> None:
+        """Redraw the agent install prompt after a navigation key."""
+        spec = self._prompts.active
+        if spec is None or spec.name != "agent_install":
+            return
+        log = self.query_one("#log", ConversationLog)
+        self._show_agent_install_picker(
+            dict(spec.data.get("agent") or {}), log, reset_highlight=False
+        )
+
+    def _show_vendor_model_picker(
+        self,
+        log: ConversationLog,
+        *,
+        title: str,
+        entries: list[tuple[str, str]],
+        on_choose,
+        current: str = "",
+        retry_hint: str = "",
+        reset_highlight: bool = True,
+    ) -> bool:
+        """Make a vendor's model list selectable with the keyboard.
+
+        Every vendor runtime listed its models as plain text, leaving the user
+        to retype an id. ``entries`` are ``(model_id, label)`` pairs; the id is
+        what gets chosen, the label is what is shown.
+
+        Returns False when there is nothing to offer, so callers can fall back
+        to their previous output rather than showing an empty picker.
+        """
+        from superqode.app.prompt_stack import PromptSpec
+
+        entries = [(str(mid), str(label or mid)) for mid, label in entries if str(mid or label)]
+        if not entries:
+            return False
+
+        if reset_highlight and not self._prompts.is_active("vendor_model"):
+            self._prompts.push(
+                PromptSpec(
+                    name="vendor_model",
+                    kind="picker",
+                    options=lambda: list(entries),
+                    on_select=lambda entry: on_choose(entry[0]),
+                    on_cancel=lambda: log.add_info(
+                        f"Model selection cancelled.{' ' + retry_hint if retry_hint else ''}"
+                    ),
+                    render=self._rerender_vendor_model_picker,
+                    data={
+                        "title": title,
+                        "entries": entries,
+                        "on_choose": on_choose,
+                        "current": current,
+                        "retry_hint": retry_hint,
+                    },
+                )
+            )
+
+        highlighted = self._prompts.index
+        t = Text()
+        t.append("\n  ◈ ", style=f"bold {THEME['purple']}")
+        t.append(f"{title}\n\n", style=f"bold {THEME['text']}")
+        for index, (model_id, label) in enumerate(entries):
+            num = index + 1
+            if index == highlighted:
+                t.append("  ▶ ", style=f"bold {THEME['success']}")
+                t.append(
+                    f"[{num}] ", style=self._picker_link_style(f"bold {THEME['success']}", num)
+                )
+                t.append(label, style=f"bold {THEME['success']}")
+            else:
+                t.append(f"    [{num}] ", style=self._picker_link_style(THEME["dim"], num))
+                t.append(label, style=f"bold {THEME['text']}")
+            # Show the id only when it adds information beyond the label.
+            if model_id and model_id != label:
+                t.append(f"  {model_id}", style=THEME["muted"])
+            if current and model_id == current:
+                t.append("  ◀ active", style=THEME["muted"])
+            t.append("\n", style="")
+        t.append("\n  💡 ", style=THEME["muted"])
+        t.append("↑↓", style=THEME["cyan"])
+        t.append(" navigate  ", style=THEME["dim"])
+        t.append("Enter", style=THEME["cyan"])
+        t.append(" select  •  or type a number\n", style=THEME["dim"])
+
+        log.auto_scroll = False
+        log.clear()
+        log.write(t)
+        log.auto_scroll = True
+        self.set_timer(0.05, self._ensure_input_focus)
+        return True
+
+    def _rerender_vendor_model_picker(self) -> None:
+        """Redraw the vendor model list after a navigation key."""
+        spec = self._prompts.active
+        if spec is None or spec.name != "vendor_model":
+            return
+        log = self.query_one("#log", ConversationLog)
+        self._show_vendor_model_picker(
+            log,
+            title=str(spec.data.get("title") or "Select Model"),
+            entries=list(spec.data.get("entries") or []),
+            on_choose=spec.data.get("on_choose"),
+            current=str(spec.data.get("current") or ""),
+            retry_hint=str(spec.data.get("retry_hint") or ""),
+            reset_highlight=False,
+        )
+
+    def _show_antigravity_model_picker(
+        self,
+        models: list[str],
+        log: ConversationLog,
+        *,
+        reset_highlight: bool = True,
+    ) -> bool:
+        """Pick an Antigravity model from the ``agy models`` list."""
+        runtime = self._active_antigravity_runtime()
+        return self._show_vendor_model_picker(
+            log,
+            title="Select Antigravity Model",
+            entries=[(model, model) for model in models if model],
+            on_choose=lambda model: self._antigravity_model_cmd(model, log),
+            current=str(getattr(getattr(runtime, "config", None), "model", "") or ""),
+            retry_hint="Run :agy models to choose again.",
+            reset_highlight=reset_highlight,
+        )
 
     @property
     def _awaiting_dependency_install(self) -> dict | None:
@@ -728,9 +936,23 @@ class PickerNavigationMixin:
         if new_idx != current_idx:
             self._acp_highlighted_agent_index = new_idx
             log = self.query_one("#log", ConversationLog)
-            self._show_agents(log, clear_log=False)
+            self._reshow_acp_agents(log)
             self._scroll_to_highlighted_item(log, new_idx, len(agent_list))
             self.set_timer(0.05, self._ensure_input_focus)
+
+    def _reshow_acp_agents(self, log: ConversationLog) -> None:
+        """Redraw the ACP picker in the view the user is actually looking at.
+
+        Redrawing with the default arguments silently switched a filtered view
+        back to the full catalogue on the first arrow key.
+        """
+        view = getattr(self, "_acp_catalog_view", "all")
+        self._show_agents(
+            log,
+            clear_log=False,
+            include_all=view == "all",
+            catalog_tier=view,
+        )
 
     def action_navigate_acp_agent_down(self):
         """Navigate to next ACP agent (arrow down)."""
@@ -746,7 +968,7 @@ class PickerNavigationMixin:
         if new_idx != current_idx:
             self._acp_highlighted_agent_index = new_idx
             log = self.query_one("#log", ConversationLog)
-            self._show_agents(log, clear_log=False)
+            self._reshow_acp_agents(log)
             self._scroll_to_highlighted_item(log, new_idx, len(agent_list))
             self.set_timer(0.05, self._ensure_input_focus)
 
@@ -783,23 +1005,15 @@ class PickerNavigationMixin:
                     dedupe_key=f"agent-connecting:{agent_data['short_name']}",
                 )
                 self._connect_agent(agent_data["short_name"])
-            else:
-                from superqode.agents.registry import get_agent_installation_info
-
-                install_info = get_agent_installation_info(agent_data)
-                install_cmd = install_info.get("command", "")
-                guidance = (
-                    f"Install with: {install_cmd}"
-                    if install_cmd
-                    else f"Run :acp install {agent_data['short_name']}."
-                )
+            elif not self._show_agent_install_picker(agent_data, log):
+                # No install command is registered for this agent at all.
                 self._announce_transition(
                     title="Agent not installed",
                     primary=agent_data["name"],
                     detail="The ACP launcher is not available",
                     severity="warning",
                     log=log,
-                    guidance=guidance,
+                    guidance=f"Run :acp install {agent_data['short_name']}.",
                     dedupe_key=f"agent-missing:{agent_data['short_name']}",
                 )
 

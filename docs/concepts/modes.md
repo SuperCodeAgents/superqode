@@ -227,7 +227,8 @@ The built-in provider registry contains these hosted routes:
 | Cohere | `cohere` | Amazon Bedrock | `amazon-bedrock` |
 | OpenCode Zen | `opencode` | GitHub Copilot model endpoint | `github-copilot` |
 | Azure OpenAI | `azure` | Google Vertex AI | `vertex` |
-| Cloudflare AI Gateway | `cloudflare` |  |  |
+| Cloudflare AI Gateway | `cloudflare` | Baseten | `baseten` |
+| Modal | `modal` |  |  |
 
 `grok-cli` is an authenticated subscription route used by `:grok api`; it is
 not an API-key BYOK provider.

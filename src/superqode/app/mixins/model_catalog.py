@@ -904,16 +904,22 @@ class ModelCatalogMixin:
         from superqode.runtime.claude_agent_sdk import CLAUDE_MODELS
 
         if not model:
-            t = Text()
-            t.append("\n  Claude models (curated):\n", style=f"bold {THEME['text']}")
-            for i, (mid, name) in enumerate(CLAUDE_MODELS, 1):
-                t.append(f"    [{i}] ", style=THEME["dim"])
-                t.append(f"{name}", style=THEME["text"])
-                t.append(f"  {mid or '(default)'}\n", style=THEME["muted"])
-            t.append("\n  Set with ", style=THEME["muted"])
-            t.append(":claude model <id>", style=THEME["cyan"])
-            t.append("  (e.g. :claude model claude-opus-4-8)\n", style=THEME["muted"])
-            log.write(t)
+            # This used to print [1] [2] [3] that did nothing, so the numbers
+            # looked selectable while the id still had to be typed by hand.
+            current = ""
+            try:
+                runtime = getattr(self, "_pure_mode", None)
+                current = str(getattr(getattr(runtime, "session", None), "model", "") or "")
+            except Exception:  # noqa: BLE001
+                pass
+            self._show_vendor_model_picker(
+                log,
+                title="Select Claude Model",
+                entries=[(mid, name or mid or "(default)") for mid, name in CLAUDE_MODELS],
+                on_choose=lambda chosen: self._claude_model_cmd(chosen or "default", log),
+                current=current,
+                retry_hint="Run :claude model to choose again.",
+            )
             return
         chosen = "" if model.lower() in {"default", "none", "auto"} else model
         try:

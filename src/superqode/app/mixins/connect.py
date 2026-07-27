@@ -1753,7 +1753,8 @@ class ConnectMixin:
     def _connect_acp_cmd(self, args: str, log: ConversationLog):
         """Handle :connect acp command - Connect to ACP agent."""
         if not args:
-            # The default picker is curated. Installed agents are always shown.
+            # Default to the complete registry: a curated default hid most of
+            # the catalogue behind a flag people had no reason to discover.
             self._show_agents(log)
             return
 
@@ -1761,8 +1762,11 @@ class ConnectMixin:
         if command in {"all", "--all"}:
             self._show_agents(log, include_all=True)
             return
+        if command in {"featured", "--featured", "recommended"}:
+            self._show_agents(log, include_all=False, catalog_tier="featured")
+            return
         if command in {"enterprise", "--enterprise"}:
-            self._show_agents(log, catalog_tier="enterprise")
+            self._show_agents(log, include_all=False, catalog_tier="enterprise")
             return
         if command in {"refresh", "sync"}:
             self._refresh_acp_registry(log)

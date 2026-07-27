@@ -175,6 +175,29 @@ _OPTIONAL_PACKAGES: dict[str, tuple[str, str]] = {
 }
 
 
+_DOCUMENTATION_URLS: dict[str, str] = {
+    # Vendor documentation for runtimes a user may install by hand. Only
+    # entries that were checked to resolve belong here: a stale or guessed link
+    # is worse than sending someone to their own search engine.
+    "adk": "https://google.github.io/adk-docs/",
+    "openai-agents": "https://openai.github.io/openai-agents-python/",
+    "pydanticai": "https://ai.pydantic.dev/",
+    "codex-sdk": "https://developers.openai.com/codex/sdk/",
+    "copilot-sdk": "https://github.com/github/copilot-sdk",
+    "claude-agent-sdk": "https://docs.claude.com/en/api/agent-sdk/overview",
+    "antigravity-sdk": "https://antigravity.google/docs/cli-install",
+    "antigravity-cli": "https://antigravity.google/docs/cli-install",
+}
+
+
+def runtime_documentation_url(name: str | None) -> str | None:
+    """Return the vendor's documentation for ``name``, if one is known.
+
+    Returns None rather than a guess so callers can simply omit the link.
+    """
+    return _DOCUMENTATION_URLS.get((name or "").strip().lower())
+
+
 def runtime_extra(name: str | None) -> str | None:
     """Return the SuperQode extra providing ``name``, or None if it needs none.
 
