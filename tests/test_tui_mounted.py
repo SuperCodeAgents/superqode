@@ -1151,3 +1151,122 @@ async def test_registry_driven_prompt_handles_every_key_path():
         assert app._prompts.handle_text("n") is True
         await pilot.pause()
         assert app._prompts.active is None
+
+
+async def test_dependency_prompt_arrow_keys_work_as_real_keypresses():
+    """Arrows must move the highlight when actually pressed.
+
+    The first version of this prompt called the navigation actions directly in
+    tests, which passed while real arrow keys did nothing: the input widget
+    routes up/down through its own chain, and the prompt was not in it.
+    """
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._show_dependency_install_picker("claude-agent-sdk", log)
+        await pilot.pause()
+
+        assert app._prompts.is_active("dependency_install")
+        assert app._prompts.index == 0
+
+        await pilot.press("down")
+        await pilot.pause()
+        assert app._prompts.index == 1, "down arrow did not move the highlight"
+
+        await pilot.press("down")
+        await pilot.pause()
+        assert app._prompts.index == 2
+
+        # Clamped at the end rather than wrapping or overflowing.
+        await pilot.press("down")
+        await pilot.pause()
+        assert app._prompts.index == 2
+
+        await pilot.press("up")
+        await pilot.pause()
+        assert app._prompts.index == 1
+
+
+async def test_dependency_prompt_enter_selects_the_highlighted_row():
+    """Enter after arrowing must act on the row the user actually highlighted."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._show_dependency_install_picker("claude-agent-sdk", log)
+        await pilot.pause()
+
+        # Move to "I will install it myself", which only prints the command.
+        await pilot.press("down")
+        await pilot.pause()
+        assert app._prompts.index == 1
+
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert app._prompts.active is None
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "superqode[claude-agent-sdk]" in rendered
+
+
+async def test_dependency_prompt_escape_returns_to_the_runtime_picker():
+    """Esc must run the prompt's cancel hook, matching the Cancel option."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._show_dependency_install_picker("claude-agent-sdk", log)
+        await pilot.pause()
+        assert app._prompts.is_active("dependency_install")
+
+        await pilot.press("escape")
+        await pilot.pause()
+
+        assert app._prompts.active is None
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "Select Runtime" in rendered, "Esc should fall back to the runtime picker"
+
+
+@pytest.mark.parametrize("entry", ["typed_name", "number_key", "runtime_command"])
+async def test_every_route_to_the_install_prompt_accepts_enter(entry, monkeypatch):
+    """Enter must install no matter how the prompt was reached.
+
+    Typing the runtime name used to be swallowed by the picker's Enter handler,
+    which selected the highlighted row instead, so the prompt never opened at
+    all for that route.
+    """
+    import subprocess as _subprocess
+
+    ran = []
+
+    def fake_run(argv, **kwargs):
+        ran.append(list(argv))
+        return _subprocess.CompletedProcess(argv, 0, "ok", "")
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        prompt = app.query_one("#prompt-input", SelectionAwareInput)
+        prompt.focus()
+
+        if entry == "runtime_command":
+            prompt.value = ":runtime claude-agent-sdk"
+            await pilot.press("enter")
+        else:
+            app._show_runtime_picker(log)
+            await pilot.pause()
+            if entry == "typed_name":
+                prompt.value = "claude-agent-sdk"
+                await pilot.press("enter")
+            else:
+                names = [r.name for r in app._runtime_selection_list]
+                await pilot.press(str(names.index("claude-agent-sdk") + 1))
+        for _ in range(4):
+            await pilot.pause()
+
+        assert app._prompts.is_active("dependency_install"), f"{entry} did not open the prompt"
+
+        monkeypatch.setattr(_subprocess, "run", fake_run)
+        await pilot.press("enter")
+        for _ in range(6):
+            await pilot.pause()
+
+        assert any("pip" in argv for argv in ran), f"{entry}: Enter did not start the install"

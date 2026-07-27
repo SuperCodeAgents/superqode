@@ -297,6 +297,17 @@ class SelectionAwareInput(TextArea):
 
         # Check if we should handle arrow keys for selection navigation
         if event.key in ("up", "down"):
+            # Registry-driven prompts navigate through the prompt stack, so any
+            # prompt registered there gets arrow keys without another branch
+            # being added below. This chain is one of the dispatch sites the
+            # registry exists to collapse.
+            prompts = getattr(app, "_prompts", None)
+            if prompts is not None and prompts.active is not None:
+                if prompts.navigate(-1 if event.key == "up" else 1):
+                    event.stop()
+                    event.prevent_default()
+                    return
+
             # Check each selection mode and call the appropriate action
             if getattr(app, "_awaiting_acp_agent_selection", False):
                 event.stop()
@@ -449,6 +460,22 @@ class SelectionAwareInput(TextArea):
             if hasattr(app, "_apply_selection_buffer"):
                 app._apply_selection_buffer()
                 return True
+
+        # Registry-driven prompts confirm through the stack. Handling them here
+        # as well as in the submit path means Enter lands on the highlighted row
+        # regardless of which layer sees the key first.
+        prompts = getattr(app, "_prompts", None)
+        if prompts is not None and prompts.active is not None:
+            if typed:
+                # Let a typed answer reach the prompt's own text handler.
+                return False
+            prompts.select()
+            return True
+
+        # A typed runtime name must not be discarded in favour of whatever row
+        # happens to be highlighted; let the submit path resolve the text.
+        if getattr(app, "_awaiting_runtime_selection", False) and typed:
+            return False
 
         if getattr(app, "_awaiting_harness_selection", False) and typed:
             handler = getattr(app, "_handle_harness_picker_input", None)

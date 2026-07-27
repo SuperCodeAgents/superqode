@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.53] - 2026-07-27
+
+### Fixed
+
+- **Keyboard navigation on the missing-runtime install prompt** - The arrow
+  keys did nothing and Enter could be swallowed before reaching the prompt.
+  The prompt input routes arrow keys and Enter through its own per-picker
+  dispatch chains, which the new prompt was not part of, so only the number
+  keys worked. Both chains now delegate to the prompt registry, so every
+  prompt registered there gets arrows and Enter without a further branch.
+- **Typing a runtime name selected the wrong runtime** - Enter on the runtime
+  picker acted on the highlighted row and discarded whatever name had been
+  typed, so `claude-agent-sdk` would connect to the first entry in the list
+  instead, and an uninstalled runtime never opened its install prompt. Typed
+  text is now resolved instead of being thrown away.
+- **Esc on the install prompt** - It dismissed the prompt without running the
+  prompt's cancel behavior, so it did not return to the runtime picker the way
+  the Cancel option does. Both paths now behave identically.
+
+### Changed
+
+- **Release metadata** - Bumped package, runtime, lockfile, ACP registry,
+  installer example, and package checks to `0.2.53`.
+
 ## [0.2.52] - 2026-07-27
 
 ### Added

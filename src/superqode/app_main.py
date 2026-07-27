@@ -798,6 +798,13 @@ class SuperQodeApp(
 
     def action_smart_cancel(self):
         """Cancel agent if running, cancel selection mode, or do nothing (don't exit)."""
+        # A registry-driven prompt is always the topmost modal thing on screen,
+        # so it cancels first. Going through the stack runs the prompt's own
+        # on_cancel hook, which is what returns to the picker underneath it.
+        if getattr(self, "_prompts", None) is not None and self._prompts.active is not None:
+            self._prompts.cancel()
+            return
+
         # First check if we're in any selection mode
         if getattr(self, "_awaiting_local_model", False):
             self._awaiting_local_model = False
@@ -860,11 +867,6 @@ class SuperQodeApp(
             self._awaiting_harness_install = None
             log = self.query_one("#log", ConversationLog)
             log.add_info("Harness installation cancelled.")
-            return
-        if getattr(self, "_awaiting_dependency_install", None):
-            self._awaiting_dependency_install = None
-            log = self.query_one("#log", ConversationLog)
-            log.add_info("Installation cancelled.")
             return
 
         # Then check if agent is running (ACP or BYOK)
