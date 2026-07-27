@@ -901,7 +901,13 @@ async def test_choosing_manual_install_shows_the_command_without_installing():
 
         assert app._awaiting_dependency_install is None
         rendered = "\n".join(line.text for line in log.lines)
-        assert "superqode[codex-sdk]" in rendered
+        # The connect screen clears the log, so the command must be written
+        # after it or the user loses the one thing they asked for.
+        # The dev checkout installs the extra editable, so assert on the extra
+        # itself rather than a spec form that only one environment produces.
+        assert "[codex-sdk]" in rendered
+        assert "pip install" in rendered
+        assert "connect" in rendered.lower()
 
 
 async def test_install_choice_runs_the_command_and_resumes(monkeypatch):
@@ -1205,10 +1211,12 @@ async def test_dependency_prompt_enter_selects_the_highlighted_row():
 
         assert app._prompts.active is None
         rendered = "\n".join(line.text for line in log.lines)
-        assert "superqode[claude-agent-sdk]" in rendered
+        # "Install it myself" shows the command and lands on the connect screen.
+        assert "[claude-agent-sdk]" in rendered
+        assert "pip install" in rendered
 
 
-async def test_dependency_prompt_escape_returns_to_the_runtime_picker():
+async def test_dependency_prompt_escape_returns_to_the_connect_screen():
     """Esc must run the prompt's cancel hook, matching the Cancel option."""
     app = SuperQodeApp()
     async with app.run_test(size=(100, 40)) as pilot:
@@ -1222,7 +1230,9 @@ async def test_dependency_prompt_escape_returns_to_the_runtime_picker():
 
         assert app._prompts.active is None
         rendered = "\n".join(line.text for line in log.lines)
-        assert "Select Runtime" in rendered, "Esc should fall back to the runtime picker"
+        # The runtime picker would only re-offer the runtime just declined.
+        assert "Select Runtime" not in rendered
+        assert "connect" in rendered.lower(), "Esc should land on the connection screen"
 
 
 @pytest.mark.parametrize("entry", ["typed_name", "number_key", "runtime_command"])
@@ -1270,3 +1280,22 @@ async def test_every_route_to_the_install_prompt_accepts_enter(entry, monkeypatc
             await pilot.pause()
 
         assert any("pip" in argv for argv in ran), f"{entry}: Enter did not start the install"
+
+
+async def test_cancelling_the_install_prompt_lands_on_the_connect_screen():
+    """Cancel must not dump the user back on the runtime they just declined."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._show_dependency_install_picker("claude-agent-sdk", log)
+        await pilot.pause()
+
+        # Option 3 is Cancel.
+        app._prompts.select_index(2)
+        for _ in range(3):
+            await pilot.pause()
+
+        assert app._prompts.active is None
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "Select Runtime" not in rendered
+        assert "connect" in rendered.lower()

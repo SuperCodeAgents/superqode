@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.54] - 2026-07-27
+
+### Changed
+
+- **Leaving the install prompt goes to the connection screen** - Declining an
+  install returned to the runtime picker, which only re-offered the runtime
+  that had just been declined, and choosing to install manually printed the
+  command and stopped there. Cancel, Esc, and "I will install it myself" now
+  all land on `:connect`. The manual choice writes its command after that
+  screen, so the command stays on view to copy.
+- **Release metadata** - Bumped package, runtime, lockfile, ACP registry,
+  installer example, and package checks to `0.2.54`.
+
 ## [0.2.53] - 2026-07-27
 
 ### Fixed

@@ -60,21 +60,30 @@ class CommandImplMixin:
         self._awaiting_dependency_install = None
 
         if choice == "manual":
+            # The connect picker clears the log, so the command is written after
+            # it: the user lands on a screen they can act from without losing
+            # the one thing they asked for.
+            self._show_connect_type_picker(log)
             text = Text()
-            text.append("\n  Run this yourself, then re-run ", style=THEME["muted"])
-            text.append(f":runtime {runtime_name}\n\n", style=THEME["cyan"])
+            text.append("\n  Install ", style=THEME["muted"])
+            text.append(f"{runtime_name}", style=f"bold {THEME['text']}")
+            text.append(" yourself with:\n\n", style=THEME["muted"])
             text.append(f"    {command}\n\n", style=THEME["cyan"])
             text.append(
                 "  It targets the interpreter SuperQode is running from, so the\n"
-                "  extra lands where it can be imported.\n",
+                "  extra lands where it can be imported. Then run ",
                 style=THEME["muted"],
             )
+            text.append(f":runtime {runtime_name}", style=THEME["cyan"])
+            text.append(" to connect,\n  or pick another option above.\n", style=THEME["muted"])
             log.write(text)
             return
 
         if choice == "cancel":
-            log.add_info(f"Skipped installing {runtime_name}.")
-            self._show_runtime_picker(log)
+            # Returning to the runtime picker would just re-offer the runtime
+            # that was declined, so go back to the main connection screen.
+            self._show_connect_type_picker(log)
+            log.add_info(f"Skipped installing {runtime_name}. Choose a connection above.")
             return
 
         self.run_worker(self._install_runtime_extra_then_continue(pending, log))

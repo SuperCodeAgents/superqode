@@ -416,9 +416,13 @@ class PickerNavigationMixin:
             self._prompts.pop()
 
     def _cancel_dependency_install(self) -> None:
-        """Esc on the install prompt returns to the runtime picker."""
+        """Esc on the install prompt goes back to the connection screen.
+
+        Matches the prompt's own Cancel option: the runtime picker would only
+        re-offer the runtime that was just declined.
+        """
         log = self.query_one("#log", ConversationLog)
-        self._show_runtime_picker(log)
+        self._show_connect_type_picker(log)
 
     def _dependency_install_text_answer(self, text: str) -> bool:
         """Accept a typed answer to the install prompt."""
