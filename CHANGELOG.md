@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.56] - 2026-07-27
+
+### Fixed
+
+- **`:connect byok <provider> <model>` with a namespaced model id** - The
+  `provider/model` form was resolved before the `provider model` form, so a
+  model id containing a slash was split at the wrong place:
+  `:connect byok baseten moonshot-ai/Kimi-K3` read the provider as
+  `baseten moonshot-ai` and failed with a misleading "not available from the
+  current models.dev catalog". This affected most open-weight ids, including
+  every Kimi K3 route and anything under `meta-llama/` or `zai-org/`.
+  Whitespace is unambiguous, so it is now resolved first; the single-token
+  `provider/model` form is unchanged.
+
+### Changed
+
+- **The provider picker no longer lists the whole models.dev catalog** -
+  models.dev synthesizes a definition for every provider it knows and they all
+  default to the Model Hosts category, so 16 curated hosts were buried under
+  roughly 140 long-tail entries. The default view now shows the curated hosts,
+  led by Baseten, Fireworks AI, Together AI, Modal, and OpenRouter, and
+  collapses the rest behind `:connect byok all`. This is display grouping only:
+  the catalog is still pulled from models.dev, every provider stays connectable
+  by name, and a refresh continues to add new providers and models with no
+  manual curation. Any collapsed host whose API key is already set in the
+  environment is shown regardless, so a provider you already use never looks
+  unsupported.
+
 ## [0.2.55] - 2026-07-27
 
 ### Added

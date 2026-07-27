@@ -1092,9 +1092,16 @@ class ConnectMixin:
         """Handle :connect byok command - Interactive provider/model picker."""
         args = args.strip()
 
+        # ":connect byok all" reveals the collapsed models.dev long tail.
+        if args.lower() in {"all", "--all"}:
+            self._byok_show_all_providers = True
+            self._show_connect_picker(log)
+            return
+
         # If no args provided, show the provider picker
         # This is the main entry point for :connect byok
         if not args:
+            self._byok_show_all_providers = False
             # Clear any existing state that might interfere
             self._awaiting_byok_model = False
             self._awaiting_byok_provider = False
@@ -1136,6 +1143,17 @@ class ConnectMixin:
                 # This shouldn't happen if parsing is correct, but be defensive
                 self._show_connect_picker(log)
                 return
+
+            # "<provider> <model>" is unambiguous, so whitespace is resolved
+            # before the "/" forms. Most open-weight ids contain a slash
+            # ("moonshot-ai/Kimi-K3", "accounts/fireworks/models/kimi-k3"), and
+            # splitting on "/" first read the provider as "baseten moonshot-ai".
+            spaced = args.split(maxsplit=1)
+            if len(spaced) == 2:
+                provider, model = spaced[0].strip(), spaced[1].strip()
+                if provider and model and provider.lower() not in ("byok", "acp", "local"):
+                    self._connect_byok_mode(provider, model, log)
+                    return
 
             parsed = split_provider_model_ref(args)
             if parsed.provider and parsed.model:
@@ -1363,6 +1381,19 @@ class ConnectMixin:
         # Now show the provider picker - it will set _awaiting_byok_provider = True
         self._show_connect_picker(log, clear_log=clear_log)
 
+    #: Hosts pinned to the front of Model Hosts, in this order. Everything else
+    #: in the category follows alphabetically.
+    _PINNED_MODEL_HOSTS = ("baseten", "fireworks", "together", "modal", "openrouter")
+
+    def _model_host_sort_key(self, entry) -> tuple:
+        """Order Model Hosts with the pinned ones first, then by name."""
+        pid, pdef = entry[0], entry[1]
+        try:
+            rank = self._PINNED_MODEL_HOSTS.index(pid)
+        except ValueError:
+            rank = len(self._PINNED_MODEL_HOSTS)
+        return (rank, pdef.name)
+
     def _show_connect_picker(self, log: ConversationLog, clear_log: bool = True):
         """Show interactive provider picker with model counts and API key guidance."""
         from superqode.providers.registry import PROVIDERS, ProviderCategory, get_free_providers
@@ -1444,16 +1475,33 @@ class ConnectMixin:
             ProviderCategory.LOCAL: ("🏠 Local / Self-Hosted", THEME["muted"]),
         }
 
+        # models.dev synthesizes a def for every provider it knows, and they all
+        # default to Model Hosts. That buried the 16 curated hosts under ~140
+        # long-tail entries, so the default view shows the curated ones and
+        # collapses the rest. A collapsed provider whose key is already in the
+        # environment is still shown: the user clearly uses it, and hiding it
+        # would look like SuperQode does not support it.
+        show_all_hosts = bool(getattr(self, "_byok_show_all_providers", False))
         providers_by_category = {}
+        collapsed_hosts = 0
         for pid in connect_provider_ids():
             pdef = resolve_provider_def(pid)
             if pdef is None:
                 continue
+            info = get_provider_info(pid, pdef)
             category = pdef.category
+            if (
+                category is ProviderCategory.MODEL_HOSTS
+                and not show_all_hosts
+                and pid not in PROVIDERS
+                and not info[2]  # configured
+            ):
+                collapsed_hosts += 1
+                continue
             if category not in providers_by_category:
                 providers_by_category[category] = []
 
-            providers_by_category[category].append(get_provider_info(pid, pdef))
+            providers_by_category[category].append(info)
 
         idx = 1
         provider_list = []
@@ -1537,7 +1585,14 @@ class ConnectMixin:
             label, color = category_order[category]
 
             # Sort providers by name within category
-            category_providers = sorted(providers_by_category[category], key=lambda x: x[1].name)
+            if category is ProviderCategory.MODEL_HOSTS:
+                category_providers = sorted(
+                    providers_by_category[category], key=self._model_host_sort_key
+                )
+            else:
+                category_providers = sorted(
+                    providers_by_category[category], key=lambda x: x[1].name
+                )
 
             # Count non-free providers in this category
             non_free_providers = [p for p in category_providers if p[0] not in free_provider_ids]
@@ -1602,6 +1657,16 @@ class ConnectMixin:
                 idx += 1
 
             t.append("\n", style="")
+
+        if collapsed_hosts:
+            t.append(f"  {collapsed_hosts} more hosts", style=THEME["muted"])
+            t.append(" from the models.dev catalog are hidden. ", style=THEME["dim"])
+            t.append(":connect byok all", style=THEME["cyan"])
+            t.append(
+                " lists them,\n  or connect by name directly. Any host whose API key is "
+                "already set is shown above.\n\n",
+                style=THEME["dim"],
+            )
 
         # Add arrow key navigation instructions
         t.append(f"  💡 Quick Connect:\n", style=THEME["muted"])

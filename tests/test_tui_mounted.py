@@ -1636,3 +1636,137 @@ async def test_failed_agent_install_reports_and_does_not_connect(monkeypatch):
         assert "Unsupported engine" in rendered
         assert "exited with 1" in rendered
         assert connected == [], "a failed install must not connect"
+
+
+async def test_connect_byok_parses_model_ids_containing_slashes():
+    """`:connect byok <provider> <model>` must survive slashes in the model id.
+
+    Open-weight ids are almost always namespaced ("moonshot-ai/Kimi-K3",
+    "accounts/fireworks/models/kimi-k3"). Resolving the "/" form before the
+    whitespace form read the provider as "baseten moonshot-ai" and failed with
+    a confusing "not available from the current models.dev catalog".
+    """
+    captured = []
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._connect_byok_mode = lambda p, m, log, *a, **k: captured.append((p, m))
+
+        cases = {
+            "baseten moonshot-ai/Kimi-K3": ("baseten", "moonshot-ai/Kimi-K3"),
+            "openrouter moonshotai/kimi-k3": ("openrouter", "moonshotai/kimi-k3"),
+            "fireworks accounts/fireworks/models/kimi-k3": (
+                "fireworks",
+                "accounts/fireworks/models/kimi-k3",
+            ),
+            # The single-token "provider/model" form must keep working.
+            "baseten/moonshot-ai/Kimi-K3": ("baseten", "moonshot-ai/Kimi-K3"),
+            "anthropic claude-opus-4-8": ("anthropic", "claude-opus-4-8"),
+        }
+        for args, expected in cases.items():
+            captured.clear()
+            app._connect_byok_cmd(args, log)
+            await pilot.pause()
+            assert captured == [expected], f"{args!r} routed to {captured}"
+
+
+async def test_provider_picker_collapses_the_models_dev_long_tail():
+    """models.dev synthesizes ~140 hosts that buried the curated ones."""
+    from superqode.providers.dynamic import connect_provider_ids
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(110, 60)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._show_connect_picker(log)
+        await pilot.pause()
+
+        shown = [pid for pid, _ in app._byok_connect_list]
+        assert len(shown) < len(connect_provider_ids()) / 3, "the long tail is still shown"
+
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "more hosts" in rendered
+        assert ":connect byok all" in rendered
+
+
+async def test_connect_byok_all_reveals_every_provider():
+    """The collapsed hosts stay one command away."""
+    from superqode.providers.dynamic import connect_provider_ids
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(110, 60)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._connect_byok_cmd("all", log)
+        await pilot.pause()
+
+        shown = [pid for pid, _ in app._byok_connect_list]
+        # Local/self-hosted providers are deliberately excluded from the BYOK
+        # picker (they have their own :connect local), so "all" means every
+        # cloud provider rather than literally every id.
+        assert len(shown) > len(connect_provider_ids()) * 0.8
+        assert "deepinfra" in shown, "a long-tail host should be revealed"
+
+
+async def test_curated_hosts_survive_the_collapse():
+    """Every curated Model Host must remain visible by default."""
+    from superqode.providers.registry import PROVIDERS, ProviderCategory
+    from superqode.providers.dynamic import connect_provider_ids
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(110, 60)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._show_connect_picker(log)
+        await pilot.pause()
+
+        shown = {pid for pid, _ in app._byok_connect_list}
+        reachable = set(connect_provider_ids())
+        curated_hosts = {
+            pid
+            for pid, p in PROVIDERS.items()
+            if p.category is ProviderCategory.MODEL_HOSTS and pid in reachable
+        }
+        assert curated_hosts <= shown, f"hidden curated hosts: {sorted(curated_hosts - shown)}"
+
+
+async def test_pinned_hosts_lead_the_model_hosts_section():
+    """Baseten sorts 2nd alphabetically, so the order needs an explicit pin."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(110, 60)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._show_connect_picker(log)
+        await pilot.pause()
+
+        from superqode.providers.registry import (
+            PROVIDERS,
+            ProviderCategory,
+            get_free_providers,
+        )
+
+        # Providers with free models render in their own section above the
+        # categories, so they take no part in the Model Hosts ordering.
+        free = set(get_free_providers())
+        hosts = [
+            pid
+            for pid, _ in app._byok_connect_list
+            if pid not in free
+            and PROVIDERS.get(pid)
+            and PROVIDERS[pid].category is ProviderCategory.MODEL_HOSTS
+        ]
+        expected = [pid for pid in app._PINNED_MODEL_HOSTS if pid not in free]
+        assert hosts[: len(expected)] == expected
+
+
+async def test_a_configured_long_tail_provider_is_never_hidden(monkeypatch):
+    """Hiding a host whose key is set would look like it is unsupported."""
+    app = SuperQodeApp()
+    async with app.run_test(size=(110, 60)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._show_connect_picker(log)
+        await pilot.pause()
+        assert "deepinfra" not in {pid for pid, _ in app._byok_connect_list}
+
+        monkeypatch.setenv("DEEPINFRA_API_KEY", "sk-test")
+        app._show_connect_picker(log)
+        await pilot.pause()
+
+        assert "deepinfra" in {pid for pid, _ in app._byok_connect_list}
