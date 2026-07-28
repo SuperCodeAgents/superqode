@@ -1349,6 +1349,7 @@ class AgentRunMixin:
                 "bub",
                 "cagent",
                 "codeassistant",
+                "devin",
                 "fast-agent",
                 "goose",
                 "hermes",
@@ -1426,6 +1427,7 @@ class AgentRunMixin:
             "bub",
             "cagent",
             "codeassistant",
+            "devin",
             "fast-agent",
             "goose",
             "hermes",
@@ -1813,6 +1815,16 @@ class AgentRunMixin:
                 self._call_ui(log.add_error, "Grok CLI not found. Install it before connecting.")
                 self._call_ui(log.add_info, "  curl -fsSL https://x.ai/cli/install.sh | bash")
                 return
+        elif agent_type == "devin":
+            command = "devin acp"
+            model_display = f"devin/{model}" if model and model != "auto" else "devin/auto"
+            if shutil.which("devin") is None:
+                self._call_ui(self._stop_thinking)
+                self._call_ui(log.add_error, "Devin CLI not found. Install it before connecting.")
+                self._call_ui(log.add_info, "  curl -fsSL https://cli.devin.ai/install.sh | bash")
+                self._call_ui(log.add_info, "  or: brew install --cask devin-cli")
+                return
+            # Devin owns sign-in via `devin auth login`; no API key is read here.
         elif agent_type == "junie":
             command = "junie --acp"
             model_display = f"junie/{model}" if model else "junie/auto"
