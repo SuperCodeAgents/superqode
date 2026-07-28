@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.58] - 2026-07-28
+
+### Fixed
+
+- **`:connect acp devin` reported "integration coming soon" on the first
+  message** - Connecting succeeded, because the connect path reads the agent
+  catalog generically, but sending a message did not. Message dispatch is
+  gated by three separate hardcoded agent lists in `agent_run.py`, and Devin
+  was in none of them: the dispatch allowlist fell through to the
+  "coming soon" notice, the unified-runner tuple would have dropped Devin to a
+  legacy subprocess path, and the command-resolution chain ends in an
+  "Unsupported ACP agent type" error rather than a generic fallback. Devin now
+  resolves to `devin acp` with a binary check and install hints, and reads no
+  API key, since the official CLI owns sign-in through `devin auth login`.
+
+  This gap is not specific to Devin. The agent catalog ships roughly 45 ACP
+  entries while these lists cover 22, so other catalog agents can still
+  connect and then report the same notice. Consolidating the three lists into
+  a single lookup against the registry's `run_command` is left as separate
+  work.
+
 ## [0.2.57] - 2026-07-27
 
 ### Added
