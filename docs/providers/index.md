@@ -78,16 +78,43 @@ bundled ACP agent in one place.
 
 ## Connection Methods
 
-The terminal exposes six connection and interoperability methods:
+`:connect` opens a five-option screen. The first three are ways SuperQode's own
+harness runs a model, the fourth is the vendor submenu, and the fifth holds the
+optional non-ACP integrations:
 
-| Method | Description | Selection |
+| Option | Description | Selection |
 |------|-------------|----------|
 | **Local** | Local and self-hosted model servers | `:connect local` |
-| **ACP** | External coding agents with their own model and tools | `:connect acp` |
-| **BYOK** | Hosted model providers using your API key | `:connect byok` |
-| **SDK** | Vendor agent SDKs and authenticated client runtimes | `:connect codex`, `:connect claude`, or another product profile |
-| **MCP** | Tool and resource servers attached to the active agent | `:mcp` |
-| **A2A** | Remote agent services and workflows | `:a2a` |
+| **ACP (Agent Client Protocol)** | External coding agents with their own model and tools | `:connect acp` |
+| **BYOK (Bring Your Own Key)** | Hosted model providers using your API key | `:connect byok` |
+| **Subscriptions** | Vendor coding agents on a plan you already pay for | `:connect subscriptions` |
+| **Other harnesses** | Optional non-ACP harness integrations | `:connect other-harnesses` |
+
+Tool and agent interoperability stays on its own commands: `:mcp` for Model
+Context Protocol servers and `:a2a` for remote agent services.
+
+### Subscriptions
+
+`:connect subscriptions` lists the vendor coding agents that sign in with their
+own account or licence. Every entry is also reachable by name, so the submenu is
+a browsing aid rather than a required step:
+
+| Vendor agent | Selection |
+|------|----------|
+| OpenAI Codex | `:connect codex` |
+| Anthropic Claude | `:connect claude` |
+| Google Antigravity | `:connect antigravity` |
+| xAI Grok | `:connect grok` |
+| GitHub Copilot | `:connect copilot` |
+| Google Gemini CLI | `:connect gemini-cli` |
+| Cognition Devin | `:connect devin` |
+| GLM CLI | `:connect glm-cli` |
+| Z.AI GLM API | `:connect zai` |
+| Qwen Code | `:connect qwen-code` |
+| Kimi Code | `:connect kimi-code` |
+
+Each row shows live status on the screen itself, either `ready` or `needs setup`
+with the exact command that fixes it.
 
 ---
 

@@ -272,9 +272,12 @@ class SlashCommandMixin:
                 # Show picker to choose acp, byok, or local
                 self._show_connect_type_picker(log)
             else:
+                from superqode.providers.connection_profiles import get_connection_profile
+
                 parts = args.split(maxsplit=1)
                 subcmd = parts[0].lower().strip()
                 subargs = parts[1].strip() if len(parts) > 1 else ""
+                bare_profile = get_connection_profile(subcmd) if not subargs else None
 
                 # Explicitly handle known subcommands
                 if subcmd == "acp":
@@ -297,23 +300,12 @@ class SlashCommandMixin:
                         log,
                         "Connect setup",
                     )
-                elif subcmd in (
-                    "codex",
-                    "copilot",
-                    "copilot-acp",
-                    "claude",
-                    "antigravity",
-                    "grok",
-                    "other-harnesses",
-                ):
-                    # Product/runtime connection profiles (Codex, Claude, Grok, …).
-                    from superqode.providers.connection_profiles import get_connection_profile
-
-                    profile = get_connection_profile(subcmd)
-                    if profile is not None:
-                        self._dispatch_connection_profile(profile, log)
-                    else:
-                        log.add_error(f"Unknown connection: {subcmd}")
+                elif bare_profile is not None:
+                    # Product/runtime connection profiles (Codex, Claude, Grok,
+                    # Gemini CLI, Devin, …) and the Subscriptions submenu. With
+                    # arguments (`:connect zai glm-4.6`) the BYOK path below
+                    # keeps handling provider/model pairs.
+                    self._dispatch_connection_profile(bare_profile, log)
                 else:
                     # Try to parse as BYOK provider/model (backward compatibility)
                     # But first check if it's a known subcommand that was missed

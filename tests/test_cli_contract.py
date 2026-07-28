@@ -10,7 +10,10 @@ from superqode.main import cli_main
 
 
 EXPECTED_COMMAND_COUNT = 261
-EXPECTED_HELP_TREE_SHA256 = "f0cd941609892826623459d8bcb1ebfdedb2104cf6b267e17ea33b97c9f4ac97"
+# Rebaselined when `:connect` moved to the five-option root screen: the
+# --connect choice list gained subscriptions / gemini-cli / devin / glm-cli and
+# its help line was rewritten. No command was added, renamed, or removed.
+EXPECTED_HELP_TREE_SHA256 = "94ad00a65b016b182e761a3368b39e6ee0898a8154974c3cf2646cb995306e00"
 
 
 def _render_help_tree() -> tuple[int, str]:

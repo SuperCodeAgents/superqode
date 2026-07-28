@@ -109,11 +109,11 @@ def test_textual_completion_includes_harness_runtime_connect_and_session_command
     assert any(completion.command == "/resume" for completion in resume)
     assert [completion.command for completion in connect[:6]] == [
         ":connect",
-        ":connect acp",
-        ":connect antigravity",
-        ":connect grok",
-        ":connect byok",
         ":connect local",
+        ":connect acp",
+        ":connect byok",
+        ":connect subscriptions",
+        ":connect other-harnesses",
     ]
 
 

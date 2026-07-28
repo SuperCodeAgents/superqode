@@ -117,27 +117,32 @@ the engine that executes it. The picker is profile-driven and shows live status:
 
 ```text
 :connect
-  Connection methods
-  [1] Local model          Ollama / MLX / vLLM / LM Studio ...
-  [2] BYOK provider        Your API key, such as OpenAI, Anthropic, or Gemini
-  [3] ACP agent            Any external ACP agent (incl. your local Claude Code)
+  How do you want to connect?
+  [1] Local                        Ollama / LM Studio / MLX / vLLM ...
+  [2] ACP (Agent Client Protocol)  Any external ACP agent (incl. your local Claude Code)
+  [3] BYOK (Bring Your Own Key)    Your API key, such as OpenAI, Anthropic, or Gemini
+  [4] Subscriptions                Vendor coding agents on a plan you already pay for
+  [5] Other harnesses              Browse optional non-ACP integrations such as Tau
+```
 
+Option 4 opens the vendor screen. Esc returns to the screen above:
+
+```text
+:connect subscriptions
   US Coding Agents
-  [4] Codex subscription   Drive OpenAI Codex with your ChatGPT/Codex login (~/.codex)
-  [5] Claude Agent SDK     Use your Anthropic API key via claude-agent-sdk
-  [6] Antigravity CLI      Use Google's agent harness with your Google Sign-In
-  [7] Grok subscription    Use Grok Build through the signed-in Grok CLI
-  [8] GitHub Copilot SDK   Embed Copilot through the official Python SDK
+  [1] Codex subscription   Drive OpenAI Codex with your ChatGPT/Codex login (~/.codex)
+  [2] Claude Agent SDK     Use your Anthropic API key via claude-agent-sdk
+  [3] Antigravity CLI      Use Google's agent harness with your Google Sign-In
+  [4] Grok subscription    Use Grok Build through the signed-in Grok CLI
+  [5] GitHub Copilot SDK   Embed Copilot through the official Python SDK
+  [6] Gemini CLI           Use Google's Gemini CLI through gemini --acp
+  [7] Devin                Use Cognition's Devin CLI through devin acp
 
   China Coding Agents
+  [8] GLM CLI              Use the community GLM ACP agent
   [9] Z.AI GLM API         Use GLM through Z.AI's general API
   [10] Qwen Code           Use QwenLM's first-party agent through qwen --acp
   [11] Kimi Code           Use Moonshot AI's first-party agent through kimi acp
-
-  Other integrations
-  [12] Other harnesses     Browse optional non-ACP integrations such as Tau
-
-  H   Other harnesses      Open the same optional harness picker
 ```
 
 **Claude** has one headline entry: **Claude Agent SDK** (API key via
@@ -148,9 +153,13 @@ profile. Neither path implies SuperQode using a Claude Pro/Max subscription.
 Direct commands and CLI:
 
 ```bash
+:connect subscriptions    # the vendor screen shown above
 :connect codex            # in the TUI, uses your Codex subscription
 :connect kimi-code        # Moonshot AI Kimi Code through its official ACP server
 :connect qwen-code        # Qwen Code through its stable ACP server
+:connect gemini-cli       # Google Gemini CLI through gemini --acp
+:connect devin            # Cognition Devin CLI through devin acp
+:connect glm-cli          # community GLM ACP agent
 :connect copilot          # official Copilot SDK path
 :copilot models           # live model catalog for the active Copilot account
 :connect acp copilot      # advanced Copilot CLI ACP compatibility path

@@ -273,9 +273,17 @@ DEFAULT_COMMANDS: list[SlashCommand] = [
     SlashCommand("/mcp", "Show MCP status", category="workflow"),
     SlashCommand("/mcp connect", "Connect configured MCP servers", category="workflow"),
     SlashCommand("/mcp tools", "List connected MCP tools", category="workflow"),
-    SlashCommand("/connect", "Choose ACP, BYOK, or local connection", category="workflow"),
-    SlashCommand(":connect", "Choose ACP, BYOK, or local connection", category="workflow"),
+    SlashCommand("/connect", "Choose local, ACP, BYOK, or a subscription", category="workflow"),
+    SlashCommand(":connect", "Choose local, ACP, BYOK, or a subscription", category="workflow"),
     SlashCommand(":connect acp", "Connect to ACP agent", category="workflow"),
+    SlashCommand(
+        ":connect subscriptions",
+        "Vendor coding agents on a plan you already pay for",
+        category="workflow",
+    ),
+    SlashCommand(":connect gemini-cli", "Google Gemini CLI over ACP", category="workflow"),
+    SlashCommand(":connect devin", "Cognition Devin CLI over ACP", category="workflow"),
+    SlashCommand(":connect glm-cli", "Community GLM ACP agent", category="workflow"),
     SlashCommand(
         ":connect antigravity", "Connect via signed-in Antigravity CLI", category="workflow"
     ),
@@ -368,22 +376,22 @@ def _command_sort_key(query: str, command: str) -> tuple[int, str]:
     query = query.lower()
     command = command.lower()
     priority: dict[str, dict[str, int]] = {
+        # Mirrors the root :connect screen: the three ways to run a model,
+        # then the subscription submenu.
         ":c": {
             ":connect": 0,
-            ":connect acp": 1,
-            ":connect antigravity": 2,
-            ":connect grok": 3,
-            ":connect byok": 4,
-            ":connect local": 5,
+            ":connect local": 1,
+            ":connect acp": 2,
+            ":connect byok": 3,
+            ":connect subscriptions": 4,
             ":clear": 20,
         },
         ":co": {
             ":connect": 0,
-            ":connect acp": 1,
-            ":connect antigravity": 2,
-            ":connect grok": 3,
-            ":connect byok": 4,
-            ":connect local": 5,
+            ":connect local": 1,
+            ":connect acp": 2,
+            ":connect byok": 3,
+            ":connect subscriptions": 4,
         },
         ":q": {
             ":quit": 0,
@@ -399,13 +407,12 @@ def _command_sort_key(query: str, command: str) -> tuple[int, str]:
         },
         ":": {
             ":connect": 0,
-            ":connect acp": 1,
-            ":connect antigravity": 2,
-            ":connect grok": 3,
-            ":connect byok": 4,
-            ":connect local": 5,
-            ":exit": 6,
-            ":quit": 7,
+            ":connect local": 1,
+            ":connect acp": 2,
+            ":connect byok": 3,
+            ":connect subscriptions": 4,
+            ":exit": 5,
+            ":quit": 6,
         },
     }
     for prefix, scores in priority.items():

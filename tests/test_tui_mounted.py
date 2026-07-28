@@ -128,7 +128,9 @@ async def test_connect_picker_keyboard_navigation_keeps_selection_visible():
     app = SuperQodeApp()
     async with app.run_test(size=(80, 24)) as pilot:
         log = app.query_one("#log", ConversationLog)
-        app._show_connect_type_picker(log)
+        # The Subscriptions screen is the long one, so it is what can scroll a
+        # highlighted option out of view.
+        app._show_connect_type_picker(log, menu="subscriptions")
         await pilot.pause()
 
         for _ in range(6):
@@ -573,8 +575,9 @@ async def test_grok_profile_selection_routes_to_grok_build_acp(monkeypatch, tmp_
     """Selecting "Grok subscription" in the picker connects Grok Build (ACP).
 
     Since 0.2.x the bare Grok profile runs xAI's own agent, matching Codex and
-    Claude. (Picker-feedback visibility is covered by the Codex-profile test
-    below.)
+    Claude. Grok now lives on the Subscriptions screen, so this also covers
+    stepping into a submenu with the keyboard. (Picker-feedback visibility is
+    covered by the Codex-profile test below.)
     """
     calls = []
     grok_auth = tmp_path / ".grok"
@@ -606,9 +609,24 @@ async def test_grok_profile_selection_routes_to_grok_build_acp(monkeypatch, tmp_
         app._show_connect_type_picker(log)
         await pilot.pause()
 
-        from superqode.providers.connection_profiles import list_connection_profiles
+        from superqode.providers.connection_profiles import (
+            CONNECT_MENU_ROOT,
+            CONNECT_MENU_SUBSCRIPTIONS,
+            list_connection_profiles,
+        )
 
-        profiles = list_connection_profiles()
+        root = list_connection_profiles(CONNECT_MENU_ROOT)
+        subscriptions_index = next(
+            i for i, profile in enumerate(root) if profile.id == "subscriptions"
+        )
+        for _ in range(subscriptions_index):
+            await pilot.press("down")
+            await pilot.pause()
+        await pilot.press("enter")
+        await pilot.pause()
+        assert app._connect_menu == CONNECT_MENU_SUBSCRIPTIONS
+
+        profiles = list_connection_profiles(CONNECT_MENU_SUBSCRIPTIONS)
         grok_index = next(i for i, profile in enumerate(profiles) if profile.id == "grok")
         for _ in range(grok_index):
             await pilot.press("down")
@@ -647,12 +665,9 @@ async def test_codex_profile_error_visible_after_picker_navigation(monkeypatch):
     app = SuperQodeApp()
     async with app.run_test(size=(80, 24)) as pilot:
         log = app.query_one("#log", ConversationLog)
-        app._show_connect_type_picker(log)
+        # Codex is the first entry on the Subscriptions screen.
+        app._show_connect_type_picker(log, menu="subscriptions")
         await pilot.pause()
-
-        for _ in range(3):  # local, byok, acp → codex at index 3
-            await pilot.press("down")
-            await pilot.pause()
 
         await pilot.press("enter")
         await pilot.pause()

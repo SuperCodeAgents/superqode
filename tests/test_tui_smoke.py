@@ -2981,23 +2981,22 @@ def test_slash_complete_prioritizes_connect_and_quit():
     connect_values = [command.command for command in filter_slash_commands(DEFAULT_COMMANDS, ":c")]
     quit_values = [command.command for command in filter_slash_commands(DEFAULT_COMMANDS, ":q")]
 
-    assert root_values[:8] == [
+    assert root_values[:7] == [
         ":connect",
-        ":connect acp",
-        ":connect antigravity",
-        ":connect grok",
-        ":connect byok",
         ":connect local",
+        ":connect acp",
+        ":connect byok",
+        ":connect subscriptions",
         ":exit",
         ":quit",
     ]
     assert connect_values[:6] == [
         ":connect",
-        ":connect acp",
-        ":connect antigravity",
-        ":connect grok",
-        ":connect byok",
         ":connect local",
+        ":connect acp",
+        ":connect byok",
+        ":connect subscriptions",
+        ":connect other-harnesses",
     ]
     assert ":clear" not in connect_values
     assert ":context" not in connect_values
@@ -3668,37 +3667,33 @@ def test_prompt_completion_prioritizes_full_connect_and_quit_commands():
     connect_values = [candidate.value for candidate in app._prompt_completion_candidates_for(":c")]
     quit_values = [candidate.value for candidate in app._prompt_completion_candidates_for(":q")]
 
-    assert root_values[:8] == [
+    assert root_values[:7] == [
         ":connect",
-        ":connect acp",
-        ":connect antigravity",
-        ":connect grok",
-        ":connect byok",
         ":connect local",
+        ":connect acp",
+        ":connect byok",
+        ":connect subscriptions",
         ":exit",
         ":quit",
     ]
-    assert connect_values[:6] == [
-        ":connect",
-        ":connect acp",
-        ":connect antigravity",
-        ":connect grok",
-        ":connect byok",
-        ":connect local",
-    ]
+    # The completion order mirrors the connect screen: methods first, then the
+    # subscription products behind them.
     assert connect_values[:10] == [
         ":connect",
-        ":connect acp",
-        ":connect antigravity",
-        ":connect grok",
-        ":connect byok",
         ":connect local",
+        ":connect acp",
+        ":connect byok",
+        ":connect subscriptions",
+        ":connect other-harnesses",
         ":connect codex",
         ":connect claude",
-        ":connect zai",
-        ":connect other-harnesses",
+        ":connect grok",
+        ":connect copilot",
     ]
-    assert connect_values[10] == ":connect copilot"
+    assert connect_values[10] == ":connect antigravity"
+    assert ":connect gemini-cli" in connect_values
+    assert ":connect devin" in connect_values
+    assert ":connect glm-cli" in connect_values
     assert ":connect setup" in connect_values
     assert quit_values[0] == ":quit"
     assert all(not value.startswith(":qe") for value in quit_values)
@@ -3716,7 +3711,7 @@ def test_connect_completion_enter_accepts_selected_subcommand():
     app._prompt_completion_candidates = app._prompt_completion_candidates_for(":connect")
     assert [candidate.value for candidate in app._prompt_completion_candidates[:2]] == [
         ":connect",
-        ":connect acp",
+        ":connect local",
     ]
 
     app._prompt_completion_index = 0
@@ -5680,12 +5675,15 @@ def test_picker_scroll_reveals_selected_row_and_supporting_content():
 
 
 def test_connect_selection_replaces_picker_before_rendering_result():
-    from superqode.providers.connection_profiles import list_connection_profiles
+    from superqode.providers.connection_profiles import (
+        CONNECT_MENU_ROOT,
+        list_connection_profiles,
+    )
 
     app = make_app()
     log = FakeLog()
     log.write("long picker content")
-    profiles = list_connection_profiles()
+    profiles = list_connection_profiles(CONNECT_MENU_ROOT)
     app._awaiting_connect_type = True
     app._byok_highlighted_connect_type_index = len(profiles) - 1
     app.query_one = lambda *args, **kwargs: log
@@ -5703,6 +5701,71 @@ def test_connect_selection_replaces_picker_before_rendering_result():
     assert log.scrolled_home is True
 
 
+def test_connect_root_picker_shows_five_options():
+    """The first connect screen stays at five choices, local first."""
+    app = make_app()
+    log = FakeLog()
+    app.set_timer = lambda *_args, **_kwargs: None
+    app._scroll_to_highlighted_item = lambda *_args, **_kwargs: None
+    app._show_connect_type_picker(log)
+    rendered = render_plain(log.items[-1])
+
+    assert "[1] Local" in rendered
+    assert "[2] ACP (Agent Client Protocol)" in rendered
+    assert "[3] BYOK (Bring Your Own Key)" in rendered
+    assert "[4] Subscriptions" in rendered
+    assert "[5] Other harnesses" in rendered
+    assert "[6]" not in rendered
+    # Vendor products live one screen deeper now.
+    assert "Codex subscription" not in rendered
+    assert "US Coding Agents" not in rendered
+    assert ":connect subscriptions" in rendered
+
+
+def test_connect_subscriptions_screen_lists_vendor_agents():
+    app = make_app()
+    log = FakeLog()
+    app.set_timer = lambda *_args, **_kwargs: None
+    app._scroll_to_highlighted_item = lambda *_args, **_kwargs: None
+    app._show_connect_type_picker(log, menu="subscriptions")
+    rendered = render_plain(log.items[-1])
+
+    assert app._connect_menu == "subscriptions"
+    assert rendered.index("US Coding Agents") < rendered.index("China Coding Agents")
+    assert rendered.index("[1] Codex subscription") < rendered.index("[2] Claude Agent SDK")
+    assert rendered.index("[2] Claude Agent SDK") < rendered.index("[3] Antigravity CLI")
+    assert rendered.index("[3] Antigravity CLI") < rendered.index("[4] Grok subscription")
+    assert rendered.index("[4] Grok subscription") < rendered.index("[5] GitHub Copilot SDK")
+    assert rendered.index("[5] GitHub Copilot SDK") < rendered.index("[6] Gemini CLI")
+    assert rendered.index("[6] Gemini CLI") < rendered.index("[7] Devin")
+    assert rendered.index("[8] GLM CLI") < rendered.index("[9] Z.AI GLM API")
+    assert rendered.index("[9] Z.AI GLM API") < rendered.index("[10] Qwen Code")
+    assert rendered.index("[10] Qwen Code") < rendered.index("[11] Kimi Code")
+    assert "Esc back" in rendered
+
+
+def test_subscriptions_picker_returns_to_the_root_screen():
+    app = make_app()
+    log = FakeLog()
+    app.set_timer = lambda *_args, **_kwargs: None
+    app._scroll_to_highlighted_item = lambda *_args, **_kwargs: None
+    app.query_one = lambda *args, **kwargs: log
+
+    app._show_connect_type_picker(log)
+    app._byok_highlighted_connect_type_index = 3  # Subscriptions
+    app.action_select_highlighted_connect_type()
+    assert app._connect_menu == "subscriptions"
+    # The highlight resets so Enter cannot select a vendor the user never saw.
+    assert app._byok_highlighted_connect_type_index == 0
+
+    assert app.action_connect_menu_back() is True
+    assert app._connect_menu == "root"
+    assert app._awaiting_connect_type is True
+    assert "[4] Subscriptions" in render_plain(log.items[-1])
+    # On the root screen Esc falls through to cancelling instead.
+    assert app.action_connect_menu_back() is False
+
+
 def test_connect_picker_can_open_harness_catalog():
     app = make_app()
     log = FakeLog()
@@ -5710,21 +5773,7 @@ def test_connect_picker_can_open_harness_catalog():
     app._scroll_to_highlighted_item = lambda *_args, **_kwargs: None
     app._show_connect_type_picker(log)
     rendered = render_plain(log.items[-1])
-    assert "Other harnesses" in rendered
-    assert "[8] GitHub Copilot SDK" in rendered
-    assert "[10] Qwen Code" in rendered
-    assert "[11] Kimi Code" in rendered
-    assert "[12] Other harnesses" in rendered
-    assert rendered.index("Connection methods") < rendered.index("US Coding Agents")
-    assert rendered.index("US Coding Agents") < rendered.index("China Coding Agents")
-    assert rendered.index("China Coding Agents") < rendered.index("Other integrations")
-    assert rendered.index("[4] Codex subscription") < rendered.index("[5] Claude Agent SDK")
-    assert rendered.index("[5] Claude Agent SDK") < rendered.index("[6] Antigravity CLI")
-    assert rendered.index("[6] Antigravity CLI") < rendered.index("[7] Grok subscription")
-    assert rendered.index("[7] Grok subscription") < rendered.index("[8] GitHub Copilot SDK")
-    assert rendered.index("[9] Z.AI GLM API") < rendered.index("[10] Qwen Code")
-    assert rendered.index("[10] Qwen Code") < rendered.index("[11] Kimi Code")
-    assert "H other harnesses" in rendered
+    assert "[5] Other harnesses" in rendered
 
     app._awaiting_connect_type = True
     app.query_one = lambda *args, **kwargs: log

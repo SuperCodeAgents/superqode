@@ -169,7 +169,9 @@ nav:
       - 🟠 Anthropic Claude: providers/anthropic-claude.md
       - 🐙 GitHub Copilot: providers/github-copilot.md
       - 🚀 Google Antigravity: providers/antigravity.md
+      - ♊ Google Gemini CLI: providers/gemini.md
       - ✕ xAI Grok: providers/grok.md
+      - 👷 Cognition Devin: providers/devin.md
       - 🌙 Kimi & Kimi Code: providers/kimi.md
       - Q Qwen Code: providers/qwen-code.md
       - τ Hugging Face Tau: advanced/tau.md

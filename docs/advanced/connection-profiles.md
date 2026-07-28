@@ -1,76 +1,111 @@
 # Connection Profiles
 
 Connection profiles determine how SuperQode connects to model providers and
-agent runtimes. Each profile has a connector type, optional runtime, and local
-availability check.
+agent runtimes. Each profile has a connector type, optional runtime, local
+availability check, and the menu it appears on.
 
-## Connection Profiles
+Profiles are split across two screens. The root screen holds the three ways
+SuperQode's own harness runs a model plus two submenus. The subscriptions
+screen holds the vendor coding agents. Every profile stays reachable by name
+regardless of the screen it appears on, so `:connect codex` never requires a
+detour through the submenu.
 
-### 1. Local Model (connector: local, runtime: builtin)
+## Root Screen (`:connect`)
+
+### 1. Local (connector: local, runtime: builtin)
 
 Connects to local/self-hosted model servers. Opens a local provider picker (Ollama, MLX, LM Studio, vLLM, SGLang, TGI, DS4). Always available.
 
-### 2. BYOK Provider (connector: byok, runtime: builtin)
-
-Brings your own API key. Opens a cloud provider picker, then model selector. Uses builtin runtime. detect() checks for configured provider credentials.
-
-### 3. ACP Agent (connector: acp-picker)
+### 2. ACP (Agent Client Protocol) (connector: acp-picker)
 
 Opens an interactive picker showing all discovered ACP agents. Always available. No model auth setup is needed before browsing the catalog.
 
-### 4. Codex Subscription (connector: runtime, runtime: codex-sdk)
+### 3. BYOK (Bring Your Own Key) (connector: byok, runtime: builtin)
 
-Self-contained: brings its own model and auth via Codex login. Requires openai_codex package and ~/.codex/auth.json. Auto-connects on selection.
+Brings your own API key. Opens a cloud provider picker, then model selector. Uses builtin runtime. detect() checks for configured provider credentials.
 
-### 5. Claude Agent SDK (connector: runtime, runtime: claude-agent-sdk)
+### 4. Subscriptions (connector: subscription-picker)
 
-Self-contained: uses Anthropic API key directly. Requires claude_agent_sdk package and ANTHROPIC_API_KEY. Auto-connects on selection.
+Opens the vendor screen below. Always available. Esc returns to the root
+screen.
 
-### 6. Antigravity CLI (connector: runtime)
-
-Handoff profile: shows the command to run `agy` in a terminal. Does not connect SuperQode's own loop. Requires agy binary on PATH.
-
-### 7. Grok Subscription (connector: acp, agent: grok)
-
-Runs **Grok Build**, xAI's own coding agent, on an eligible SuperGrok or X Premium+ account. This matches the Codex and Claude subscription profiles: the vendor's agent owns the loop. Requires the `grok` binary on PATH and a local `grok login` (`~/.grok/auth.json`). SuperQode starts `grok agent stdio` over ACP.
-
-To run **SuperQode's own harness** on the same subscription instead, use `:grok api [model]`. That imports the CLI session token into SuperQode's auth store and routes through the `grok-cli` provider (CLI chat proxy), so `core`/`workbench` and SuperQode's tools drive Grok 4.5.
-
-### 8. GitHub Copilot SDK (connector: runtime, runtime: copilot-sdk)
-
-Uses the official GitHub Copilot SDK with the signed-in Copilot account or an
-explicit GitHub token. Requires the optional `copilot-sdk` extra.
-
-### 9. Z.AI GLM API (connector: byok, runtime: builtin)
-
-Uses the Z.AI general API through the builtin SuperQode harness. Requires
-`ZAI_API_KEY`.
-
-### 10. Qwen Code (connector: acp, agent: qwen)
-
-Runs QwenLM's first-party Qwen Code agent through its stable ACP mode. Requires
-the `qwen` command and authentication from `qwen auth`.
-
-### 11. Kimi Code (connector: acp, agent: kimi)
-
-Runs Moonshot AI's first-party Kimi Code agent through `kimi acp`. Requires the
-`kimi` command and a completed Kimi Code `/login`.
-
-### 12. Other Harnesses (connector: harness-picker)
+### 5. Other Harnesses (connector: harness-picker)
 
 Opens a focused list of optional harness integrations that are neither main
 connection profiles nor ACP agents. Hugging Face Tau appears here with its live
 installation status.
 
+## Subscriptions Screen (`:connect subscriptions`)
+
+### Codex Subscription (connector: runtime, runtime: codex-sdk)
+
+Self-contained: brings its own model and auth via Codex login. Requires openai_codex package and ~/.codex/auth.json. Auto-connects on selection.
+
+### Claude Agent SDK (connector: runtime, runtime: claude-agent-sdk)
+
+Self-contained: uses Anthropic API key directly. Requires claude_agent_sdk package and ANTHROPIC_API_KEY. Auto-connects on selection.
+
+### Antigravity CLI (connector: runtime)
+
+Handoff profile: shows the command to run `agy` in a terminal. Does not connect SuperQode's own loop. Requires agy binary on PATH.
+
+### Grok Subscription (connector: acp, agent: grok)
+
+Runs **Grok Build**, xAI's own coding agent, on an eligible SuperGrok or X Premium+ account. This matches the Codex and Claude subscription profiles: the vendor's agent owns the loop. Requires the `grok` binary on PATH and a local `grok login` (`~/.grok/auth.json`). SuperQode starts `grok agent stdio` over ACP.
+
+To run **SuperQode's own harness** on the same subscription instead, use `:grok api [model]`. That imports the CLI session token into SuperQode's auth store and routes through the `grok-cli` provider (CLI chat proxy), so `core`/`workbench` and SuperQode's tools drive Grok 4.5.
+
+### GitHub Copilot SDK (connector: runtime, runtime: copilot-sdk)
+
+Uses the official GitHub Copilot SDK with the signed-in Copilot account or an
+explicit GitHub token. Requires the optional `copilot-sdk` extra.
+
+### Gemini CLI (connector: acp, agent: gemini)
+
+Runs Google's Gemini CLI through `gemini --acp`. Requires the `gemini` command
+and either its sign-in or `GEMINI_API_KEY`. Consumer Google AI accounts should
+use Antigravity instead.
+
+### Devin (connector: acp, agent: devin)
+
+Runs Cognition's Devin CLI through `devin acp`. Requires the `devin` command
+and a completed `devin auth login`. Devin owns its own credential store.
+
+### GLM CLI (connector: acp, agent: glm)
+
+Runs the community `glm-acp-agent` CLI, which uses GLM models as its reasoning
+engine. It is not a first-party Z.ai client.
+
+### Z.AI GLM API (connector: byok, runtime: builtin)
+
+Uses the Z.AI general API through the builtin SuperQode harness. Requires
+`ZAI_API_KEY`.
+
+### Qwen Code (connector: acp, agent: qwen)
+
+Runs QwenLM's first-party Qwen Code agent through its stable ACP mode. Requires
+the `qwen` command and authentication from `qwen auth`.
+
+### Kimi Code (connector: acp, agent: kimi)
+
+Runs Moonshot AI's first-party Kimi Code agent through `kimi acp`. Requires the
+`kimi` command and a completed Kimi Code `/login`.
+
 ## TUI Usage
 
-In the TUI, use `:connect` to open the type picker. Each profile shows
-availability status. Navigate with arrows or number keys, or press `H` to open
-the Other Harnesses picker.
+In the TUI, use `:connect` to open the root screen. Each profile shows
+availability status. Navigate with arrows or number keys. Enter on
+**Subscriptions** opens the vendor screen, and Esc there returns to the root
+screen instead of leaving the flow. `H` still opens the Other Harnesses picker
+from the root screen.
 
 Direct shortcuts:
 
+- `:connect subscriptions` - open the vendor screen
 - `:connect codex` - connect Codex SDK directly
+- `:connect gemini-cli` - Google Gemini CLI over ACP
+- `:connect devin` - Cognition Devin CLI over ACP
+- `:connect glm-cli` - community GLM ACP agent
 - `:connect copilot` - connect through the official GitHub Copilot SDK
 - `:connect acp copilot` - advanced Copilot CLI ACP compatibility path
 - `:connect other-harnesses` - browse optional non-ACP harnesses such as Tau

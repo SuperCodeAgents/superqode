@@ -82,6 +82,15 @@ class ConnectMixin:
             t.append(f"\n  ⚠️  Error refreshing: {str(e)}", style=THEME["error"])
             log.write(t)
 
+    def _connect_menu_profiles(self):
+        """Profiles shown on the connect screen the user is currently looking at."""
+        from superqode.providers.connection_profiles import (
+            CONNECT_MENU_ROOT,
+            list_connection_profiles,
+        )
+
+        return list_connection_profiles(getattr(self, "_connect_menu", CONNECT_MENU_ROOT))
+
     def action_navigate_connect_type_up(self):
         """Navigate to previous connection type (arrow up)."""
         if not getattr(self, "_awaiting_connect_type", False):
@@ -101,10 +110,8 @@ class ConnectMixin:
         if not getattr(self, "_awaiting_connect_type", False):
             return
 
-        from superqode.providers.connection_profiles import list_connection_profiles
-
         current_idx = getattr(self, "_byok_highlighted_connect_type_index", 0)
-        new_idx = min(len(list_connection_profiles()) - 1, current_idx + 1)
+        new_idx = min(len(self._connect_menu_profiles()) - 1, current_idx + 1)
         if new_idx != current_idx:
             self._byok_highlighted_connect_type_index = new_idx
             log = self.query_one("#log", ConversationLog)
@@ -117,9 +124,9 @@ class ConnectMixin:
         if not getattr(self, "_awaiting_connect_type", False):
             return
 
-        from superqode.providers.connection_profiles import list_connection_profiles
-
-        profiles = list_connection_profiles()
+        profiles = self._connect_menu_profiles()
+        if not profiles:
+            return
         idx = getattr(self, "_byok_highlighted_connect_type_index", 0)
         if not (0 <= idx < len(profiles)):
             idx = 0
@@ -130,6 +137,22 @@ class ConnectMixin:
         log.scroll_home(animate=False)
         log.auto_scroll = True
         self._dispatch_connection_profile(profiles[idx], log)
+
+    def action_connect_menu_back(self) -> bool:
+        """Return a submenu (Subscriptions) to the root connect screen.
+
+        Returns True when it handled the request, so Esc/`:back` can fall
+        through to cancelling the picker on the root screen.
+        """
+        from superqode.providers.connection_profiles import CONNECT_MENU_ROOT
+
+        if not getattr(self, "_awaiting_connect_type", False):
+            return False
+        if getattr(self, "_connect_menu", CONNECT_MENU_ROOT) == CONNECT_MENU_ROOT:
+            return False
+        log = self.query_one("#log", ConversationLog)
+        self._show_connect_type_picker(log, menu=CONNECT_MENU_ROOT)
+        return True
 
     def action_browse_harnesses_from_connect(self) -> None:
         """Leave the connection picker and open optional non-ACP harnesses."""
@@ -160,7 +183,10 @@ class ConnectMixin:
 
     def _reset_connect_selection_states(self) -> None:
         """Clear transient connect-flow selection state so flows don't interfere."""
+        from superqode.providers.connection_profiles import CONNECT_MENU_ROOT
+
         self._awaiting_connect_type = False
+        self._connect_menu = CONNECT_MENU_ROOT
         self._awaiting_runtime_selection = False
         self._awaiting_byok_provider = False
         self._awaiting_byok_model = False
@@ -223,6 +249,10 @@ class ConnectMixin:
             self._show_agents(log)
         elif conn == "harness-picker":
             self._show_other_harnesses(log)
+        elif conn == "subscription-picker":
+            from superqode.providers.connection_profiles import CONNECT_MENU_SUBSCRIPTIONS
+
+            self._show_connect_type_picker(log, menu=CONNECT_MENU_SUBSCRIPTIONS)
         elif conn == "external-cli":
             if getattr(profile, "id", "") == "antigravity":
                 self._antigravity_cmd("connect", log)
@@ -1267,14 +1297,36 @@ class ConnectMixin:
             log.add_info("No previous connection saved")
             log.add_system("Use :connect to select a provider")
 
-    def _show_connect_type_picker(self, log: ConversationLog, clear_log: bool = True):
-        """Show picker to choose between ACP, BYOK, and LOCAL connection types.
+    def _show_connect_type_picker(
+        self,
+        log: ConversationLog,
+        clear_log: bool = True,
+        menu: str | None = None,
+    ):
+        """Show the connect screen: the five root sources, or a submenu.
 
         Args:
             log: The conversation log widget
             clear_log: If True, clear the log before writing (default: True).
                       Set to False when updating during navigation to reduce flickering.
+            menu: Which connect screen to show. Defaults to the root screen on a
+                  fresh render, and to the current screen while navigating it.
         """
+        from superqode.providers.connection_profiles import (
+            CONNECT_MENU_ROOT,
+            CONNECT_MENU_SUBSCRIPTIONS,
+            list_connection_profiles,
+        )
+
+        current_menu = getattr(self, "_connect_menu", CONNECT_MENU_ROOT)
+        if menu is None:
+            # A fresh `:connect` always lands on the root screen; arrow-key
+            # redraws (clear_log=False) stay on the screen being navigated.
+            menu = CONNECT_MENU_ROOT if clear_log else current_menu
+        if menu != current_menu:
+            self._byok_highlighted_connect_type_index = 0
+        self._connect_menu = menu
+
         # Clear any other primary picker state to prevent interference.
         self._awaiting_harness_selection = False
         self._awaiting_harness_confirmation = False
@@ -1289,21 +1341,26 @@ class ConnectMixin:
         if hasattr(self, "_byok_connect_list"):
             delattr(self, "_byok_connect_list")
 
+        is_subscriptions = menu == CONNECT_MENU_SUBSCRIPTIONS
         t = Text()
         t.append(f"\n  ◈ ", style=f"bold {THEME['purple']}")
-        t.append("Select Connection Type\n\n", style=f"bold {THEME['text']}")
+        if is_subscriptions:
+            t.append("Subscriptions\n", style=f"bold {THEME['text']}")
+            t.append(
+                "  Vendor coding agents you sign in to with a plan you already have.\n\n",
+                style=THEME["muted"],
+            )
+        else:
+            t.append("How do you want to connect?\n\n", style=f"bold {THEME['text']}")
 
-        # Show connection sources (profile-driven) with highlighting + status
-        from superqode.providers.connection_profiles import list_connection_profiles
-
-        profiles = list_connection_profiles()
+        profiles = list_connection_profiles(menu)
         highlighted_idx = getattr(self, "_byok_highlighted_connect_type_index", 0)
         if not (0 <= highlighted_idx < len(profiles)):
             highlighted_idx = 0
 
         current_group = ""
         for i, profile in enumerate(profiles):
-            if profile.group != current_group:
+            if profile.group and profile.group != current_group:
                 if current_group:
                     t.append("\n", style="")
                 t.append(f"  {profile.group}\n", style=f"bold {THEME['purple']}")
@@ -1337,9 +1394,15 @@ class ConnectMixin:
         t.append(" navigate  ", style=THEME["dim"])
         t.append("Enter", style=THEME["cyan"])
         t.append(" select  ", style=THEME["dim"])
-        t.append("H", style=THEME["purple"])
-        t.append(" other harnesses  •  or type a number or name, e.g. ", style=THEME["dim"])
-        t.append(":connect codex", style=THEME["cyan"])
+        if is_subscriptions:
+            t.append("Esc", style=THEME["purple"])
+            t.append(" back  •  or type a number or name, e.g. ", style=THEME["dim"])
+            t.append(":connect codex", style=THEME["cyan"])
+        else:
+            # "Other harnesses" is item 5 now, so the H shortcut stays bound but
+            # no longer needs to compete for attention in the hint line.
+            t.append("•  or type a number or name, e.g. ", style=THEME["dim"])
+            t.append(":connect subscriptions", style=THEME["cyan"])
         t.append("\n", style="")
 
         if clear_log:

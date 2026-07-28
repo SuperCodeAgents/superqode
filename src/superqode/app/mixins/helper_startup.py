@@ -350,7 +350,7 @@ class HelperStartupMixin:
             PaletteCommand(
                 "connect",
                 "Connect",
-                "Choose ACP, BYOK, or local provider",
+                "Choose local, ACP, BYOK, or a subscription",
                 "🔌",
                 ":connect",
                 "connection",
@@ -685,7 +685,7 @@ class HelperStartupMixin:
         t.append("  │  1. ", style=f"bold {THEME['cyan']}")
         t.append("Connect  ", style=f"bold {THEME['text']}")
         t.append(":connect", style=f"bold {THEME['success']}")
-        t.append("       pick ACP, BYOK, or local provider\n", style=THEME["muted"])
+        t.append("       pick local, ACP, BYOK, or a subscription\n", style=THEME["muted"])
         t.append("  │  2. ", style=f"bold {THEME['cyan']}")
         t.append("Pick     ", style=f"bold {THEME['text']}")
         t.append("↑/↓ then Enter", style=f"bold {THEME['success']}")

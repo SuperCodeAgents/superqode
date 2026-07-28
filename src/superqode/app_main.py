@@ -302,6 +302,7 @@ class SuperQodeApp(
     _byok_highlighted_connect_type_index = (
         0  # Track highlighted connection type for keyboard navigation
     )
+    _connect_menu = "root"  # Which :connect screen is showing (root | subscriptions)
     _acp_highlighted_agent_index = 0  # Track highlighted ACP agent for keyboard navigation
     _local_highlighted_provider_index = (
         0  # Track highlighted local provider for keyboard navigation
@@ -838,6 +839,10 @@ class SuperQodeApp(
             log.add_info("Selection cancelled. Use :connect to try again.")
             return
         if getattr(self, "_awaiting_connect_type", False):
+            # Esc inside Subscriptions steps back to the root connect screen;
+            # only the root screen cancels the flow.
+            if self.action_connect_menu_back():
+                return
             self._awaiting_connect_type = False
             log = self.query_one("#log", ConversationLog)
             log.add_info("Selection cancelled.")

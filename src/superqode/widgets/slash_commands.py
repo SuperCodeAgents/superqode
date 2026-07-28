@@ -350,7 +350,7 @@ def create_builtin_commands(handlers: dict) -> list[SlashCommand]:
     commands.append(
         SlashCommand(
             name="connect",
-            description="Connect to ACP, BYOK, or local providers",
+            description="Connect local, ACP, BYOK, or a subscription",
             handler=handlers.get("connect", lambda _: None),
             aliases=["c"],
             category="session",

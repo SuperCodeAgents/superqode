@@ -64,9 +64,7 @@ class PickerNavigationMixin:
 
         # 1. Handle connection type selection first (profile-driven)
         if getattr(self, "_awaiting_connect_type", False):
-            from superqode.providers.connection_profiles import list_connection_profiles
-
-            profiles = list_connection_profiles()
+            profiles = self._connect_menu_profiles()
             if 1 <= num <= len(profiles):
                 self._dispatch_connection_profile(profiles[num - 1], log)
                 return True

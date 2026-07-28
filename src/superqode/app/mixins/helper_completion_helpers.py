@@ -222,7 +222,7 @@ class HelperCompletionHelpersMixin:
             ":attach": "stage files or URLs for the next prompt",
             ":prompt": "load a prompt file into the input buffer",
             ":model": "inspect or switch active provider/model",
-            ":connect": "connect ACP, BYOK, or local runtime",
+            ":connect": "connect local, ACP, BYOK, or a subscription",
             ":exit": "exit SuperQode",
             ":quit": "exit SuperQode",
             ":vim": "optional Vim-style terminal navigation",

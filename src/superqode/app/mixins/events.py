@@ -380,6 +380,10 @@ class EventHandlerMixin:
 
         if command_prefix:
             cmd = text[len(command_prefix) :].strip().lower()
+            # Inside a connect submenu, :back steps up one screen instead of
+            # dropping the user out of the connect flow entirely.
+            if cmd == "back" and self.action_connect_menu_back():
+                return
             # Handle navigation commands during selection
             if cmd in ("home", "back", "cancel") and (
                 getattr(self, "_awaiting_connect_type", False)
@@ -496,21 +500,23 @@ class EventHandlerMixin:
 
         # Check if awaiting connect type selection (profile-driven)
         if getattr(self, "_awaiting_connect_type", False):
-            from superqode.providers.connection_profiles import (
-                get_connection_profile,
-                list_connection_profiles,
-            )
+            from superqode.providers.connection_profiles import get_connection_profile
 
-            profiles = list_connection_profiles()
+            profiles = self._connect_menu_profiles()
             choice = text.strip().lower()
             if choice in {"h", "harness", "harnesses"}:
                 event.input.value = ""
                 self.action_browse_harnesses_from_connect()
                 return
+            if choice in {"b", "back"} and self.action_connect_menu_back():
+                event.input.value = ""
+                return
             profile = None
             if choice.isdigit() and 1 <= int(choice) <= len(profiles):
                 profile = profiles[int(choice) - 1]
             else:
+                # Names resolve across every menu, so `codex` still works from
+                # the root screen without stepping into Subscriptions first.
                 profile = get_connection_profile(choice)
             if profile is not None:
                 event.input.value = ""

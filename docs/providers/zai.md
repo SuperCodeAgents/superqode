@@ -52,6 +52,30 @@ You can also launch directly into the Z.AI profile:
 superqode --connect zai
 ```
 
+Both entries are on the Subscriptions screen of the connect picker, reachable
+with `:connect subscriptions`.
+
+## GLM CLI (community ACP agent)
+
+`glm-acp-agent` is a community-maintained ACP agent that uses GLM models as its
+reasoning engine. It is not a first-party Z.ai client, and it runs its own agent
+loop instead of the SuperQode harness:
+
+```bash
+npm install -g glm-acp-agent
+```
+
+```text
+:connect glm-cli
+```
+
+`:connect acp glm` reaches the same agent through the generic ACP picker.
+
+| Goal | Route |
+| --- | --- |
+| Use GLM models inside the SuperQode harness | `:connect zai` |
+| Use the community GLM agent loop | `:connect glm-cli` |
+
 ## GLM-5.2 harness
 
 The `glm52-coding` template uses the first-party Z.AI route, GLM-family model

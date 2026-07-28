@@ -1,9 +1,10 @@
 # Connection Methods and Vendors
 
 SuperQode provides six connection and interoperability methods: Local, ACP,
-MCP, A2A, BYOK, and SDK runtimes. The `:connect` picker exposes the methods and
-the primary product profiles. Vendor-specific commands remain available for
-direct selection.
+MCP, A2A, BYOK, and SDK runtimes. The `:connect` screen opens on five choices,
+Local, ACP, BYOK, Subscriptions, and Other harnesses, and the vendor products
+sit inside Subscriptions. Vendor-specific commands remain available for direct
+selection.
 
 ## Start With The Outcome
 
@@ -54,7 +55,7 @@ Switching can preserve the current conversation or fork an independent branch:
 | Local | Ollama, LM Studio, MLX, DwarfStar, llama.cpp, vLLM, SGLang, TGI, or another OpenAI-compatible server | `:connect local` | SuperQode runs the harness and calls the local model |
 | ACP | An external coding-agent process that implements Agent Client Protocol | `:connect acp` | The external agent owns its model and tool loop |
 | BYOK | A hosted model provider using an API key supplied by the user | `:connect byok` | SuperQode runs the harness and calls the provider |
-| SDK | A vendor agent SDK or authenticated client runtime | `:connect codex`, `:connect claude`, or another product profile | The vendor runtime owns model access; SuperQode supplies session and policy controls |
+| SDK | A vendor agent SDK or authenticated client runtime | `:connect subscriptions`, then a product such as `:connect codex` or `:connect claude` | The vendor runtime owns model access; SuperQode supplies session and policy controls |
 | MCP | Tool and resource servers exposed through Model Context Protocol | `:mcp` | MCP extends the active harness or ACP agent; it is not a model connection |
 | A2A | Remote agents exposed through Agent2Agent endpoints | `:a2a connect <url>` | The remote agent owns its execution contract |
 
@@ -69,15 +70,19 @@ Open the complete product-level picker:
 :connect
 ```
 
-Open a method-specific picker:
+The root screen has five options: `local`, `acp`, `byok`, `subscriptions`, and
+`other-harnesses`. Open one of them directly:
 
 ```text
 :connect local
 :connect acp
 :connect byok
+:connect subscriptions
+:connect other-harnesses
 ```
 
-Use a direct product profile:
+`:connect subscriptions` opens the vendor submenu. Every product on it is also
+a direct profile, so the submenu never becomes a required step:
 
 ```text
 :connect codex
@@ -85,8 +90,12 @@ Use a direct product profile:
 :connect antigravity
 :connect grok
 :connect copilot
+:connect gemini-cli
+:connect devin
+:connect glm-cli
 :connect zai
-:connect other-harnesses
+:connect qwen-code
+:connect kimi-code
 ```
 
 The root picker is intentionally shorter than the full catalogs. The following
@@ -108,11 +117,11 @@ that matches the account, runtime, and harness ownership required for the task.
 | OpenAI Codex | Codex SDK, Codex ACP, OpenAI BYOK | `:connect codex`, `:connect acp codex`, `:connect byok openai <model>` |
 | Anthropic Claude | Claude Agent SDK, Claude Code ACP, Anthropic BYOK | `:connect claude`, `:connect acp claude`, `:connect byok anthropic <model>` |
 | Google Antigravity | Authenticated Antigravity CLI runtime | `:connect antigravity` |
-| Google Gemini | Gemini CLI ACP, Google AI Studio BYOK, Google ADK runtime | `:connect acp gemini`, `:connect byok google <model>`, `:runtime adk` |
+| Google Gemini | Gemini CLI ACP, Google AI Studio BYOK, Google ADK runtime | `:connect gemini-cli`, `:connect acp gemini`, `:connect byok google <model>`, `:runtime adk` |
 | GitHub Copilot | Copilot SDK, advanced Copilot CLI ACP | `:connect copilot`, `:connect acp copilot` |
 | xAI Grok | Grok Build ACP, Grok subscription model route, xAI BYOK | `:connect grok`, `:grok api [model]`, `:connect byok xai <model>` |
 | OpenCode | OpenCode ACP, OpenCode Zen BYOK | `:connect acp opencode`, `:connect byok opencode <model>` |
-| Z.AI GLM | Z.AI BYOK, GLM ACP | `:connect zai`, `:connect acp glm` |
+| Z.AI GLM | Z.AI BYOK, GLM CLI ACP | `:connect zai`, `:connect glm-cli`, `:connect acp glm` |
 | Poolside | Pool CLI ACP, Laguna S 2.1 through DwarfStar or llama.cpp | `:connect acp poolside`, `:connect local ds4 laguna-s-2.1` |
 | Moonshot AI Kimi | Kimi Code ACP, Moonshot BYOK | `:connect kimi-code`, `:connect byok moonshot kimi-k3` |
 | Alibaba Qwen | Qwen Code ACP, DashScope BYOK, local Qwen models | `:connect qwen-code`, `:connect byok alibaba <model>`, `:connect local ollama qwen3:8b` |
@@ -123,7 +132,7 @@ that matches the account, runtime, and harness ownership required for the task.
 | Cursor | Cursor CLI ACP | `:connect acp cursor` |
 | Cline | Cline CLI ACP | `:connect acp cline` |
 | Factory | Factory Droid ACP | `:connect acp droid` |
-| Cognition | Devin ACP | `:connect acp devin` |
+| Cognition | Devin ACP, Devin CLI runtime | `:connect devin`, `:connect acp devin`, `:runtime devin-cli` |
 | JetBrains | Junie ACP | `:connect acp junie` |
 | Amazon | Amazon Bedrock BYOK, Kiro ACP | `:connect byok amazon-bedrock <model>`, `:connect acp kiro` |
 

@@ -89,7 +89,8 @@ SuperQode first works like a normal terminal coding agent. Open a repository,
 connect the coding agent or model you already use, and give it a task:
 
 ```text
-:connect
+:connect                # local, ACP, BYOK, subscriptions, or other harnesses
+:connect subscriptions  # Codex, Claude, Grok, Copilot, Gemini CLI, Devin, ...
 :connect codex
 :connect copilot
 :connect kimi-code
@@ -168,26 +169,27 @@ superqode --connect claude --print "summarize the last change"
 Inside the TUI, start with `:help`. Common commands include:
 
 ```text
-:connect codex        # Codex SDK with local Codex login
-:connect copilot      # GitHub Copilot SDK
-:connect claude       # Claude Agent SDK
-:connect antigravity  # signed-in Antigravity CLI
-:connect byok         # hosted provider or API-key path
-:connect local        # local model provider
-:connect acp          # installed and featured ACP coding agents
-:connect acp refresh  # refresh the cached official ACP Registry
-:mcp                  # tool and resource server connections
-:a2a                  # remote A2A agent connections
-:tree                 # saved session branches
-:share create         # portable session artifact
-:export markdown      # transcript export
-:trust doctor         # project plugin, MCP, and hook audit
-:plugins doctor       # plugin manifest validation
-:plan fix the tests   # planning-only review
-:plan approve         # execute the approved plan
-:memory providers     # memory provider status
-:memory remember ...  # explicit project memory
-:vim on               # optional Vim-like navigation
+:connect local          # local model provider
+:connect acp            # installed and featured ACP coding agents
+:connect byok           # hosted provider or API-key path
+:connect subscriptions  # vendor coding agents on a plan you already pay for
+:connect codex          # Codex SDK with local Codex login
+:connect copilot        # GitHub Copilot SDK
+:connect claude         # Claude Agent SDK
+:connect antigravity    # signed-in Antigravity CLI
+:connect acp refresh    # refresh the cached official ACP Registry
+:mcp                    # tool and resource server connections
+:a2a                    # remote A2A agent connections
+:tree                   # saved session branches
+:share create           # portable session artifact
+:export markdown        # transcript export
+:trust doctor           # project plugin, MCP, and hook audit
+:plugins doctor         # plugin manifest validation
+:plan fix the tests     # planning-only review
+:plan approve           # execute the approved plan
+:memory providers       # memory provider status
+:memory remember ...    # explicit project memory
+:vim on                 # optional Vim-like navigation
 ```
 
 CLI equivalents:

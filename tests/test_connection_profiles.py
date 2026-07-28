@@ -7,6 +7,8 @@ from types import SimpleNamespace
 import pytest
 
 from superqode.providers.connection_profiles import (
+    CONNECT_MENU_ROOT,
+    CONNECT_MENU_SUBSCRIPTIONS,
     ConnectionProfile,
     connection_profile_ids,
     get_connection_profile,
@@ -14,24 +16,100 @@ from superqode.providers.connection_profiles import (
 )
 
 
-def test_registry_has_expected_profiles():
-    ids = connection_profile_ids()
-    # Preserve all established picker positions; new profiles append at the end.
-    assert ids == [
+def test_root_menu_is_five_entries_local_first():
+    """The first connect screen stays short: three methods, then two submenus."""
+    assert connection_profile_ids(menu=CONNECT_MENU_ROOT) == [
         "local",
-        "byok",
         "acp",
+        "byok",
+        "subscriptions",
+        "other-harnesses",
+    ]
+    labels = {p.id: p.label for p in list_connection_profiles(CONNECT_MENU_ROOT)}
+    assert labels["acp"] == "ACP (Agent Client Protocol)"
+    assert labels["byok"] == "BYOK (Bring Your Own Key)"
+    # Root entries are a flat list, so they carry no group headers.
+    assert all(p.group == "" for p in list_connection_profiles(CONNECT_MENU_ROOT))
+
+
+def test_subscriptions_menu_holds_the_vendor_agents():
+    assert connection_profile_ids(menu=CONNECT_MENU_SUBSCRIPTIONS) == [
         "codex",
         "claude",
         "antigravity",
         "grok",
         "copilot",
+        "gemini-cli",
+        "devin",
+        "glm-cli",
         "zai",
         "qwen-code",
         "kimi-code",
+    ]
+    groups = {p.group for p in list_connection_profiles(CONNECT_MENU_SUBSCRIPTIONS)}
+    assert groups == {"US Coding Agents", "China Coding Agents"}
+
+
+def test_registry_has_expected_profiles():
+    # The flat list is root order first, then the subscription submenu.
+    assert connection_profile_ids() == [
+        "local",
+        "acp",
+        "byok",
+        "subscriptions",
         "other-harnesses",
+        "codex",
+        "claude",
+        "antigravity",
+        "grok",
+        "copilot",
+        "gemini-cli",
+        "devin",
+        "glm-cli",
+        "zai",
+        "qwen-code",
+        "kimi-code",
     ]
     assert "copilot-acp" in connection_profile_ids(include_legacy=True)
+
+
+def test_subscriptions_profile_opens_the_submenu():
+    profile = get_connection_profile("subscriptions")
+
+    assert profile.connector == "subscription-picker"
+    assert profile.menu == CONNECT_MENU_ROOT
+    assert profile.available is True
+
+
+def test_gemini_devin_and_glm_are_acp_subscription_profiles():
+    gemini = get_connection_profile("gemini-cli")
+    devin = get_connection_profile("devin")
+    glm = get_connection_profile("glm-cli")
+
+    assert (gemini.connector, gemini.acp_agent) == ("acp", "gemini")
+    assert (devin.connector, devin.acp_agent) == ("acp", "devin")
+    assert (glm.connector, glm.acp_agent) == ("acp", "glm")
+    assert all(p.menu == CONNECT_MENU_SUBSCRIPTIONS for p in (gemini, devin, glm))
+    assert "devin auth login" in devin.unavailable_hint
+    assert "glm-acp-agent" in glm.unavailable_hint
+    assert "@google/gemini-cli" in gemini.unavailable_hint
+
+
+def test_new_cli_profiles_detect_their_binaries(monkeypatch):
+    import superqode.providers.connection_profiles as cp
+
+    installed = {"gemini", "devin", "glm-acp-agent"}
+    monkeypatch.setattr(
+        cp.shutil, "which", lambda name: f"/usr/bin/{name}" if name in installed else None
+    )
+    assert cp._gemini_cli_ready() is True
+    assert cp._devin_cli_ready() is True
+    assert cp._glm_cli_ready() is True
+
+    installed.clear()
+    assert cp._gemini_cli_ready() is False
+    assert cp._devin_cli_ready() is False
+    assert cp._glm_cli_ready() is False
 
 
 def test_zai_profile_targets_first_party_byok_provider(monkeypatch):
@@ -222,6 +300,9 @@ class _DispatchStub:
 
     def _show_agents(self, log):
         self.calls.append(("acp-picker",))
+
+    def _show_connect_type_picker(self, log, clear_log=True, menu=None):
+        self.calls.append(("connect-picker", menu))
 
     def _antigravity_cmd(self, args, log):
         self.calls.append(("antigravity", args))
@@ -451,6 +532,31 @@ def test_dispatch_grok_routes_to_grok_build_acp(_dispatch):
     assert ("subscription", "grok-build") not in stub.calls
 
 
+def test_dispatch_subscriptions_opens_the_submenu(_dispatch):
+    stub = _DispatchStub()
+    _dispatch(stub, get_connection_profile("subscriptions"), log=None)
+    assert ("connect-picker", CONNECT_MENU_SUBSCRIPTIONS) in stub.calls
+
+
+def test_dispatch_gemini_devin_and_glm_route_to_their_acp_agents(_dispatch, monkeypatch):
+    import superqode.providers.connection_profiles as cp
+
+    installed = {"gemini", "devin", "glm-acp-agent"}
+    monkeypatch.setattr(
+        cp.shutil, "which", lambda name: f"/usr/bin/{name}" if name in installed else None
+    )
+
+    stub = _DispatchStub()
+    for profile_id in ("gemini-cli", "devin", "glm-cli"):
+        _dispatch(stub, get_connection_profile(profile_id), log=None)
+
+    assert [call for call in stub.calls if call[0] == "acp"] == [
+        ("acp", "gemini"),
+        ("acp", "devin"),
+        ("acp", "glm"),
+    ]
+
+
 def test_dispatch_local_routes_to_local_picker(_dispatch):
     stub = _DispatchStub()
     _dispatch(stub, get_connection_profile("local"), log=None)
@@ -462,8 +568,8 @@ def test_connect_subcommands_route_to_specific_pickers():
     from superqode.app_main import SuperQodeApp
 
     class Stub(_DispatchStub):
-        def _show_connect_type_picker(self, log, clear_log=True):
-            self.calls.append(("connect-picker",))
+        def _show_connect_type_picker(self, log, clear_log=True, menu=None):
+            self.calls.append(("connect-picker", menu))
 
         def _dispatch_connection_profile(self, profile, log):
             self.calls.append(("profile", profile.id))
@@ -490,7 +596,43 @@ def test_connect_subcommands_route_to_specific_pickers():
     assert ("profile", "grok") in stub.calls
     assert ("acp", "grok") in stub.calls
     assert stub.calls.count(("profile", "grok")) == 1  # only the bare :connect grok
-    assert ("connect-picker",) not in stub.calls
+    assert not any(call[0] == "connect-picker" for call in stub.calls)
+
+
+def test_connect_command_routes_every_profile_id_and_keeps_byok_pairs():
+    """Bare profile ids dispatch; `provider model` pairs still go to BYOK."""
+    from superqode.app_main import SuperQodeApp
+
+    class Stub(_DispatchStub):
+        def _show_connect_type_picker(self, log, clear_log=True, menu=None):
+            self.calls.append(("connect-picker", menu))
+
+        def _dispatch_connection_profile(self, profile, log):
+            self.calls.append(("profile", profile.id))
+
+        def _connect_byok_cmd(self, args, log):
+            self.calls.append(("byok-cmd", args))
+
+    stub = Stub()
+    for command in (
+        ":connect subscriptions",
+        ":connect gemini-cli",
+        ":connect devin",
+        ":connect glm-cli",
+        ":connect kimi-code",
+        ":connect zai",
+        ":connect zai glm-4.6",
+    ):
+        SuperQodeApp._handle_command(stub, command, log=None)
+
+    assert ("profile", "subscriptions") in stub.calls
+    assert ("profile", "gemini-cli") in stub.calls
+    assert ("profile", "devin") in stub.calls
+    assert ("profile", "glm-cli") in stub.calls
+    assert ("profile", "kimi-code") in stub.calls
+    assert ("profile", "zai") in stub.calls
+    # A provider/model pair keeps the direct BYOK connect path.
+    assert ("byok-cmd", "zai glm-4.6") in stub.calls
 
 
 # --- command + completion surface --------------------------------------------
