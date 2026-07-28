@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.59] - 2026-07-28
+
+### Changed
+
+- **`:connect` opens on five options instead of twelve** - The connect screen
+  listed every method and every vendor product in one flat list, which is a lot
+  to read before your first connection. It now opens on `Local`, `ACP (Agent
+  Client Protocol)`, `BYOK (Bring Your Own Key)`, `Subscriptions`, and `Other
+  harnesses`. Enter on `Subscriptions` opens the vendor screen, and Esc there
+  returns to the root screen instead of leaving the connect flow. Arrow keys,
+  number keys, and typed names work the same as before, and every product is
+  still reachable directly, so `:connect codex` never needs a detour through
+  the submenu. Completion order, the command suggester, and the palette entry
+  follow the same order as the screen.
+
+### Added
+
+- **Gemini CLI, Devin, and GLM CLI are first-class connection profiles** -
+  `:connect gemini-cli` starts `gemini --acp`, `:connect devin` starts
+  `devin acp`, and `:connect glm-cli` starts the community `glm-acp-agent`.
+  All three were reachable only through the generic ACP picker before. Each
+  shows live install status on the Subscriptions screen with the exact command
+  that fixes a missing CLI, and each has its own provider guide.
+- **`:connect subscriptions`** opens the vendor screen directly, and
+  `superqode --connect subscriptions` opens it at startup.
+
 ## [0.2.58] - 2026-07-28
 
 ### Fixed

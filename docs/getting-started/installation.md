@@ -175,7 +175,7 @@ curl -fsSL https://super-agentic.ai/superqode.sh |
 ```
 
 Release automation can install an exact published version with
-`SUPERQODE_VERSION=0.2.58`.
+`SUPERQODE_VERSION=0.2.59`.
 
 ## Installation for Developers
 
