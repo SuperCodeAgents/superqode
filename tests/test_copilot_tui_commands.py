@@ -49,8 +49,15 @@ def test_copilot_completion_exposes_the_polished_command_family():
     } <= values
 
 
-def test_copilot_models_uses_cli_catalog_when_sdk_is_absent():
+def test_copilot_models_uses_cli_catalog_when_sdk_is_absent(monkeypatch):
     chosen: dict[str, object] = {}
+
+    # The CLI branch is guarded by shutil.which("copilot"). A developer machine
+    # has the CLI installed and CI does not, so pin it for the test.
+    monkeypatch.setattr(
+        "superqode.app.mixins.commands_impl.shutil.which",
+        lambda name: "/opt/copilot" if name == "copilot" else None,
+    )
 
     class Stub:
         def _copilot_prefers_sdk(self):

@@ -1702,7 +1702,43 @@ async def test_connect_byok_parses_model_ids_containing_slashes():
             assert captured == [expected], f"{args!r} routed to {captured}"
 
 
-async def test_provider_picker_collapses_the_models_dev_long_tail():
+@pytest.fixture
+def models_dev_long_tail():
+    """Guarantee a models.dev long tail regardless of the machine's cache.
+
+    ``all_provider_ids()`` unions the curated registry with whatever the
+    models.dev client has loaded, and that client reads a network-populated
+    cache under the user's home directory. A developer machine has one and a
+    clean CI runner does not, so tests about collapsing the long tail passed
+    locally and failed in CI against the curated set alone. Seed the client so
+    the behaviour under test is exercised either way.
+    """
+    from superqode.providers.models_dev import ProviderInfo, get_models_dev
+
+    client = get_models_dev()
+    previous = client._providers.copy()
+    # env_vars must be non-empty: the picker treats a host that needs no key as
+    # already configured, and configured hosts are deliberately never collapsed.
+    synthetic = {
+        f"long-tail-host-{index:03d}": ProviderInfo(
+            id=f"long-tail-host-{index:03d}",
+            name=f"Long Tail Host {index:03d}",
+            env_vars=[f"LONG_TAIL_HOST_{index:03d}_API_KEY"],
+        )
+        for index in range(140)
+    }
+    # deepinfra is the concrete long-tail host these tests assert on.
+    synthetic["deepinfra"] = ProviderInfo(
+        id="deepinfra", name="DeepInfra", env_vars=["DEEPINFRA_API_KEY"]
+    )
+    client._providers = {**previous, **synthetic}
+    try:
+        yield client
+    finally:
+        client._providers = previous
+
+
+async def test_provider_picker_collapses_the_models_dev_long_tail(models_dev_long_tail):
     """models.dev synthesizes ~140 hosts that buried the curated ones."""
     from superqode.providers.dynamic import connect_provider_ids
 
@@ -1720,7 +1756,7 @@ async def test_provider_picker_collapses_the_models_dev_long_tail():
         assert ":connect byok all" in rendered
 
 
-async def test_connect_byok_all_reveals_every_provider():
+async def test_connect_byok_all_reveals_every_provider(models_dev_long_tail):
     """The collapsed hosts stay one command away."""
     from superqode.providers.dynamic import connect_provider_ids
 
@@ -1787,7 +1823,7 @@ async def test_pinned_hosts_lead_the_model_hosts_section():
         assert hosts[: len(expected)] == expected
 
 
-async def test_a_configured_long_tail_provider_is_never_hidden(monkeypatch):
+async def test_a_configured_long_tail_provider_is_never_hidden(monkeypatch, models_dev_long_tail):
     """Hiding a host whose key is set would look like it is unsupported."""
     app = SuperQodeApp()
     async with app.run_test(size=(110, 60)) as pilot:
