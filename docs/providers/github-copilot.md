@@ -1,12 +1,13 @@
 # GitHub Copilot
 
-SuperQode presents one primary GitHub Copilot integration in the Connect
-picker. It uses the models and quota available to the signed-in Copilot
-account. It does not turn a Copilot licence into an OpenAI API credential.
+SuperQode presents two GitHub Copilot routes in the Connect picker. Both use
+the models and quota available to the signed-in Copilot account. Neither turns
+a Copilot licence into an OpenAI API credential.
 
-| Primary path | SuperQode command | Integration |
+| Path | SuperQode command | Integration |
 | --- | --- | --- |
 | Copilot SDK | `:connect copilot` | Official `github-copilot-sdk` Python package with normalized events, model selection, permission checks, evaluation, and resumable sessions |
+| Copilot CLI | `:connect copilot-cli` | Official `copilot` CLI over ACP. The CLI owns authentication and its own agent loop, so it needs no bundled runtime download |
 
 GitHub Copilot owns the inner agent loop in both paths. SuperQode owns the
 terminal experience and the surrounding HarnessSpec, policy, evidence,
@@ -28,8 +29,8 @@ is not already cached. Preload it for offline or controlled environments with:
 uv run --with "github-copilot-sdk>=1.0.8,<2" python -m copilot download-runtime
 ```
 
-Authenticate by signing in with the Copilot CLI or by providing a supported
-GitHub token:
+Authenticate by signing in with the Copilot CLI or by providing a Copilot
+token:
 
 ```bash
 npm install -g @github/copilot
@@ -38,6 +39,12 @@ copilot login
 # Alternative for service or managed environments
 export COPILOT_GITHUB_TOKEN=...
 ```
+
+`COPILOT_GITHUB_TOKEN` is the only token variable SuperQode forwards to the
+SDK. `GH_TOKEN` and `GITHUB_TOKEN` are ignored on purpose: they are normally
+plain git PATs with no Copilot entitlement, and passing one makes the SDK start
+its runtime with `--no-auto-login`, which bypasses a working `copilot login`.
+`:copilot status` reports when either variable is present and ignored.
 
 Connect and select a model from the account's live catalog:
 
@@ -75,7 +82,7 @@ superqode --connect copilot --print "review this repository"
 superqode --runtime copilot-sdk --model gpt-5.6-sol --print "run the tests and report failures"
 ```
 
-## ACP Path
+## CLI Path
 
 Install and authenticate the official Copilot CLI:
 
@@ -84,16 +91,16 @@ npm install -g @github/copilot
 copilot login
 ```
 
-The ACP route is deliberately kept in the general ACP catalog instead of
-appearing as a second GitHub Copilot entry in the root Connect picker:
+Connect through any of these:
 
 ```text
+:connect copilot-cli
+:copilot cli
 :connect acp copilot
-:copilot acp
 ```
 
-The old `:connect copilot-acp` shortcut remains accepted for compatibility and
-prints guidance toward one of the commands above.
+`:connect copilot-acp` and `:copilot acp` remain accepted as older aliases for
+the same route.
 
 SuperQode starts `copilot --acp --stdio`, creates an ACP session for the
 current repository, and renders the events in the standard SuperQode terminal
@@ -103,14 +110,33 @@ so the ACP command contract may change independently of SuperQode.
 
 ## Choosing a Path
 
-Use the SDK path as the default for SuperQode workflows. It provides direct
-model discovery, runtime event normalization, permission integration, and
-session controls. Use ACP when compatibility with the standard Copilot CLI
-agent is more important than the deeper SuperQode runtime integration.
+Use the SDK path when you want direct model discovery, runtime event
+normalization, permission integration, and resumable sessions.
+
+Use the CLI path when the vendor CLI should own authentication and the agent
+loop. It is the more reliable route on Copilot Business and Enterprise seats,
+on networks that block the SDK runtime download, and anywhere `copilot login`
+already works but the SDK does not.
 
 The two paths maintain separate active sessions. Switching paths does not
 translate a live SDK session into ACP or an ACP session into the SDK. Persisted
 SDK sessions can be resumed through `:copilot resume`.
+
+## Troubleshooting
+
+Run `:copilot status` first. It reports SDK and CLI availability, which
+authentication source is in effect, and which token variables are being
+ignored.
+
+| Symptom | Cause | Action |
+| --- | --- | --- |
+| The first prompt takes a long time before any output | The SDK downloads its pinned Copilot runtime on first use | Wait for the one-time download, or preload it with `python -m copilot download-runtime` |
+| The first prompt never returns on a restricted network | The runtime download is blocked | Set `COPILOT_CLI_PATH` to an installed `copilot` binary, or use `:connect copilot-cli` |
+| The SDK cannot authenticate although `copilot login` works | `GH_TOKEN` or `GITHUB_TOKEN` was previously picked up | Nothing to do. SuperQode now forwards only `COPILOT_GITHUB_TOKEN` |
+| A turn ends reporting a timeout | The turn exceeded the idle wait | Raise `SUPERQODE_COPILOT_TIMEOUT` (seconds, default `600`) |
+
+Approval prompts are answered on a worker thread, so the terminal stays
+responsive while a Copilot tool call waits for a decision.
 
 ## Optional Dependency Policy
 
@@ -122,7 +148,7 @@ vendor bundle:
 uv tool install "superqode[vendor-sdks]"
 ```
 
-The ACP path still requires the separately installed `copilot` CLI on `PATH`.
+The CLI path still requires the separately installed `copilot` CLI on `PATH`.
 
 ## References
 

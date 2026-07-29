@@ -3690,7 +3690,9 @@ def test_prompt_completion_prioritizes_full_connect_and_quit_commands():
         ":connect grok",
         ":connect copilot",
     ]
-    assert connect_values[10] == ":connect antigravity"
+    # Copilot's two routes sit next to each other in the completion list.
+    assert connect_values[10] == ":connect copilot-cli"
+    assert connect_values[11] == ":connect antigravity"
     assert ":connect gemini-cli" in connect_values
     assert ":connect devin" in connect_values
     assert ":connect glm-cli" in connect_values
@@ -5736,11 +5738,13 @@ def test_connect_subscriptions_screen_lists_vendor_agents():
     assert rendered.index("[2] Claude Agent SDK") < rendered.index("[3] Antigravity CLI")
     assert rendered.index("[3] Antigravity CLI") < rendered.index("[4] Grok subscription")
     assert rendered.index("[4] Grok subscription") < rendered.index("[5] GitHub Copilot SDK")
-    assert rendered.index("[5] GitHub Copilot SDK") < rendered.index("[6] Gemini CLI")
-    assert rendered.index("[6] Gemini CLI") < rendered.index("[7] Devin")
-    assert rendered.index("[8] GLM CLI") < rendered.index("[9] Z.AI GLM API")
-    assert rendered.index("[9] Z.AI GLM API") < rendered.index("[10] Qwen Code")
-    assert rendered.index("[10] Qwen Code") < rendered.index("[11] Kimi Code")
+    # Copilot lists both routes: the SDK, then the vendor CLI over ACP.
+    assert rendered.index("[5] GitHub Copilot SDK") < rendered.index("[6] GitHub Copilot CLI")
+    assert rendered.index("[6] GitHub Copilot CLI") < rendered.index("[7] Gemini CLI")
+    assert rendered.index("[7] Gemini CLI") < rendered.index("[8] Devin")
+    assert rendered.index("[9] GLM CLI") < rendered.index("[10] Z.AI GLM API")
+    assert rendered.index("[10] Z.AI GLM API") < rendered.index("[11] Qwen Code")
+    assert rendered.index("[11] Qwen Code") < rendered.index("[12] Kimi Code")
     assert "Esc back" in rendered
 
 

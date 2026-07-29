@@ -218,9 +218,8 @@ class ConnectMixin:
         conn = profile.connector
         if getattr(profile, "id", "") == "copilot-acp" and log is not None:
             log.add_info(
-                "`:connect copilot-acp` is now an advanced compatibility route. "
-                "Use `:connect copilot` for the recommended SDK integration or "
-                "`:connect acp copilot` for ACP."
+                "`:connect copilot-acp` now points at `:connect copilot-cli`. "
+                "Both drive the Copilot CLI over ACP; `:connect copilot` uses the SDK."
             )
         if conn == "acp" and not profile.available and log is not None:
             log.add_info(f"{profile.label} needs setup: {profile.unavailable_hint}")

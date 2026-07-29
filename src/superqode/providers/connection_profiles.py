@@ -290,6 +290,22 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
         ),
     ),
     ConnectionProfile(
+        id="copilot-cli",
+        label="GitHub Copilot CLI",
+        description=(
+            "Drive the official Copilot CLI over ACP. The vendor CLI owns auth "
+            "and the agent loop, so this route works on Copilot Business/Enterprise "
+            "seats without the SDK's bundled runtime"
+        ),
+        connector="acp",
+        group="US Coding Agents",
+        menu=CONNECT_MENU_SUBSCRIPTIONS,
+        acp_agent="copilot",
+        self_contained=True,
+        detect=_copilot_acp_ready,
+        unavailable_hint="run `npm install -g @github/copilot`, then run `copilot login`",
+    ),
+    ConnectionProfile(
         id="gemini-cli",
         label="Gemini CLI",
         description=(
@@ -377,16 +393,16 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
 _PROFILES: List[ConnectionProfile] = [*_ROOT_PROFILES, *_SUBSCRIPTION_PROFILES]
 
 # Compatibility-only profiles remain directly resolvable without appearing in
-# the root Connect picker or its completion list.
+# the Connect picker or its completion list.
 _LEGACY_PROFILES: List[ConnectionProfile] = [
     ConnectionProfile(
         id="copilot-acp",
         label="GitHub Copilot ACP",
-        description="Legacy shortcut for the Copilot CLI agent in the ACP catalog",
+        description="Older alias for the GitHub Copilot CLI route",
         connector="acp",
         acp_agent="copilot",
         detect=_copilot_acp_ready,
-        unavailable_hint="install @github/copilot, then run `copilot login`",
+        unavailable_hint="run `npm install -g @github/copilot`, then run `copilot login`",
     ),
 ]
 

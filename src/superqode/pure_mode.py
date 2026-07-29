@@ -730,6 +730,12 @@ class PureMode:
                     "thinking_tokens": thinking_tokens,
                     "total_tokens": total_tokens,
                 }
+            # A self-contained runtime reports a failed turn here rather than
+            # raising. Dropping it ended the turn with an empty response and no
+            # explanation, which reads exactly like a hang. Stream it instead.
+            error = str(event.data.get("error") or "").strip()
+            if error and str(event.data.get("status") or "") not in {"cancelled", "completed"}:
+                return f"\n\n⚠️  {error}\n"
             return ""
         return ""
 

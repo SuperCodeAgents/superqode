@@ -39,6 +39,7 @@ def test_subscriptions_menu_holds_the_vendor_agents():
         "antigravity",
         "grok",
         "copilot",
+        "copilot-cli",
         "gemini-cli",
         "devin",
         "glm-cli",
@@ -63,6 +64,7 @@ def test_registry_has_expected_profiles():
         "antigravity",
         "grok",
         "copilot",
+        "copilot-cli",
         "gemini-cli",
         "devin",
         "glm-cli",
@@ -158,7 +160,13 @@ def test_kimi_and_qwen_are_first_party_acp_profiles():
     assert zai.group == qwen.group == kimi.group == "China Coding Agents"
 
 
-def test_copilot_sdk_is_the_only_visible_headline_route():
+def test_copilot_offers_both_the_sdk_and_the_cli_route():
+    """Copilot ships two visible routes.
+
+    The SDK embeds Copilot's bundled runtime; the CLI route hands auth and the
+    agent loop to the vendor CLI over ACP, which is what Copilot Business and
+    Enterprise seats fall back to when the SDK runtime cannot be used.
+    """
     sdk = get_connection_profile("copilot")
     assert sdk.connector == "runtime"
     assert sdk.runtime == "copilot-sdk"
@@ -166,7 +174,17 @@ def test_copilot_sdk_is_the_only_visible_headline_route():
     assert sdk.group == "US Coding Agents"
     assert "licence" in sdk.description.lower()
 
-    assert "copilot-acp" not in [profile.id for profile in list_connection_profiles()]
+    cli = get_connection_profile("copilot-cli")
+    assert cli.connector == "acp"
+    assert cli.acp_agent == "copilot"
+    assert cli.self_contained is True
+    assert cli.group == "US Coding Agents"
+    assert "@github/copilot" in cli.unavailable_hint
+
+    visible = [profile.id for profile in list_connection_profiles()]
+    assert "copilot-cli" in visible
+    # The old id stays resolvable for muscle memory, but stays out of the picker.
+    assert "copilot-acp" not in visible
     acp = get_connection_profile("copilot-acp")
     assert acp.connector == "acp"
     assert acp.acp_agent == "copilot"

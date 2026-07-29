@@ -292,3 +292,35 @@ def test_registry_exposes_devin_cli(monkeypatch):
     assert info.implemented is True
     assert info.installed is False
     assert "docs.devin.ai/cli" in (info.install_hint or "")
+
+
+def test_probe_is_memoized_so_pickers_do_not_fork_per_keystroke(monkeypatch):
+    """`list_runtimes()` runs this probe once per vendor picker entry.
+
+    Uncached, building a harness picker forked two `devin` subprocesses for
+    every entry, which stalled `:harness switch` completion for seconds on each
+    keystroke.
+    """
+    from superqode.runtime.devin_status import clear_devin_cli_cache
+
+    class Result:
+        returncode = 0
+        stdout = "devin 1.4.2\n"
+        stderr = ""
+
+    calls = []
+    monkeypatch.setattr("shutil.which", lambda _name: "/tmp/devin")
+    monkeypatch.setattr("subprocess.run", lambda args, **_kwargs: calls.append(args) or Result())
+
+    clear_devin_cli_cache()
+    first = probe_devin_cli()
+    after_first = len(calls)
+    assert after_first > 0
+
+    for _ in range(20):
+        assert probe_devin_cli() == first
+    assert len(calls) == after_first, "repeat probes must not re-fork the CLI"
+
+    # An explicit refresh still re-reads, so `:runtime doctor` sees a new install.
+    probe_devin_cli(refresh=True)
+    assert len(calls) > after_first

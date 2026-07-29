@@ -129,6 +129,19 @@ def _permission_details(request: Any) -> tuple[str, dict[str, Any]]:
     return _normalize_tool_name(kind), dict(args)
 
 
+def _explicit_github_token() -> str:
+    """Return the token the user deliberately pointed at Copilot, if any.
+
+    Only ``COPILOT_GITHUB_TOKEN`` counts. ``GH_TOKEN``/``GITHUB_TOKEN`` are set
+    by the ``gh`` CLI, CI, and most enterprise git setups, and are usually PATs
+    with no Copilot entitlement. Passing one makes the SDK start the CLI with
+    ``--no-auto-login``, so it ignores a perfectly good ``copilot login`` and
+    then stalls on an account that cannot answer - the exact failure Copilot
+    Business users hit.
+    """
+    return (os.environ.get("COPILOT_GITHUB_TOKEN") or "").strip()
+
+
 def _permission_decision(allowed: bool, reason: str = "") -> Any:
     # This public namespace exposes the generated union variants accepted by
     # the SDK permission handler.
@@ -139,6 +152,39 @@ def _permission_decision(allowed: bool, reason: str = "") -> Any:
     from copilot.rpc import PermissionDecisionReject
 
     return PermissionDecisionReject(feedback=reason or "Rejected by SuperQode policy")
+
+
+_DEFAULT_TURN_TIMEOUT = 600.0
+
+
+def _turn_timeout() -> float:
+    """Seconds to wait for a turn to go idle, from SUPERQODE_COPILOT_TIMEOUT."""
+    try:
+        timeout = float(os.environ.get("SUPERQODE_COPILOT_TIMEOUT", "") or _DEFAULT_TURN_TIMEOUT)
+    except ValueError:
+        return _DEFAULT_TURN_TIMEOUT
+    return timeout if timeout > 0 else _DEFAULT_TURN_TIMEOUT
+
+
+def _startup_error(exc: BaseException) -> str:
+    """Explain a failed client start in terms the user can act on."""
+    detail = str(exc).strip() or type(exc).__name__
+    hint = (
+        "Check `copilot login` (or `:copilot status`). If the Copilot CLI download "
+        "is blocked on your network, set COPILOT_CLI_PATH to an installed "
+        "`copilot` binary, or use the CLI route with `:copilot cli`."
+    )
+    return f"Could not start the GitHub Copilot runtime: {detail}. {hint}"
+
+
+def _turn_error(exc: BaseException, timeout: float) -> str:
+    """Explain a failed turn, separating a timeout from a session error."""
+    if isinstance(exc, TimeoutError):
+        return (
+            f"GitHub Copilot did not finish within {timeout:g}s. Raise "
+            "SUPERQODE_COPILOT_TIMEOUT if your turns legitimately run longer."
+        )
+    return str(exc).strip() or f"Copilot turn failed: {type(exc).__name__}"
 
 
 _TURN_DONE = object()
@@ -198,6 +244,11 @@ class CopilotSDKRuntime:
     def active_model(self) -> str:
         return self._active_model
 
+    @property
+    def needs_start(self) -> bool:
+        """The next turn has to build the client (and maybe download the CLI)."""
+        return self._client is None
+
     async def _ensure_started(self) -> None:
         if self._client is None:
             from copilot import CopilotClient
@@ -205,16 +256,17 @@ class CopilotSDKRuntime:
             kwargs: dict[str, Any] = {
                 "working_directory": str(self.config.working_directory),
             }
-            token = (
-                os.environ.get("COPILOT_GITHUB_TOKEN")
-                or os.environ.get("GH_TOKEN")
-                or os.environ.get("GITHUB_TOKEN")
-            )
+            token = _explicit_github_token()
             if token:
                 kwargs["github_token"] = token
-            self._client = CopilotClient(**kwargs)
-            await self._client.start()
             self._loop = asyncio.get_running_loop()
+            # CopilotClient.__init__ resolves the Copilot CLI and downloads it on
+            # first use through a *blocking* urlopen (120s timeout, three tries,
+            # sleeping between them). Constructing it inline froze the whole TUI
+            # for the length of the download - seconds on a fast link, minutes
+            # behind a corporate proxy - so build the client off the event loop.
+            self._client = await asyncio.to_thread(CopilotClient, **kwargs)
+            await self._client.start()
         if self._session is not None:
             return
 
@@ -258,43 +310,73 @@ class CopilotSDKRuntime:
 
     async def _approval_handler(self, request: Any, _invocation: Any = None) -> Any:
         tool_name, args = _permission_details(request)
+        # The SDK awaits this handler on the event loop, and SuperQode's TUI
+        # bridge blocks on a threading.Event until the user answers the prompt.
+        # Deciding inline therefore deadlocked the loop: the approval card could
+        # never render and the keypress could never be read, so every request
+        # sat frozen until the 60s bridge timeout auto-denied it. Decide in a
+        # worker thread, exactly as the Claude Agent SDK runtime does.
+        allowed, reason = await asyncio.to_thread(self._decide_permission, tool_name, args)
+        return _permission_decision(allowed, reason)
+
+    def _decide_permission(self, tool_name: str, args: dict[str, Any]) -> tuple[bool, str]:
+        """Resolve one permission request. Blocking; never call on the loop."""
         if self._uses_default_permission_manager and self._approval_callback is not None:
-            try:
-                allowed = bool(self._approval_callback(tool_name, args))
-            except Exception:  # noqa: BLE001
-                allowed = False
-            return _permission_decision(
-                allowed,
-                f"SuperQode user rejected {tool_name}",
-            )
+            return self._safe_callback(tool_name, args)
 
         permission = self._permission_manager.check_permission(tool_name, args)
         if permission == Permission.ALLOW:
-            return _permission_decision(True)
+            return True, ""
         if permission == Permission.ASK and self._approval_callback is not None:
-            try:
-                allowed = bool(self._approval_callback(tool_name, args))
-            except Exception:  # noqa: BLE001
-                allowed = False
-            return _permission_decision(
-                allowed,
-                f"SuperQode user rejected {tool_name}",
-            )
+            return self._safe_callback(tool_name, args)
         reason = (
             f"SuperQode permission policy rejected {tool_name}"
             if permission == Permission.DENY
             else f"SuperQode could not obtain interactive approval for {tool_name}"
         )
-        return _permission_decision(False, reason)
+        return False, reason
+
+    def _safe_callback(self, tool_name: str, args: dict[str, Any]) -> tuple[bool, str]:
+        try:
+            allowed = bool(self._approval_callback(tool_name, args))
+        except Exception as exc:  # noqa: BLE001
+            return False, f"SuperQode approval bridge failed for {tool_name}: {exc}"
+        return allowed, "" if allowed else f"SuperQode user rejected {tool_name}"
 
     async def run_harness_events(self, prompt: str) -> AsyncIterator[HarnessEvent]:
         async with self._turn_lock:
             self.reset_cancellation()
-            await self._ensure_started()
-            await self._apply_pending()
+            if self.needs_start:
+                # The first turn may spend a while downloading the pinned Copilot
+                # CLI. Say so, so a slow first prompt reads as work rather than
+                # as a frozen app.
+                yield HarnessEvent(
+                    type="thinking",
+                    data={
+                        "text": (
+                            "Starting the GitHub Copilot runtime "
+                            "(the first run fetches the Copilot CLI)…"
+                        )
+                    },
+                )
+            timeout = _turn_timeout()
+            try:
+                await self._ensure_started()
+                await self._apply_pending()
+            except Exception as exc:  # noqa: BLE001 - a failed start is a failed turn
+                yield HarnessEvent(
+                    type="turn_complete",
+                    data={"status": "error", "error": _startup_error(exc), "usage": {}},
+                )
+                yield HarnessEvent(
+                    type="model_result",
+                    data={"runtime": self.name, "model": self._active_model},
+                )
+                return
             queue: asyncio.Queue[Any] = asyncio.Queue()
             saw_delta = False
             error_message = ""
+            turn_error: BaseException | None = None
 
             def on_event(event: Any) -> None:
                 loop = self._loop
@@ -306,9 +388,13 @@ class CopilotSDKRuntime:
             unsubscribe = self._session.on(on_event)
 
             async def send_turn() -> None:
+                nonlocal turn_error
                 try:
-                    timeout = float(os.environ.get("SUPERQODE_COPILOT_TIMEOUT", "600"))
                     await self._session.send_and_wait(prompt, timeout=timeout)
+                except asyncio.CancelledError:
+                    raise
+                except BaseException as exc:  # noqa: BLE001 - reported as turn_complete
+                    turn_error = exc
                 finally:
                     loop = self._loop
                     if loop is not None:
@@ -394,6 +480,8 @@ class CopilotSDKRuntime:
                 if not task.done():
                     task.cancel()
 
+            if turn_error is not None and not error_message:
+                error_message = _turn_error(turn_error, timeout)
             status = "cancelled" if self._cancelled else "error" if error_message else "completed"
             yield HarnessEvent(
                 type="turn_complete",

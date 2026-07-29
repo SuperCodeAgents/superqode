@@ -2071,7 +2071,7 @@ class CommandImplMixin:
         rest = parts[1].strip() if len(parts) > 1 else ""
         if sub in {"connect", "start", "sdk"}:
             self._runtime_cmd("copilot-sdk", log)
-        elif sub == "acp":
+        elif sub in {"cli", "acp"}:
             self._connect_acp_cmd("copilot", log)
         elif sub in {"status", "doctor"}:
             self._copilot_status(log)
@@ -2090,10 +2090,10 @@ class CommandImplMixin:
             else:
                 self.run_worker(self._copilot_resume_cmd(rest, log), exclusive=False)
         elif sub in {"help", "?"}:
-            log.add_info("Usage: :copilot [sdk|acp|status|models|model <id>|sessions|resume <id>]")
+            log.add_info("Usage: :copilot [sdk|cli|status|models|model <id>|sessions|resume <id>]")
         else:
             log.add_error(f"Unknown GitHub Copilot command: {sub}")
-            log.add_info("Usage: :copilot [sdk|acp|status|models|model <id>|sessions|resume <id>]")
+            log.add_info("Usage: :copilot [sdk|cli|status|models|model <id>|sessions|resume <id>]")
 
     def _copilot_runtime_or_connect(self, log):
         pure = getattr(self, "_pure_mode", None)
@@ -2123,21 +2123,26 @@ class CommandImplMixin:
             "installed\n" if sdk_ok else "missing\n",
             style=THEME["success" if sdk_ok else "error"],
         )
-        text.append("  ACP CLI      ", style=THEME["muted"])
+        text.append("  CLI          ", style=THEME["muted"])
         text.append(
             "installed\n" if cli_ok else "not on PATH\n",
             style=THEME["success" if cli_ok else "warning"],
         )
-        token_ok = bool(
-            os.environ.get("COPILOT_GITHUB_TOKEN")
-            or os.environ.get("GH_TOKEN")
-            or os.environ.get("GITHUB_TOKEN")
-        )
         text.append("  Auth         ", style=THEME["muted"])
-        text.append(
-            "GitHub token available\n" if token_ok else "delegated to the Copilot login store\n",
-            style=THEME["success" if token_ok else "text"],
-        )
+        if os.environ.get("COPILOT_GITHUB_TOKEN"):
+            text.append("COPILOT_GITHUB_TOKEN set\n", style=THEME["success"])
+        else:
+            text.append("delegated to the Copilot login store\n", style=THEME["text"])
+        # GH_TOKEN/GITHUB_TOKEN are ignored on purpose: they are usually plain
+        # git PATs with no Copilot entitlement, and handing one to the SDK makes
+        # it skip the working `copilot login` and stall.
+        ignored = [name for name in ("GH_TOKEN", "GITHUB_TOKEN") if os.environ.get(name)]
+        if ignored:
+            text.append("               ", style=THEME["muted"])
+            text.append(
+                f"{' and '.join(ignored)} ignored (not Copilot credentials)\n",
+                style=THEME["muted"],
+            )
         pure = getattr(self, "_pure_mode", None)
         runtime = getattr(pure, "_runtime", None) if pure is not None else None
         connected = runtime is not None and getattr(pure, "runtime_name", "") == "copilot-sdk"
@@ -2158,10 +2163,14 @@ class CommandImplMixin:
             text.append("\n  SDK setup    ", style=THEME["muted"])
             text.append(f"{install_command('copilot-sdk')}\n", style=THEME["cyan"])
         if not cli_ok:
-            text.append("  ACP setup    ", style=THEME["muted"])
+            text.append("  CLI setup    ", style=THEME["muted"])
             text.append("npm install -g @github/copilot\n", style=THEME["cyan"])
         text.append("  Authenticate ", style=THEME["muted"])
         text.append("copilot login\n", style=THEME["cyan"])
+        text.append("  Routes       ", style=THEME["muted"])
+        text.append(":copilot sdk", style=THEME["cyan"])
+        text.append("  •  ", style=THEME["dim"])
+        text.append(":copilot cli\n", style=THEME["cyan"])
         log.write(text)
 
     def _copilot_model_cmd(self, model: str, log) -> None:

@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.60] - 2026-07-29
+
+### Fixed
+
+- **GitHub Copilot SDK no longer freezes the terminal** - Three separate calls
+  blocked the UI event loop, and each one looked like a hang rather than an
+  error. The first prompt built `CopilotClient` inline, and that constructor
+  downloads the pinned Copilot CLI through a blocking request with a 120 second
+  timeout and three retries: roughly 13 seconds of frozen terminal on a fast
+  link, and minutes behind a corporate proxy. The client is now built off the
+  event loop, and the first turn says the download is happening instead of
+  showing nothing.
+- **Copilot permission prompts no longer deadlock** - The SDK awaits its
+  permission handler on the event loop, while SuperQode's approval bridge
+  blocks until you answer the prompt. Deciding inline meant the approval card
+  could never render and the keypress could never be read, so every request
+  froze until the bridge timed out and denied it. Decisions now resolve on a
+  worker thread, matching the Claude Agent SDK runtime.
+- **`GH_TOKEN` and `GITHUB_TOKEN` are no longer sent to Copilot** - Both are
+  normally plain git PATs with no Copilot entitlement, and `gh`, CI, and most
+  enterprise setups export one. Forwarding it made the SDK start its runtime
+  with `--no-auto-login`, bypassing a working `copilot login` and stalling on
+  an account that could not authenticate. Only `COPILOT_GITHUB_TOKEN` is
+  forwarded now, and `:copilot status` reports when the others are present and
+  ignored.
+- **A failed turn explains itself** - A Copilot turn that could not start,
+  timed out, or errored ended with an empty response and no message, which is
+  indistinguishable from a hang. Failures now end the turn with the reason and
+  the command that addresses it. This applies to every self-contained runtime,
+  not only Copilot.
+
+### Added
+
+- **The GitHub Copilot CLI route is back in the Connect picker** -
+  `:connect copilot-cli` and `:copilot cli` run the official CLI over ACP, so
+  the vendor CLI owns authentication and its own agent loop. It was previously
+  reachable only as a hidden compatibility alias. This is the route to use on
+  Copilot Business and Enterprise seats, on networks that block the SDK runtime
+  download, and anywhere `copilot login` already works but the SDK does not.
+  `:connect copilot-acp` and `:copilot acp` still work as older aliases.
+- **`SUPERQODE_COPILOT_TIMEOUT`** is documented and validated. It sets the
+  per-turn idle wait in seconds and defaults to `600`.
+
 ## [0.2.59] - 2026-07-28
 
 ### Changed

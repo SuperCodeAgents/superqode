@@ -10,9 +10,17 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass
 
 INSTALL_HINT = "install the Devin CLI from https://docs.devin.ai/cli"
+
+# `list_runtimes()` runs this probe, and the TUI calls that once per vendor
+# entry while building a picker - so an uncached probe spawned two `devin`
+# subprocesses per keystroke and stalled completion for seconds. Installation,
+# version, and sign-in barely change during a session, so a short TTL keeps the
+# answer fresh enough for `:runtime doctor` without re-forking the CLI.
+_CACHE_TTL_SECONDS = 30.0
 
 # Devin publishes no documented floor for `devin acp` / `devin --print`, so
 # SuperQode records the version for diagnostics and does not gate on it.
@@ -71,8 +79,34 @@ def _run(binary: str, args: list[str], *, timeout: float) -> subprocess.Complete
         return None
 
 
-def probe_devin_cli(*, timeout: float = 3.0) -> DevinCLIStatus:
-    """Report installation, version, and sign-in without touching credentials."""
+_cached: tuple[float, DevinCLIStatus] | None = None
+
+
+def clear_devin_cli_cache() -> None:
+    """Drop the memoized probe so the next call re-runs the CLI."""
+    global _cached
+    _cached = None
+
+
+def probe_devin_cli(*, timeout: float = 3.0, refresh: bool = False) -> DevinCLIStatus:
+    """Report installation, version, and sign-in without touching credentials.
+
+    The result is memoized for ``_CACHE_TTL_SECONDS``. Pass ``refresh=True``
+    when the user has just been told to install or sign in and expects the next
+    read to reflect it.
+    """
+    global _cached
+
+    if not refresh and _cached is not None:
+        probed_at, status = _cached
+        if time.monotonic() - probed_at < _CACHE_TTL_SECONDS:
+            return status
+    status = _probe_devin_cli(timeout=timeout)
+    _cached = (time.monotonic(), status)
+    return status
+
+
+def _probe_devin_cli(*, timeout: float) -> DevinCLIStatus:
     binary = shutil.which("devin")
     if not binary:
         return DevinCLIStatus(binary=None, issue=INSTALL_HINT)
@@ -107,6 +141,7 @@ def probe_devin_cli(*, timeout: float = 3.0) -> DevinCLIStatus:
 __all__ = [
     "DevinCLIStatus",
     "INSTALL_HINT",
+    "clear_devin_cli_cache",
     "probe_devin_cli",
     "version_tuple",
 ]

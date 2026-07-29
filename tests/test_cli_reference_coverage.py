@@ -212,6 +212,7 @@ def test_every_connection_profile_has_a_sidebar_page():
         "subscriptions": "providers/index.md",
         "codex": "providers/codex.md",
         "copilot": "providers/github-copilot.md",
+        "copilot-cli": "providers/github-copilot.md",
         "claude": "providers/anthropic-claude.md",
         "gemini-cli": "providers/gemini.md",
         "devin": "providers/devin.md",

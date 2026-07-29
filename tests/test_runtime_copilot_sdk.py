@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import sys
+import threading
 import types
 from pathlib import Path
 from types import SimpleNamespace
@@ -80,6 +82,9 @@ class _FakeClient:
         self.stopped = False
         self.session = _FakeSession()
         self.create_kwargs = {}
+        # The real CopilotClient downloads the Copilot CLI from inside __init__
+        # with a blocking urlopen, so record where SuperQode built it.
+        self.built_on = threading.current_thread()
         self.__class__.instances.append(self)
 
     async def start(self):
@@ -210,3 +215,156 @@ async def test_runtime_permission_callback_controls_sdk_decision(fake_copilot_sd
     request = SimpleNamespace(fullCommandText="pwd")
     decision = await runtime._approval_handler(request)
     assert type(decision).__name__ == "PermissionDecisionApproveOnce"
+
+
+@pytest.mark.asyncio
+async def test_client_is_built_off_the_event_loop(fake_copilot_sdk, tmp_path):
+    """CopilotClient.__init__ downloads the CLI with a blocking urlopen.
+
+    Constructing it inline froze the TUI for the whole download - seconds on a
+    fast link, minutes behind a corporate proxy - so it must not run on the loop.
+    """
+    from superqode.runtime.copilot_sdk import CopilotSDKRuntime
+
+    runtime = CopilotSDKRuntime(config=_config(tmp_path))
+    assert runtime.needs_start is True
+    await runtime._ensure_started()
+    assert runtime.needs_start is False
+
+    client = _FakeClient.instances[-1]
+    assert client.built_on is not threading.current_thread()
+    await runtime.aclose()
+
+
+@pytest.mark.asyncio
+async def test_permission_bridge_never_blocks_the_event_loop(fake_copilot_sdk, tmp_path):
+    """The TUI approval bridge blocks until the user answers the prompt.
+
+    The SDK awaits the permission handler on the event loop, so deciding inline
+    deadlocked: the approval card could not render and the keypress could not be
+    read, leaving every request frozen until the bridge timed out and denied it.
+    """
+    from superqode.runtime.copilot_sdk import CopilotSDKRuntime
+
+    answered = threading.Event()
+
+    def blocking_callback(_name, _args):
+        # Stands in for `threading.Event.wait()` in the real TUI bridge.
+        assert answered.wait(5), "loop never got to answer the prompt"
+        return True
+
+    runtime = CopilotSDKRuntime(
+        config=_config(tmp_path),
+        approval_callback=blocking_callback,
+    )
+
+    decision_task = asyncio.create_task(
+        runtime._approval_handler(SimpleNamespace(fullCommandText="pwd"))
+    )
+    # A blocked loop could never reach this line, so answering here proves the
+    # decision moved off the loop.
+    await asyncio.sleep(0)
+    answered.set()
+    decision = await asyncio.wait_for(decision_task, timeout=5)
+    assert type(decision).__name__ == "PermissionDecisionApproveOnce"
+
+
+@pytest.mark.asyncio
+async def test_only_an_explicit_copilot_token_reaches_the_sdk(
+    fake_copilot_sdk, tmp_path, monkeypatch
+):
+    """GH_TOKEN/GITHUB_TOKEN are git PATs, not Copilot credentials.
+
+    Forwarding one made the SDK start the CLI with --no-auto-login, so it
+    ignored a working `copilot login` and stalled on an account that could not
+    answer.
+    """
+    from superqode.runtime.copilot_sdk import CopilotSDKRuntime
+
+    monkeypatch.delenv("COPILOT_GITHUB_TOKEN", raising=False)
+    monkeypatch.setenv("GH_TOKEN", "gho_git_only")
+    monkeypatch.setenv("GITHUB_TOKEN", "ghp_git_only")
+
+    runtime = CopilotSDKRuntime(config=_config(tmp_path))
+    await runtime._ensure_started()
+    assert "github_token" not in _FakeClient.instances[-1].kwargs
+    await runtime.aclose()
+
+    monkeypatch.setenv("COPILOT_GITHUB_TOKEN", "gho_copilot")
+    explicit = CopilotSDKRuntime(config=_config(tmp_path))
+    await explicit._ensure_started()
+    assert _FakeClient.instances[-1].kwargs["github_token"] == "gho_copilot"
+    await explicit.aclose()
+
+
+@pytest.mark.asyncio
+async def test_turn_failure_is_reported_instead_of_raised(fake_copilot_sdk, tmp_path):
+    """A Copilot turn that times out or errors must end the turn, not escape it."""
+    from superqode.runtime.copilot_sdk import CopilotSDKRuntime
+
+    runtime = CopilotSDKRuntime(config=_config(tmp_path))
+    await runtime._ensure_started()
+
+    async def boom(_prompt, timeout=60.0):
+        raise TimeoutError(f"Timeout after {timeout}s waiting for session.idle")
+
+    runtime._session.send_and_wait = boom
+    events = [event async for event in runtime.run_harness_events("anything")]
+
+    complete = next(e for e in events if e.type == "turn_complete")
+    assert complete.data["status"] == "error"
+    assert "SUPERQODE_COPILOT_TIMEOUT" in complete.data["error"]
+    assert events[-1].type == "model_result"
+    await runtime.aclose()
+
+
+@pytest.mark.asyncio
+async def test_startup_failure_is_reported_instead_of_raised(fake_copilot_sdk, tmp_path):
+    """An unauthenticated or undownloadable runtime ends the turn with guidance."""
+    from superqode.runtime.copilot_sdk import CopilotSDKRuntime
+
+    runtime = CopilotSDKRuntime(config=_config(tmp_path))
+
+    async def no_start() -> None:
+        raise RuntimeError("Copilot CLI not found at /nope")
+
+    runtime._ensure_started = no_start
+    events = [event async for event in runtime.run_harness_events("anything")]
+
+    complete = next(e for e in events if e.type == "turn_complete")
+    assert complete.data["status"] == "error"
+    assert "Copilot CLI not found" in complete.data["error"]
+    assert ":copilot cli" in complete.data["error"]
+    assert events[-1].type == "model_result"
+
+
+@pytest.mark.asyncio
+async def test_pure_mode_streams_a_failed_turn_to_the_user(fake_copilot_sdk, tmp_path):
+    """A turn_complete error must reach the transcript.
+
+    PureMode used to read only the usage block off turn_complete, so a failed
+    Copilot turn ended with an empty response and no explanation - which reads
+    exactly like a hang.
+    """
+    from superqode.harness.events import HarnessEvent
+    from superqode.pure_mode import PureMode
+
+    pure = PureMode()
+    failed = HarnessEvent(
+        type="turn_complete",
+        data={
+            "status": "error",
+            "error": "Could not start the GitHub Copilot runtime",
+            "usage": {},
+        },
+    )
+    assert "Could not start the GitHub Copilot runtime" in pure._handle_runtime_harness_event(
+        failed
+    )
+
+    # A clean or cancelled turn stays quiet.
+    for status in ("completed", "cancelled"):
+        quiet = HarnessEvent(
+            type="turn_complete", data={"status": status, "error": None, "usage": {}}
+        )
+        assert pure._handle_runtime_harness_event(quiet) == ""

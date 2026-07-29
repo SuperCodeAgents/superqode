@@ -5,9 +5,14 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass
 
 MINIMUM_ANTIGRAVITY_CLI_VERSION = (1, 1, 1)
+
+# See devin_status: `list_runtimes()` runs this per vendor picker entry, so an
+# uncached probe forked `agy --version` on every completion keystroke.
+_CACHE_TTL_SECONDS = 30.0
 
 
 def version_tuple(text: str) -> tuple[int, int, int] | None:
@@ -32,8 +37,33 @@ class AntigravityCLIStatus:
         return self.installed and self.version is not None and not self.issue
 
 
-def probe_antigravity_cli(*, timeout: float = 3.0) -> AntigravityCLIStatus:
-    """Report installation and compatibility without accessing credentials/network."""
+_cached: tuple[float, AntigravityCLIStatus] | None = None
+
+
+def clear_antigravity_cli_cache() -> None:
+    """Drop the memoized probe so the next call re-runs the CLI."""
+    global _cached
+    _cached = None
+
+
+def probe_antigravity_cli(*, timeout: float = 3.0, refresh: bool = False) -> AntigravityCLIStatus:
+    """Report installation and compatibility without accessing credentials/network.
+
+    The result is memoized for ``_CACHE_TTL_SECONDS``. Pass ``refresh=True`` to
+    force a fresh probe after an install or upgrade.
+    """
+    global _cached
+
+    if not refresh and _cached is not None:
+        probed_at, status = _cached
+        if time.monotonic() - probed_at < _CACHE_TTL_SECONDS:
+            return status
+    status = _probe_antigravity_cli(timeout=timeout)
+    _cached = (time.monotonic(), status)
+    return status
+
+
+def _probe_antigravity_cli(*, timeout: float) -> AntigravityCLIStatus:
     binary = shutil.which("agy")
     if not binary:
         return AntigravityCLIStatus(
@@ -79,6 +109,7 @@ def probe_antigravity_cli(*, timeout: float = 3.0) -> AntigravityCLIStatus:
 __all__ = [
     "AntigravityCLIStatus",
     "MINIMUM_ANTIGRAVITY_CLI_VERSION",
+    "clear_antigravity_cli_cache",
     "probe_antigravity_cli",
     "version_tuple",
 ]

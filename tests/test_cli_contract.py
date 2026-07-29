@@ -10,10 +10,10 @@ from superqode.main import cli_main
 
 
 EXPECTED_COMMAND_COUNT = 261
-# Rebaselined when `:connect` moved to the five-option root screen: the
-# --connect choice list gained subscriptions / gemini-cli / devin / glm-cli and
-# its help line was rewritten. No command was added, renamed, or removed.
-EXPECTED_HELP_TREE_SHA256 = "94ad00a65b016b182e761a3368b39e6ee0898a8154974c3cf2646cb995306e00"
+# Rebaselined when the GitHub Copilot CLI route returned to the Connect picker:
+# the --connect choice list gained copilot-cli. No command was added, renamed,
+# or removed, so EXPECTED_COMMAND_COUNT is unchanged.
+EXPECTED_HELP_TREE_SHA256 = "aa36d63849da1a936c5ea6cf4881149a5afeffe4aa3ab1e4ba4a466af1595abd"
 
 
 def _render_help_tree() -> tuple[int, str]:
