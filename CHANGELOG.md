@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.62] - 2026-07-29
+
+### Fixed
+
+- **Connected ACP agents no longer answer "integration coming soon"** - Three
+  separate hardcoded lists decided which agents could actually run: a set of 19
+  short names in the message dispatch, a tuple of 23 in the unified runner, and
+  a command chain naming each agent individually. The registry ships 46 agents,
+  so half of them connected successfully, reported a ready ACP session, and
+  then refused the first prompt. Depending on which list was missed, the agent
+  answered "integration coming soon", was silently executed as the **opencode**
+  CLI, or was rejected as "Unsupported ACP agent type". GitHub Copilot, Cursor,
+  Droid, Kiro, GLM, Qwen, Cline, Kilo, and 15 others were affected. Routing now
+  keys off the ACP protocol the agent declares, and the launch command comes
+  from the agent's own registry entry, so a newly added agent works without
+  editing the dispatch.
+
 ## [0.2.61] - 2026-07-29
 
 ### Added

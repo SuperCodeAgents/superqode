@@ -42,6 +42,47 @@ from superqode.app.recipes import LocalRecipe
 from superqode.app.async_utils import _AsyncLoopThread
 from superqode.app.session_state import get_session
 
+_ACP_AGENT_SHORT_NAMES: frozenset[str] | None = None
+
+
+def _acp_agent_short_names() -> frozenset[str]:
+    """Short names of every locally registered agent that speaks ACP.
+
+    Cached: the registry is bundled TOML that does not change at runtime, and
+    this is consulted on the hot path of every prompt. Returns an empty set if
+    the registry cannot be read from this context, leaving callers on their
+    existing hardcoded fast path rather than changing behaviour.
+    """
+    global _ACP_AGENT_SHORT_NAMES
+    if _ACP_AGENT_SHORT_NAMES is not None:
+        return _ACP_AGENT_SHORT_NAMES
+
+    names: set[str] = set()
+    try:
+        import asyncio
+
+        from superqode.agents.discovery import read_agents
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No loop on this thread, so it is safe to drive the async reader.
+            agents = asyncio.run(read_agents(include_registry=False))
+            names = {
+                str(meta.get("short_name", "")).strip().lower()
+                for meta in agents.values()
+                if str(meta.get("protocol", "")).strip().lower() == "acp" and meta.get("short_name")
+            }
+        else:
+            # Called from an event loop; do not block it. Leave the cache unset
+            # so a later call from a worker thread can populate it.
+            return frozenset()
+    except Exception:  # noqa: BLE001 - discovery is best-effort
+        names = set()
+
+    _ACP_AGENT_SHORT_NAMES = frozenset(names)
+    return _ACP_AGENT_SHORT_NAMES
+
 
 class AgentRunMixin:
     """_run_/_send_/_stream_ agent execution and thinking/throbber animation."""
@@ -1345,28 +1386,16 @@ class AgentRunMixin:
             )
         else:
             # Handle all other ACP-compatible agents generically.
-            acp_agents = {
-                "bub",
-                "cagent",
-                "codeassistant",
-                "devin",
-                "fast-agent",
-                "goose",
-                "hermes",
-                "junie",
-                "kimi",
-                "llmlingagent",
-                "minion",
-                "mistral-vibe",
-                "openhands",
-                "pi",
-                "stakpak",
-                "vtcode",
-                "auggie",
-                "amp",
-                "grok",
-            }
-            if short_name in acp_agents:
+            #
+            # This used to test a hand-maintained set of 19 short names while the
+            # registry ships 46 agents, so a connected and working agent whose
+            # name was never added answered "integration coming soon" on the
+            # first prompt. GitHub Copilot, Cursor, Droid, Kiro, GLM, and Qwen
+            # all landed in that gap. Every agent in the local registry and in
+            # the ACP Registry declares protocol "acp", so key off the protocol
+            # the agent actually reports and new agents work without edits here.
+            agent_protocol = str((agent or {}).get("protocol", "")).strip().lower()
+            if short_name and agent_protocol == "acp":
                 model_name = self.current_model if self.current_model else "auto"
                 # Remove any prefix like "junie/" if present
                 if "/" in model_name:
@@ -1445,7 +1474,12 @@ class AgentRunMixin:
             "grok",
         )
 
-        if agent_type in acp_agents:
+        # The tuple above predates most of the registry. The legacy subprocess
+        # branch below defaults to running the *opencode* CLI, so any ACP agent
+        # missing from the tuple silently answered as opencode instead of
+        # itself. Consult the registry so every agent that declares protocol
+        # "acp" reaches the ACP client.
+        if agent_type in acp_agents or agent_type in _acp_agent_short_names():
             self._run_acp_jsonrpc_client(
                 message, agent_type, model, display_name, log, persona_context
             )
@@ -1898,9 +1932,19 @@ class AgentRunMixin:
             model_display = f"amp/{model}" if model else "amp/auto"
             # Amp handles its own authentication via `amp login`
         else:
-            self._call_ui(self._stop_thinking)
-            self._call_ui(log.add_error, f"Unsupported ACP agent type: {agent_type}")
-            return
+            # The chain above hardcodes commands for the agents that existed
+            # when it was written, so an agent SuperQode had just connected to
+            # was rejected as "unsupported" on its first prompt. Every registry
+            # entry already declares its own ACP command; use it.
+            from superqode.agents.acp_registry import get_registry_agent_by_short_name
+
+            metadata = get_registry_agent_by_short_name(agent_type)
+            command = str((metadata or {}).get("run_command") or "").strip()
+            if not command:
+                self._call_ui(self._stop_thinking)
+                self._call_ui(log.add_error, f"Unsupported ACP agent type: {agent_type}")
+                return
+            model_display = f"{agent_type}/{model}" if model else f"{agent_type}/auto"
 
         mode_label = {"auto": "🟢 AUTO", "ask": "🟡 ASK", "deny": "🔴 DENY"}.get(
             self.approval_mode, "🟡 ASK"
