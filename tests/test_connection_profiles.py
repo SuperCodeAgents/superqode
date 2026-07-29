@@ -40,7 +40,6 @@ def test_subscriptions_menu_holds_the_vendor_agents():
         "antigravity",
         "grok",
         "copilot",
-        "gemini-cli",
         "devin",
         "droid",
         "kiro",
@@ -66,7 +65,6 @@ def test_registry_has_expected_profiles():
         "antigravity",
         "grok",
         "copilot",
-        "gemini-cli",
         "devin",
         "droid",
         "kiro",
@@ -85,25 +83,34 @@ def test_subscriptions_profile_opens_the_submenu():
     assert profile.available is True
 
 
-def test_gemini_devin_and_glm_are_acp_subscription_profiles():
-    gemini = get_connection_profile("gemini-cli")
+def test_devin_and_glm_are_acp_subscription_profiles():
     devin = get_connection_profile("devin")
     glm = get_connection_profile("glm-cli")
 
-    assert (gemini.connector, gemini.acp_agent) == ("acp", "gemini")
     assert (devin.connector, devin.acp_agent) == ("acp", "devin")
     assert (glm.connector, glm.acp_agent) == ("acp", "glm")
-    assert all(p.menu == CONNECT_MENU_SUBSCRIPTIONS for p in (gemini, devin, glm))
+    assert all(p.menu == CONNECT_MENU_SUBSCRIPTIONS for p in (devin, glm))
     assert "devin auth login" in devin.unavailable_hint
     assert "glm-acp-agent" in glm.unavailable_hint
-    assert "@google/gemini-cli" in gemini.unavailable_hint
+
+
+def test_gemini_is_not_a_subscription_profile():
+    """Gemini CLI is an API-key route, so it must not sit under Subscriptions.
+
+    Google moved consumer plans to Antigravity, and a subscription entry must
+    never put the user on metered API billing. The agent stays reachable
+    through the ACP channel.
+    """
+    import pytest
+
+    with pytest.raises(Exception):
+        get_connection_profile("gemini-cli").id
 
 
 def test_subscription_cli_profiles_detect_their_binaries(monkeypatch):
     import superqode.providers.connection_profiles as cp
 
     installed = {
-        "gemini",
         "devin",
         "glm-acp-agent",
         "cursor-agent",
@@ -115,7 +122,6 @@ def test_subscription_cli_profiles_detect_their_binaries(monkeypatch):
     monkeypatch.setattr(
         cp.shutil, "which", lambda name: f"/usr/bin/{name}" if name in installed else None
     )
-    assert cp._gemini_cli_ready() is True
     assert cp._devin_cli_ready() is True
     assert cp._glm_cli_ready() is True
     assert cp._cursor_cli_ready() is True
@@ -124,7 +130,6 @@ def test_subscription_cli_profiles_detect_their_binaries(monkeypatch):
     assert cp._kiro_cli_ready() is True
 
     installed.clear()
-    assert cp._gemini_cli_ready() is False
     assert cp._devin_cli_ready() is False
     assert cp._glm_cli_ready() is False
     assert cp._cursor_cli_ready() is False
@@ -337,6 +342,11 @@ class _DispatchStub:
 
         SuperQodeApp._connect_copilot_subscription(self, profile, log)
 
+    def _apply_subscription_billing_policy(self, profile, log):
+        from superqode.app_main import SuperQodeApp
+
+        SuperQodeApp._apply_subscription_billing_policy(self, profile, log)
+
     def _show_dependency_install_picker(self, runtime, log):
         self.calls.append(("dependency-picker", runtime))
         return True
@@ -434,8 +444,11 @@ def test_dispatch_copilot_falls_back_to_installed_cli(_dispatch, monkeypatch):
     monkeypatch.setattr(cp, "_copilot_acp_ready", lambda: True)
     stub = _DispatchStub()
     _dispatch(stub, get_connection_profile("copilot"), log=None)
-    assert ("acp", "copilot") in stub.calls
-    assert not any(call[0] == "runtime" for call in stub.calls)
+    # Subscriptions offer the vendor SDK or its plain CLI, never ACP: the ACP
+    # channel is a separate connection source and listing Copilot in both
+    # duplicates it.
+    assert ("runtime", "copilot-cli") in stub.calls
+    assert not any(call[0] == "acp" for call in stub.calls)
 
 
 def test_dispatch_copilot_without_either_route_opens_safe_extra_picker(_dispatch, monkeypatch):
@@ -621,20 +634,19 @@ def test_dispatch_subscriptions_opens_the_submenu(_dispatch):
     assert ("connect-picker", CONNECT_MENU_SUBSCRIPTIONS) in stub.calls
 
 
-def test_dispatch_gemini_devin_and_glm_route_to_their_acp_agents(_dispatch, monkeypatch):
+def test_dispatch_devin_and_glm_route_to_their_acp_agents(_dispatch, monkeypatch):
     import superqode.providers.connection_profiles as cp
 
-    installed = {"gemini", "devin", "glm-acp-agent"}
+    installed = {"devin", "glm-acp-agent"}
     monkeypatch.setattr(
         cp.shutil, "which", lambda name: f"/usr/bin/{name}" if name in installed else None
     )
 
     stub = _DispatchStub()
-    for profile_id in ("gemini-cli", "devin", "glm-cli"):
+    for profile_id in ("devin", "glm-cli"):
         _dispatch(stub, get_connection_profile(profile_id), log=None)
 
     assert [call for call in stub.calls if call[0] == "acp"] == [
-        ("acp", "gemini"),
         ("acp", "devin"),
         ("acp", "glm"),
     ]
@@ -699,7 +711,6 @@ def test_connect_command_routes_every_profile_id_and_keeps_byok_pairs():
     stub = Stub()
     for command in (
         ":connect subscriptions",
-        ":connect gemini-cli",
         ":connect devin",
         ":connect glm-cli",
         ":connect kimi-code",
@@ -709,7 +720,6 @@ def test_connect_command_routes_every_profile_id_and_keeps_byok_pairs():
         SuperQodeApp._handle_command(stub, command, log=None)
 
     assert ("profile", "subscriptions") in stub.calls
-    assert ("profile", "gemini-cli") in stub.calls
     assert ("profile", "devin") in stub.calls
     assert ("profile", "glm-cli") in stub.calls
     assert ("profile", "kimi-code") in stub.calls

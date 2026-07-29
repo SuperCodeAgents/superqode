@@ -2412,6 +2412,10 @@ class AgentRunMixin:
                     startup_timeout=float(os.getenv("SUPERQODE_ACP_STARTUP_TIMEOUT", "15")),
                     request_timeout=float(os.getenv("SUPERQODE_ACP_REQUEST_TIMEOUT", "12")),
                     prompt_timeout=float(os.getenv("SUPERQODE_ACP_PROMPT_TIMEOUT", "180")),
+                    # Set only when this agent was reached from Subscriptions, so
+                    # the vendor process starts without API keys that would move
+                    # the session onto metered billing.
+                    subscription_vendor=getattr(self, "_acp_subscription_vendor", None),
                 )
                 self._acp_client = client
                 self._acp_client_key = client_key

@@ -107,7 +107,7 @@ a browsing aid rather than a required step:
 | Google Antigravity | `:connect antigravity` |
 | xAI Grok | `:connect grok` |
 | GitHub Copilot | `:connect copilot` |
-| Google Gemini CLI | `:connect gemini-cli` |
+| Google Gemini CLI | `:connect acp gemini` |
 | Cognition Devin | `:connect devin` |
 | Factory Droid | `:connect droid` |
 | Kiro / Amazon Q Developer | `:connect kiro` |

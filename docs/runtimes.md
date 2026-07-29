@@ -174,7 +174,7 @@ Direct commands and CLI:
 :connect amp              # Amp subscription through its ACP adapter
 :connect kimi-code        # Moonshot AI Kimi Code through its official ACP server
 :connect qwen-code        # Qwen Code through its stable ACP server
-:connect gemini-cli       # Google Gemini CLI through gemini --acp
+:connect acp gemini       # Google Gemini CLI through gemini --acp
 :connect devin            # Cognition Devin CLI through devin acp
 :connect droid            # Factory Droid subscription through ACP
 :connect kiro             # Kiro/Amazon Q Developer plan through Kiro ACP
@@ -281,6 +281,45 @@ routes, see [Google Antigravity](providers/antigravity.md).
 Gemini CLI remains listed under the generic ACP picker for enterprise/API-key ACP
 users. For Google AI Pro, Ultra, and free Code Assist individual accounts, prefer
 Antigravity CLI.
+
+### Subscription CLI runtimes
+
+A subscription connection spends the plan you already pay for, so it uses the
+vendor's own SDK or its plain CLI. ACP is not offered under Subscriptions
+because the ACP channel is a separate connection source.
+
+```text
+:runtime copilot-cli    # GitHub Copilot on your subscription (copilot login)
+:runtime grok-cli       # Grok on your subscription (grok login)
+```
+
+`copilot-cli` and `grok-cli` drive the vendor's documented non-interactive mode
+with structured output, so the turn streams into SuperQode's TUI while the
+vendor keeps owning the agent loop.
+
+**Billing.** These runtimes start the vendor process from an environment with
+API-key variables removed, so a key left in your shell cannot silently move the
+session onto metered billing. Your own environment is never modified: only the
+copy handed to that one subprocess omits them, and the keys that were ignored
+are reported when you connect. Use `:connect byok` when you do want to spend an
+API key.
+
+**Permissions.** A headless CLI cannot prompt per tool call, so SuperQode's
+approval mode is translated into the vendor's own setting for the whole turn
+and stated on the first turn rather than applied quietly:
+
+| Approval mode | Grok | Copilot |
+| --- | --- | --- |
+| `auto` | `--permission-mode bypassPermissions` | `--allow-all-tools` |
+| `ask` | `--permission-mode acceptEdits` | `--allow-all-tools` |
+| `deny` | `--permission-mode plan` | `--allow-all-tools` |
+
+Copilot's CLI requires `--allow-all-tools` for non-interactive use and offers
+no gradation, so every approval mode resolves to the same flags and the runtime
+says so. Use the Copilot SDK route or `:connect acp copilot` when you want
+per-tool approval prompts.
+
+`SUPERQODE_VENDOR_CLI_TIMEOUT` (default `900` seconds) bounds one turn.
 
 ### Devin CLI
 

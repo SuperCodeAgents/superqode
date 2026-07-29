@@ -2019,7 +2019,8 @@ class CommandImplMixin:
             ("sessions", "List sessions from the Copilot SDK route"),
             ("resume", "Resume a session through the Copilot SDK route"),
             ("sdk", "Force the official Copilot Python SDK route"),
-            ("cli", "Force the official Copilot CLI ACP route"),
+            ("cli", "Force the plain Copilot CLI on your subscription"),
+            ("acp", "Use the Copilot CLI over ACP instead"),
             ("version", "Show the installed Copilot CLI version"),
         )
         return [
@@ -2044,7 +2045,11 @@ class CommandImplMixin:
             self._connect_copilot_subscription(get_connection_profile("copilot"), log)
         elif sub == "sdk":
             self._runtime_cmd("copilot-sdk", log)
-        elif sub in {"cli", "acp"}:
+        elif sub == "cli":
+            # The plain CLI on your subscription. ACP is a separate channel and
+            # now needs asking for by name.
+            self._runtime_cmd("copilot-cli", log)
+        elif sub == "acp":
             self._connect_acp_cmd("copilot", log)
         elif sub in {"login", "auth", "signin", "sign-in"}:
             from superqode.providers.connection_profiles import get_connection_profile
@@ -2098,7 +2103,7 @@ class CommandImplMixin:
             (":copilot sessions", "List persisted SDK sessions"),
             (":copilot resume <id>", "Resume an SDK session"),
             (":copilot sdk", "Force the official Python SDK route"),
-            (":copilot cli", "Force the official CLI ACP route"),
+            (":copilot cli", "Force the plain Copilot CLI on your subscription"),
             (":copilot version", "Show the installed CLI version"),
         )
         for command, description in commands:

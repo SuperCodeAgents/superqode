@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-29
+
+### Added
+
+- **`superqode update`** - Upgrade SuperQode from inside SuperQode. The command
+  detects how it was installed rather than assuming one package manager:
+  `uv tool upgrade superqode` for a uv tool install (which keeps the extras it
+  was installed with), a targeted `uv pip install --upgrade` for a virtual
+  environment, pip when uv is absent, and a refusal that points at `git pull`
+  when running from a checkout. `--check` reports without installing,
+  `--version` pins or rolls back, and `-y` skips the prompt.
+- **Subscription CLI runtimes** - `copilot-cli` and `grok-cli` drive the
+  vendor's own non-interactive mode with structured output, so a subscription
+  runs on the vendor's CLI instead of ACP. `SUPERQODE_VENDOR_CLI_TIMEOUT`
+  (default 900s) bounds one turn.
+
+### Changed
+
+- **Subscriptions never route through ACP** - The ACP channel is a separate
+  connection source, so listing the same vendor in both duplicated it.
+  `:connect copilot` now prefers the Copilot SDK and otherwise uses the Copilot
+  CLI directly. `:copilot cli` means the plain CLI; ACP now needs `:copilot acp`
+  or `:connect acp copilot` by name.
+- **Subscriptions never spend an API key** - Vendor CLIs generally prefer an
+  exported API key over their own login, so a key left in a shell could quietly
+  move a subscription session onto per-token billing. Subscription routes now
+  start the vendor process without those variables and report which ones were
+  ignored. **Your own environment is never modified**: only the copy handed to
+  that one subprocess omits them, so BYOK and every other tool keep working
+  unchanged. `COPILOT_GITHUB_TOKEN` is honoured, since it is supplied on purpose.
+- **Approval mode maps to the vendor's own permission setting** - A headless
+  CLI cannot prompt per tool call, so the mode is translated into the vendor's
+  vocabulary for the whole turn and stated on the first turn instead of being
+  applied quietly. Grok maps `auto`/`ask`/`deny` to `bypassPermissions`,
+  `acceptEdits`, and `plan`. Copilot's CLI requires `--allow-all-tools` for
+  non-interactive use and offers no gradation, so it says so and points at the
+  SDK or ACP routes for per-tool prompts.
+
+### Removed
+
+- **Gemini CLI is no longer a subscription profile** - It is an enterprise and
+  API-key route, and Google has moved consumer plans to Antigravity. A
+  subscription entry must never put the user on metered API billing. The agent
+  stays reachable through the ACP channel with `:connect acp gemini`.
+
 ## [0.2.62] - 2026-07-29
 
 ### Fixed

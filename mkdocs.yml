@@ -296,3 +296,4 @@ nav:
       - 🎛️ Profiles/Tools: cli-reference/profiles-commands.md
       - 🚀 Serve: cli-reference/serve-commands.md
       - 🩺 Doctor: cli-reference/doctor-command.md
+      - ⬆️ Update: cli-reference/update-command.md

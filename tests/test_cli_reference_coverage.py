@@ -214,7 +214,6 @@ def test_every_connection_profile_has_a_sidebar_page():
         "copilot": "providers/github-copilot.md",
         "cursor": "concepts/modes.md",
         "amp": "concepts/modes.md",
-        "gemini-cli": "providers/gemini.md",
         "devin": "providers/devin.md",
         "droid": "concepts/modes.md",
         "kiro": "concepts/modes.md",

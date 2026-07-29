@@ -91,7 +91,7 @@ a direct profile, so the submenu never becomes a required step:
 :connect antigravity
 :connect grok
 :connect copilot
-:connect gemini-cli
+:connect acp gemini
 :connect devin
 :connect droid
 :connect kiro
@@ -123,7 +123,7 @@ that matches the account, runtime, and harness ownership required for the task.
 | OpenAI Codex | Codex SDK, Codex ACP, OpenAI BYOK | `:connect codex`, `:connect acp codex`, `:connect byok openai <model>` |
 | Anthropic Claude | Claude Agent SDK, Anthropic BYOK | `:runtime claude-agent-sdk`, `:connect byok anthropic <model>` |
 | Google Antigravity | Authenticated Antigravity CLI runtime | `:connect antigravity` |
-| Google Gemini | Gemini CLI ACP, Google AI Studio BYOK, Google ADK runtime | `:connect gemini-cli`, `:connect acp gemini`, `:connect byok google <model>`, `:runtime adk` |
+| Google Gemini | Gemini CLI ACP, Google AI Studio BYOK, Google ADK runtime | `:connect acp gemini`, `:connect acp gemini`, `:connect byok google <model>`, `:runtime adk` |
 | GitHub Copilot | Copilot SDK, Copilot CLI ACP | `:connect copilot`, `:connect copilot-cli`, `:connect acp copilot` |
 | xAI Grok | Grok Build ACP, Grok subscription model route, xAI BYOK | `:connect grok`, `:grok api [model]`, `:connect byok xai <model>` |
 | OpenCode | OpenCode ACP, OpenCode Zen BYOK | `:connect acp opencode`, `:connect byok opencode <model>` |

@@ -26,6 +26,8 @@ def test_dialog_lists_current_runtimes():
         "antigravity-cli",
         "antigravity-managed",
         "devin-cli",
+        "copilot-cli",
+        "grok-cli",
         "pydanticai",
     }
 

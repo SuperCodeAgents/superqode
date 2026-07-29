@@ -10,12 +10,14 @@ import click
 from superqode.main import cli_main
 
 
-EXPECTED_COMMAND_COUNT = 261
-# Rebaselined when the --connect choice list was aligned with the vendor-plan
-# screen: Cursor, Amp, Droid, and Kiro became direct profiles, while API-only
-# Z.AI and the duplicate Copilot ACP transport moved to compatibility aliases.
-# No Click command was added, renamed, or removed.
-EXPECTED_HELP_TREE_SHA256 = "cfc58995ae535ad5bf1102d6a78b7f8920f6f5f08b39ab92f08e6f4dbaee34d4"
+EXPECTED_COMMAND_COUNT = 262
+# Rebaselined for `superqode update` (261 -> 262: exactly one command added),
+# and again for the `copilot-cli` / `grok-cli` subscription runtimes, which
+# widen the --runtime choice list without adding a Click command. The same work
+# dropped `gemini-cli` from --connect, because it is an API-key route and a
+# subscription entry must never put the user on metered API billing; the agent
+# stays reachable via `:connect acp gemini`.
+EXPECTED_HELP_TREE_SHA256 = "def8edbf0748a5aa333b4add04231ea3dd13799ab8cb970e36f4043813cadfde"
 
 
 def _render_help_tree() -> tuple[int, str]:

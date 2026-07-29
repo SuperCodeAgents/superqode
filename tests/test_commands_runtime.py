@@ -51,6 +51,8 @@ def test_list_json_emits_array(runner, monkeypatch):
         "antigravity-cli",
         "antigravity-managed",
         "devin-cli",
+        "copilot-cli",
+        "grok-cli",
         "pydanticai",
     }
     # Exactly one entry is marked active.

@@ -53,6 +53,7 @@ superqode [OPTIONS] COMMAND [ARGS]...
 | `skills` | [Skills Commands](skills-commands.md) |
 | `tools` | [Tools Commands](tools-commands.md) |
 | `trust` | [Trust Commands](trust-commands.md) |
+| `update` | [Update Command](update-command.md) |
 | `work` | [WorkOrder Commands](work-commands.md) |
 
 ### Global Options
@@ -608,5 +609,6 @@ For detailed documentation of each command group:
 - [WorkOrder Commands](work-commands.md) - Durable task scheduling, evidence, and decisions
 - [Share Commands](share-commands.md) - Portable session artifact management
 - [Trust Commands](trust-commands.md) - Project trust management
+- [Update Command](update-command.md) - Upgrade SuperQode to the latest release
 - [Sandbox Commands](sandbox-commands.md) - Sandbox provider diagnostics
 - [Runtime Commands](runtime-commands.md) - Runtime backend inspection

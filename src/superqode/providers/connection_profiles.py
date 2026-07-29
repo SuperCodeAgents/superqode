@@ -116,11 +116,6 @@ def _antigravity_cli_ready() -> bool:
     return probe_antigravity_cli().compatible
 
 
-def _gemini_cli_ready() -> bool:
-    """Google's Gemini CLI is installed and can serve its ACP mode."""
-    return shutil.which("gemini") is not None
-
-
 def _glm_cli_ready() -> bool:
     """The GLM ACP agent CLI is on PATH."""
     return shutil.which("glm-acp-agent") is not None
@@ -323,23 +318,11 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
             "`npm install -g @github/copilot`; then run `copilot login`"
         ),
     ),
-    ConnectionProfile(
-        id="gemini-cli",
-        label="Gemini CLI",
-        description=(
-            "Google's Gemini CLI over ACP (enterprise/API-key route; consumer "
-            "Google AI plans now use Antigravity)"
-        ),
-        connector="acp",
-        group="US Coding Agents",
-        menu=CONNECT_MENU_SUBSCRIPTIONS,
-        acp_agent="gemini",
-        self_contained=True,
-        detect=_gemini_cli_ready,
-        unavailable_hint=(
-            "run `npm install -g @google/gemini-cli`, then sign in or set GEMINI_API_KEY"
-        ),
-    ),
+    # Gemini CLI is deliberately absent from Subscriptions. It is an
+    # enterprise/API-key route rather than a subscription one, and Google has
+    # moved consumer plans to Antigravity. Subscriptions must never put a user
+    # on metered API billing. The agent is still reachable through the ACP
+    # channel with `:connect acp gemini` for anyone who still runs it.
     ConnectionProfile(
         id="devin",
         label="Devin",

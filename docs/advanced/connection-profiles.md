@@ -121,7 +121,7 @@ Direct shortcuts:
 - `:connect codex` - connect Codex SDK directly
 - `:connect cursor` - Cursor subscription through ACP
 - `:connect amp` - Amp subscription through ACP
-- `:connect gemini-cli` - Google Gemini CLI over ACP
+- `:connect acp gemini` - Google Gemini CLI over ACP (API-key route, not a subscription)
 - `:connect devin` - Cognition Devin CLI over ACP
 - `:connect droid` - Factory Droid subscription through ACP
 - `:connect kiro` - Kiro/Amazon Q Developer subscription through ACP

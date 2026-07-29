@@ -241,6 +241,7 @@ class ConnectMixin:
             self._runtime_cmd(profile.runtime or "", log)
         elif conn == "acp":
             # A specific ACP agent by short_name (Claude, Grok Build, …).
+            self._apply_subscription_billing_policy(profile, log)
             self._connect_acp_cmd(profile.acp_agent or "", log)
         elif conn == "byok":
             provider = getattr(profile, "byok_provider", None)
@@ -274,17 +275,52 @@ class ConnectMixin:
         else:
             log.add_error(f"Unknown connection type: {getattr(profile, 'id', profile)}")
 
+    def _apply_subscription_billing_policy(self, profile, log: ConversationLog) -> None:
+        """Pin a subscription connection to the subscription, and say so.
+
+        Vendor CLIs generally prefer an exported API key over their own OAuth
+        login, so a key left in the shell would quietly move a subscription
+        session onto per-token billing. SuperQode has a dedicated BYOK path for
+        that, so subscription routes drop those keys, and always report it
+        rather than changing billing behind the user's back.
+        """
+        from superqode.providers.connection_profiles import CONNECT_MENU_SUBSCRIPTIONS
+        from superqode.providers.subscription_env import (
+            diverting_api_keys,
+            resolve_vendor,
+            subscription_notice,
+        )
+
+        if getattr(profile, "menu", "") != CONNECT_MENU_SUBSCRIPTIONS:
+            self._acp_subscription_vendor = None
+            return
+
+        vendor = resolve_vendor(getattr(profile, "id", "")) or resolve_vendor(
+            getattr(profile, "acp_agent", "") or ""
+        )
+        self._acp_subscription_vendor = vendor
+        if vendor is None or log is None:
+            return
+
+        stripped = diverting_api_keys(vendor)
+        for line in subscription_notice(getattr(profile, "label", vendor), stripped):
+            log.add_info(line)
+
     def _connect_copilot_subscription(self, profile, log: ConversationLog) -> None:
         """Select the best installed official route for one Copilot entry.
 
-        The SDK retains SuperQode's harness controls. When it is not installed,
-        an existing Copilot CLI subscription remains immediately usable over
-        GitHub's ACP server instead of being blocked behind an SDK setup prompt.
+        Subscriptions offer the vendor's SDK or its plain CLI, never ACP: the
+        ACP channel is a separate connection source, and listing the same
+        vendor in both duplicates it. The SDK is preferred because it is the
+        only Copilot route that can forward per-tool permission requests; the
+        CLI route falls back to GitHub's own non-interactive mode.
         """
         from superqode.providers.connection_profiles import (
             _copilot_acp_ready,
             _copilot_sdk_ready,
         )
+
+        self._apply_subscription_billing_policy(profile, log)
 
         if _copilot_sdk_ready():
             self._runtime_cmd(profile.runtime or "copilot-sdk", log)
@@ -292,12 +328,12 @@ class ConnectMixin:
         if _copilot_acp_ready():
             if log is not None:
                 log.add_info(
-                    "Using the installed GitHub Copilot CLI over ACP. "
-                    "Use `:copilot models` for the signed-in account's live model "
-                    "catalog. If this CLI is signed out, run `:copilot login` "
-                    "without leaving the TUI."
+                    "Using the installed GitHub Copilot CLI on your subscription. "
+                    "Install the SDK extra for per-tool approval prompts and "
+                    "resumable sessions. If this CLI is signed out, run "
+                    "`:copilot login` without leaving the TUI."
                 )
-            self._connect_acp_cmd(profile.acp_agent or "copilot", log)
+            self._runtime_cmd("copilot-cli", log)
             return
         if self._show_dependency_install_picker(profile.runtime or "copilot-sdk", log):
             return

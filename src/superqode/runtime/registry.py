@@ -142,6 +142,29 @@ def _devin_cli_factory(**kwargs) -> AgentRuntime:
     return module.DevinCLIRuntime(**kwargs)
 
 
+def _vendor_cli_spec(runtime_name: str):
+    """Vendor CLI descriptor for a runtime name, or None if it is not one."""
+    try:
+        module = importlib.import_module("superqode.runtime.vendor_cli")
+    except ImportError:  # pragma: no cover - module ships with the package
+        return None
+    spec = module.spec_for(runtime_name)
+    return spec if spec is not None and spec.name == runtime_name else None
+
+
+def _vendor_cli_factory(vendor: str) -> Callable[..., AgentRuntime]:
+    """Build a subscription runtime that drives one vendor's own CLI."""
+
+    def factory(**kwargs) -> AgentRuntime:
+        module = importlib.import_module("superqode.runtime.vendor_cli")
+        spec = module.spec_for(vendor)
+        if spec is None:  # pragma: no cover - guarded by the spec table test
+            raise RuntimeNotInstalledError(f"No vendor CLI descriptor for {vendor!r}")
+        return module.VendorCLIRuntime(spec=spec, **kwargs)
+
+    return factory
+
+
 _FACTORIES: dict[str, Callable[..., AgentRuntime]] = {
     "builtin": _builtin_factory,
     "adk": _adk_factory,
@@ -154,6 +177,9 @@ _FACTORIES: dict[str, Callable[..., AgentRuntime]] = {
     "antigravity-cli": _antigravity_cli_factory,
     "antigravity-managed": _antigravity_managed_factory,
     "devin-cli": _devin_cli_factory,
+    # Subscription runtimes that drive the vendor CLI directly (no ACP).
+    "copilot-cli": _vendor_cli_factory("copilot"),
+    "grok-cli": _vendor_cli_factory("grok"),
 }
 
 _DESCRIPTIONS: dict[str, str] = {
@@ -168,6 +194,8 @@ _DESCRIPTIONS: dict[str, str] = {
     "antigravity-cli": "Google Antigravity CLI (Google Sign-In)",
     "antigravity-managed": "Google-hosted Antigravity agent (Gemini API key)",
     "devin-cli": "Cognition Devin CLI (devin auth login)",
+    "copilot-cli": "GitHub Copilot CLI on your subscription (copilot login)",
+    "grok-cli": "Grok CLI on your subscription (grok login)",
 }
 
 _OPTIONAL_PACKAGES: dict[str, tuple[str, str]] = {
@@ -274,6 +302,21 @@ def list_runtimes() -> list[RuntimeInfo]:
             install_hint = None
             implemented = True
             status_detail = "Gemini API key is verified on first use"
+        elif _vendor_cli_spec(name) is not None:
+            # Subscription CLI runtimes need the vendor binary on PATH rather
+            # than an optional Python package.
+            import shutil
+
+            spec = _vendor_cli_spec(name)
+            installed = shutil.which(spec.binary) is not None
+            ready = installed
+            install_hint = None if installed else spec.install_hint
+            implemented = True
+            status_detail = (
+                f"{spec.label} CLI on PATH; the subscription login is verified on first use"
+                if installed
+                else spec.install_hint
+            )
         else:
             pkg, extra = _OPTIONAL_PACKAGES[name]
             try:

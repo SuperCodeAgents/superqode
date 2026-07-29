@@ -3693,7 +3693,7 @@ def test_prompt_completion_prioritizes_full_connect_and_quit_commands():
     assert ":connect amp" in connect_values
     assert ":connect droid" in connect_values
     assert ":connect kiro" in connect_values
-    assert ":connect gemini-cli" in connect_values
+    assert ":connect gemini-cli" not in connect_values  # API-key route, not a subscription
     assert ":connect devin" in connect_values
     assert ":connect glm-cli" in connect_values
     assert ":connect setup" in connect_values
@@ -5740,13 +5740,15 @@ def test_connect_subscriptions_screen_lists_vendor_agents():
     assert rendered.index("[3] Amp subscription") < rendered.index("[4] Antigravity CLI")
     assert rendered.index("[4] Antigravity CLI") < rendered.index("[5] Grok subscription")
     assert rendered.index("[5] Grok subscription") < rendered.index("[6] GitHub Copilot")
-    assert rendered.index("[6] GitHub Copilot") < rendered.index("[7] Gemini CLI")
-    assert rendered.index("[7] Gemini CLI") < rendered.index("[8] Devin")
-    assert rendered.index("[9] Factory Droid subscription") < rendered.index(
-        "[10] Kiro subscription"
+    # Gemini CLI is deliberately absent: it is an API-key route, and a
+    # subscription entry must never put the user on metered API billing.
+    assert "Gemini CLI" not in rendered
+    assert rendered.index("[6] GitHub Copilot") < rendered.index("[7] Devin")
+    assert rendered.index("[8] Factory Droid subscription") < rendered.index(
+        "[9] Kiro subscription"
     )
-    assert rendered.index("[11] GLM Coding Plan") < rendered.index("[12] Qwen Code")
-    assert rendered.index("[12] Qwen Code") < rendered.index("[13] Kimi Code")
+    assert rendered.index("[10] GLM Coding Plan") < rendered.index("[11] Qwen Code")
+    assert rendered.index("[11] Qwen Code") < rendered.index("[12] Kimi Code")
     assert "Z.AI GLM API" not in rendered
     assert "GitHub Copilot CLI" not in rendered
     assert "Esc back" in rendered

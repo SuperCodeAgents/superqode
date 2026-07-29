@@ -123,6 +123,12 @@ class ACPClient:
     startup_timeout: float = 30.0
     prompt_timeout: float = 180.0
     request_timeout: float = 30.0
+    # Vendor id when this agent is being launched as a *subscription*. Set it
+    # and the agent process starts without API keys that would divert the
+    # session onto metered billing; the names removed land in
+    # ``stripped_api_keys`` for the caller to show the user.
+    subscription_vendor: Optional[str] = None
+    stripped_api_keys: List[str] = field(default_factory=list)
 
     # Callbacks for handling agent events
     on_message: Optional[Callable[[str], Awaitable[None]]] = None
@@ -247,6 +253,16 @@ class ACPClient:
 
             env = os.environ.copy()
             env["PYTHONUNBUFFERED"] = "1"
+
+            # A subscription connection must spend the subscription. Vendor CLIs
+            # generally prefer an exported API key over their own OAuth login,
+            # so an unrelated key in the shell would silently switch the session
+            # to per-token billing. BYOK is the dedicated path for that.
+            if self.subscription_vendor:
+                from superqode.providers.subscription_env import subscription_child_env
+
+                env, self.stripped_api_keys = subscription_child_env(self.subscription_vendor, env)
+                env["PYTHONUNBUFFERED"] = "1"
 
             # OpenCode's verbose logs are useful for debugging, but expensive on
             # normal runs because every non-JSON line has to be parsed and routed

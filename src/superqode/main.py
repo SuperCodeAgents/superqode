@@ -1121,6 +1121,10 @@ from superqode.commands.trust import trust
 
 cli_main.add_command(trust, name="trust")
 
+from superqode.commands.update import update
+
+cli_main.add_command(update, name="update")
+
 
 from superqode.commands.memory import memory
 

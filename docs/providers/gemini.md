@@ -43,7 +43,7 @@ Gemini CLI is listed on the Subscriptions screen of the connect picker:
 Or connect directly:
 
 ```text
-:connect gemini-cli
+:connect acp gemini
 ```
 
 Both routes start `gemini --acp` and hand the session to Gemini CLI. The
@@ -55,7 +55,7 @@ Google models reach SuperQode through several distinct paths:
 
 | Goal | Route |
 | --- | --- |
-| Use the complete first-party Gemini CLI agent | `:connect gemini-cli` |
+| Use the complete first-party Gemini CLI agent | `:connect acp gemini` |
 | Use Google's newer signed-in agent harness | `:connect antigravity` |
 | Use a Gemini model inside the SuperQode native harness | `:connect byok google <model>` |
 | Use the Google-hosted Antigravity managed agent | `:antigravity managed` |
