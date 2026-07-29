@@ -275,6 +275,38 @@ class ConnectMixin:
         else:
             log.add_error(f"Unknown connection type: {getattr(profile, 'id', profile)}")
 
+    async def _report_copilot_login_state(self, log: ConversationLog) -> None:
+        """Say whether the Copilot CLI is signed in, so the user need not guess.
+
+        There is no ``copilot whoami``, and the token is held in the OS
+        credential store rather than a readable file, so the only honest check
+        is a short handshake with the CLI. It takes a few seconds, which is why
+        this runs after the connect has already completed.
+        """
+        from superqode.providers.copilot_auth import probe_copilot_login
+
+        state = await probe_copilot_login()
+        if log is None:
+            return
+        if state.signed_in:
+            log.add_success("GitHub Copilot CLI is signed in.")
+            self._toast("Copilot is signed in", "Ready to use your subscription.")
+            return
+        if state.needs_login:
+            log.add_error("GitHub Copilot CLI is not signed in.")
+            log.add_info("Run `:copilot login` to sign in without leaving the TUI.")
+            self._toast(
+                "Copilot needs sign-in",
+                "Run :copilot login",
+                severity="warning",
+            )
+            return
+        # Indeterminate: never claim a state that was not established.
+        log.add_info(
+            f"Could not confirm the Copilot sign-in state ({state.detail}). "
+            "Run `:copilot status` to check."
+        )
+
     def _apply_subscription_billing_policy(self, profile, log: ConversationLog) -> None:
         """Pin a subscription connection to the subscription, and say so.
 
@@ -330,10 +362,14 @@ class ConnectMixin:
                 log.add_info(
                     "Using the installed GitHub Copilot CLI on your subscription. "
                     "Install the SDK extra for per-tool approval prompts and "
-                    "resumable sessions. If this CLI is signed out, run "
-                    "`:copilot login` without leaving the TUI."
+                    "resumable sessions."
                 )
             self._runtime_cmd("copilot-cli", log)
+            # Whether the vendor CLI is signed in cannot be read from a file:
+            # the token lives in the OS credential store. Probe it in the
+            # background so connect stays responsive, then report the answer
+            # rather than leaving the user to guess and log in again.
+            self.run_worker(self._report_copilot_login_state(log), exclusive=False)
             return
         if self._show_dependency_install_picker(profile.runtime or "copilot-sdk", log):
             return

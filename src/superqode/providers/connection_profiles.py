@@ -240,7 +240,9 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
     ConnectionProfile(
         id="cursor",
         label="Cursor subscription",
-        description="Use Cursor Agent through the account already signed in to Cursor CLI",
+        description=(
+            "Use Cursor Agent over ACP through the account already signed in to Cursor CLI"
+        ),
         connector="acp",
         group="US Coding Agents",
         menu=CONNECT_MENU_SUBSCRIPTIONS,
@@ -287,7 +289,7 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
         label="Grok subscription",
         description=(
             "Grok Build coding agent on your X/SuperGrok login (xAI's own harness, "
-            "via the official CLI). SuperQode harness on the same plan: :grok api"
+            "over ACP). SuperQode harness on the same plan: :grok api"
         ),
         # Subscriptions default to the vendor's own agent. Running SuperQode's
         # harness on this plan is the explicit opt-in `:grok api [model]`
@@ -303,8 +305,8 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
         id="copilot",
         label="GitHub Copilot",
         description=(
-            "Use your Copilot plan; prefers the SDK for SuperQode harness controls "
-            "and falls back to the official CLI over ACP"
+            "Use your Copilot plan; prefers the SDK for per-tool approvals and "
+            "resumable sessions, otherwise uses the official CLI directly"
         ),
         connector="copilot",
         group="US Coding Agents",
@@ -352,7 +354,7 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
     ConnectionProfile(
         id="kiro",
         label="Kiro subscription",
-        description="Use a Kiro or Amazon Q Developer plan through Kiro CLI sign-in",
+        description=("Use a Kiro or Amazon Q Developer plan over ACP through Kiro CLI sign-in"),
         connector="acp",
         group="US Coding Agents",
         menu=CONNECT_MENU_SUBSCRIPTIONS,

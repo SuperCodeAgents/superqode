@@ -347,6 +347,18 @@ class _DispatchStub:
 
         SuperQodeApp._apply_subscription_billing_policy(self, profile, log)
 
+    def run_worker(self, work, **_kwargs):
+        # The connect path kicks off a background sign-in probe. Record it and
+        # close the coroutine so the dispatch decision stays the assertion.
+        self.calls.append(("worker",))
+        if hasattr(work, "close"):
+            work.close()
+
+    async def _report_copilot_login_state(self, log):
+        # Probing the vendor CLI spawns a process; the dispatch tests only care
+        # that the probe was scheduled.
+        self.calls.append(("login-probe",))
+
     def _show_dependency_install_picker(self, runtime, log):
         self.calls.append(("dependency-picker", runtime))
         return True
@@ -824,3 +836,31 @@ def test_acp_bare_agent_name_routes_to_connect():
     assert stub.calls.count(("acp", "grok")) == 2  # bare name + connect subcommand
     assert ("acp", "opencode") in stub.calls
     assert ("subscription", "grok-build") not in stub.calls
+
+
+def test_subscription_descriptions_state_their_real_transport():
+    """A description must not imply a route the profile does not take.
+
+    The Grok entry said "via the official CLI" while the profile actually runs
+    `grok agent stdio`, which is ACP. Cursor and Kiro named the sign-in but no
+    transport, which read the same way. Users pick from this text, so it has to
+    match what the connector does.
+    """
+    from superqode.providers.connection_profiles import _SUBSCRIPTION_PROFILES
+
+    mismatched = []
+    for profile in _SUBSCRIPTION_PROFILES:
+        mentions_acp = "acp" in profile.description.lower()
+        goes_over_acp = profile.connector == "acp"
+        if mentions_acp != goes_over_acp:
+            mismatched.append((profile.id, profile.connector, profile.description))
+
+    assert mismatched == []
+
+
+def test_copilot_description_does_not_promise_acp():
+    """Copilot uses the SDK or the plain CLI, so it must not mention ACP."""
+    profile = get_connection_profile("copilot")
+
+    assert "acp" not in profile.description.lower()
+    assert profile.connector == "copilot"

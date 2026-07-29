@@ -299,26 +299,38 @@ def spec_for(vendor: str) -> VendorCLISpec | None:
 # --- runtime ------------------------------------------------------------------
 
 
-@dataclass
 class VendorCLIRuntime:
     """Run a vendor CLI headlessly on the user's subscription."""
 
-    spec: VendorCLISpec
-    config: Any = None
-    #: SuperQode approval mode ("auto" / "ask" / "deny"), translated into the
-    #: vendor's own permission vocabulary for each turn.
-    approval_mode: str = "auto"
-    _session_id: str | None = field(default=None, repr=False)
-    _process: Any = field(default=None, repr=False)
-    _cancelled: bool = field(default=False, repr=False)
-    _announced_permissions: bool = field(default=False, repr=False)
-    stripped_api_keys: list[str] = field(default_factory=list, repr=False)
+    def __init__(
+        self,
+        *,
+        spec: VendorCLISpec,
+        config: Any = None,
+        approval_mode: str = "auto",
+        **_unused: Any,
+    ) -> None:
+        """Build the runtime.
 
-    def __post_init__(self) -> None:
-        if shutil.which(self.spec.binary) is None:
+        Extra keyword arguments are accepted and ignored: the runtime registry
+        passes shared plumbing (``gateway``, ``permission_manager``,
+        ``approval_callback``) to every runtime, and a vendor CLI owns its own
+        loop so it needs none of it. Every other runtime does the same.
+        """
+        if shutil.which(spec.binary) is None:
             raise RuntimeNotInstalledError(
-                f"{self.spec.label} CLI was not found on PATH. To use it: {self.spec.install_hint}."
+                f"{spec.label} CLI was not found on PATH. To use it: {spec.install_hint}."
             )
+        self.spec = spec
+        self.config = config
+        #: SuperQode approval mode ("auto" / "ask" / "deny"), translated into
+        #: the vendor's own permission vocabulary for each turn.
+        self.approval_mode = approval_mode
+        self.stripped_api_keys: list[str] = []
+        self._session_id: str | None = None
+        self._process: Any = None
+        self._cancelled = False
+        self._announced_permissions = False
 
     @property
     def name(self) -> str:
@@ -491,6 +503,42 @@ class VendorCLIRuntime:
                 continue
             for event in parser(obj):
                 yield event
+
+    async def run_streaming(self, prompt: str) -> AsyncIterator[str]:
+        """Assistant text only, for callers that do not consume harness events.
+
+        ``AgentRuntime`` requires this alongside ``run``; PureMode prefers
+        ``run_harness_events`` when present, but the non-streaming paths do not.
+        """
+        async for event in self.run_harness_events(prompt):
+            if event.type == "model_delta":
+                text = str(event.data.get("text") or "")
+                if text:
+                    yield text
+
+    async def run(self, prompt: str):
+        """One turn as an ``AgentResponse``, for non-streaming callers."""
+        from superqode.agent.loop import AgentResponse
+
+        chunks: list[str] = []
+        stopped_reason = "complete"
+        error: str | None = None
+        async for event in self.run_harness_events(prompt):
+            if event.type == "model_delta":
+                chunks.append(str(event.data.get("text") or ""))
+            elif event.type == "turn_complete":
+                status = str(event.data.get("status") or "")
+                if status and status != "completed":
+                    stopped_reason = status
+                    error = event.data.get("error")
+        return AgentResponse(
+            content="".join(chunks),
+            messages=[],
+            tool_calls_made=0,
+            iterations=1,
+            stopped_reason=stopped_reason,
+            error=error,
+        )
 
     def _remember_session(self, event: HarnessEvent) -> None:
         session_id = event.data.get("session_id")

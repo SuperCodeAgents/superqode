@@ -1,6 +1,8 @@
 """Assorted small app helpers."""
 
 from __future__ import annotations
+
+from functools import partial
 import asyncio
 import json
 import os
@@ -682,6 +684,18 @@ class HelpersMixin(
     def _subscription_login_in_progress(self) -> bool:
         return bool(getattr(self, "_subscription_login_busy", False))
 
+    def _toast(self, title: str, message: str = "", *, severity: str = "information") -> None:
+        """Show a transient notification, so state changes are not missed.
+
+        A line appended to a scrolling log is easy to scroll past; a toast is
+        not. Failures are ignored because a notification must never break the
+        action it is reporting on.
+        """
+        try:
+            self.notify(message or title, title=title, severity=severity, timeout=8)
+        except Exception:  # noqa: BLE001 - notifications are best-effort
+            pass
+
     def _begin_subscription_login(
         self,
         product: str,
@@ -851,15 +865,40 @@ class HelpersMixin(
             self._subscription_login_busy = False
             return
 
+        seen_codes: set[str] = set()
+
         def _on_line(line: str) -> None:
             # Device codes / URLs from the vendor CLI — surface them immediately.
             text = (line or "").rstrip()
             if not text:
                 return
 
+            from superqode.providers.subscription_login import extract_device_codes
+
+            codes = [code for code in extract_device_codes(text) if code not in seen_codes]
+
             def _write() -> None:
                 try:
                     log.add_info(text)
+                    # Retyping a one-time code out of a scrolling log is the
+                    # worst part of a device flow, so put it on the clipboard
+                    # and say so instead of leaving the user to transcribe it.
+                    for code in codes:
+                        seen_codes.add(code)
+                        if self._copy_text_to_clipboard(code):
+                            log.add_success(f"Code {code} copied to your clipboard.")
+                            self._toast(
+                                f"Code {code} copied",
+                                "Paste it on the sign-in page.",
+                                severity="information",
+                            )
+                        else:
+                            log.add_info(f"One-time code: {code}")
+                            self._toast(
+                                f"Code {code}",
+                                "Clipboard unavailable, copy it from the log.",
+                                severity="warning",
+                            )
                 except Exception:  # noqa: BLE001
                     pass
 
@@ -886,6 +925,14 @@ class HelpersMixin(
 
         if not result.ok:
             self._call_ui(log.add_error, result.reason or f"{spec.label} login did not complete.")
+            self._call_ui(
+                partial(
+                    self._toast,
+                    f"{spec.label} sign-in failed",
+                    result.reason or "Login did not complete.",
+                    severity="error",
+                )
+            )
             if spec.id == "codex":
                 self._call_ui(
                     log.add_info,
@@ -906,6 +953,16 @@ class HelpersMixin(
         if result.opened_browser:
             self._call_ui(log.add_info, "Browser opened for sign-in.")
         self._call_ui(log.add_success, spec.success_hint)
+        # Sign-in finishing is the moment the user is waiting on, and a log line
+        # scrolls away. Announce it so they do not have to go looking.
+        self._call_ui(
+            partial(
+                self._toast,
+                f"Signed in to {spec.label}",
+                "Connecting now.",
+                severity="information",
+            )
+        )
 
         if callable(on_success):
 

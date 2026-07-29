@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.64] - 2026-07-30
+
+Hotfix for 0.2.63, which shipped a GitHub Copilot CLI route that could not
+serve a turn.
+
+### Fixed
+
+- **The Copilot CLI subscription route could not answer anything.**
+  `copilot-cli` and `grok-cli` were missing from the set of self-contained
+  runtimes, and that set is what decides whether a runtime auto-connects.
+  `:connect copilot` therefore reported `Already on runtime 'copilot-cli'` and
+  returned without connecting, so the next message failed with
+  `Not connected. Call connect() first.` Both runtimes are now declared
+  self-contained, because the vendor login supplies auth and model.
+- **The runtime rejected the registry's arguments.** Once it did try to connect,
+  it failed with `unexpected keyword argument 'gateway'`. The runtime registry
+  passes shared plumbing to every runtime, which a vendor CLI does not need; it
+  is now accepted and ignored, as the other runtimes already did. The required
+  `run()` and `run_streaming()` methods were also missing.
+- **Sign-in notifications never fired.** Passing a keyword through the UI
+  thread helper raised `TypeError`, because it forwards positional arguments
+  only. Every success and failure notification would have failed.
+- **Mouse-drag copy stopped working.** A duplicate clipboard helper shadowed the
+  existing one. The duplicate is gone.
+- **The Copilot entry described a route it no longer uses.** Its description
+  still said it falls back to "the official CLI over ACP".
+- **Subscription entries now state the route they actually take.** The Grok
+  entry read "via the official CLI" while the profile runs `grok agent stdio`,
+  which is ACP; Cursor and Kiro named the sign-in but no transport, which read
+  the same way. Users choose from this text, so every entry now says whether it
+  connects over ACP, a vendor SDK, or a vendor CLI, and a test keeps the wording
+  and the connector in step.
+
+### Added
+
+- **You can see whether the Copilot CLI is signed in.** There is no
+  `copilot whoami`, and the token is held in the OS credential store, so the
+  only honest check is a short handshake with the CLI. It runs in the background
+  after connect and reports signed in, needs sign-in, or, when nothing could be
+  established, says so rather than guessing. `:copilot login` is offered inline
+  when sign-in is needed. `SUPERQODE_COPILOT_AUTH_PROBE_TIMEOUT` bounds it.
+- **The one-time device code copies itself.** The code is pulled out of the
+  vendor CLI output, placed on your clipboard, and confirmed, instead of having
+  to be transcribed by hand from a scrolling log. Works over SSH through OSC 52.
+- **Sign-in raises a notification.** Completing or failing a sign-in now shows a
+  toast, so the result is not something you have to scroll back to find.
+
 ## [0.2.63] - 2026-07-29
 
 ### Added
