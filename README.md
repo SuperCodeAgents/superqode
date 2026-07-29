@@ -163,7 +163,7 @@ Use SuperQode as a daily coding-agent harness from the TUI or CLI:
 superqode
 superqode --print "fix the failing test and summarize the change"
 superqode --runtime codex-sdk --print "review this repository"
-superqode --connect claude --print "summarize the last change"
+superqode --runtime claude-agent-sdk --print "summarize the last change"
 ```
 
 Inside the TUI, start with `:help`. Common commands include:
@@ -174,8 +174,8 @@ Inside the TUI, start with `:help`. Common commands include:
 :connect byok           # hosted provider or API-key path
 :connect subscriptions  # vendor coding agents on a plan you already pay for
 :connect codex          # Codex SDK with local Codex login
-:connect copilot        # GitHub Copilot SDK
-:connect claude         # Claude Agent SDK
+:connect copilot        # GitHub Copilot plan (SDK preferred, CLI fallback)
+:runtime claude-agent-sdk # Anthropic API-key runtime
 :connect antigravity    # signed-in Antigravity CLI
 :connect acp refresh    # refresh the cached official ACP Registry
 :mcp                    # tool and resource server connections
@@ -383,6 +383,11 @@ availability, spec compatibility, sandbox policy, event-store readiness,
 approval support, MCP paths, and rich event graph support.
 
 ## Evaluate and Optimize
+
+For developer teams, this is the practical **CI for coding-agent harnesses**:
+validate the repository-owned contract, diagnose its environment, and gate
+behavior changes against repeatable tasks. It complements SuperQode's broader
+agent-engineering position; it is not a separate product mode.
 
 Run and measure the harness before attempting optimization:
 

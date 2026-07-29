@@ -402,10 +402,11 @@ class PickerNavigationMixin:
         *,
         reset_highlight: bool = True,
     ) -> bool:
-        """Offer to install a missing ACP agent, when its installer is one we run.
+        """Show manual setup for a missing external ACP agent.
 
-        Commands that pipe a remote script into a shell are shown but never
-        offered, so the option list itself reflects what SuperQode will do.
+        This connection flow never runs vendor package-manager or shell
+        installers. Its automatic install picker is reserved for allow-listed
+        ``superqode[...]`` Python extras required by SuperQode's own runtimes.
         """
         from superqode.agents.install_commands import classify_install_command
         from superqode.agents.registry import get_agent_installation_info
@@ -419,11 +420,10 @@ class PickerNavigationMixin:
         short_name = str(agent_data.get("short_name") or "")
         name = str(agent_data.get("name") or short_name)
 
-        options: list[tuple[str, str, str]] = []
-        if install.runnable:
-            options.append(("install", "Install it for me", f"SuperQode runs {install.command}"))
-        options.append(("manual", "I will install it myself", "show the command and go back"))
-        options.append(("cancel", "Cancel", "return to the connection screen"))
+        options: list[tuple[str, str, str]] = [
+            ("manual", "I will install it myself", "show the vendor command and go back"),
+            ("cancel", "Cancel", "return to the connection screen"),
+        ]
 
         if reset_highlight and not self._prompts.is_active("agent_install"):
             self._prompts.push(
@@ -449,6 +449,12 @@ class PickerNavigationMixin:
         t.append(f"    {install.raw}\n\n", style=THEME["cyan"])
         if install.reason:
             t.append(f"    {install.reason}\n\n", style=THEME["warning"])
+        elif install.runnable:
+            t.append(
+                "    External agent installers are manual-only in this flow; "
+                "SuperQode only auto-installs its own optional Python extras.\n\n",
+                style=THEME["warning"],
+            )
 
         for index, (_key, label, description) in enumerate(options):
             num = index + 1

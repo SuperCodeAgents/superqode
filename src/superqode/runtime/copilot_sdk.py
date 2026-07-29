@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import shutil
 import uuid
 from collections.abc import AsyncIterator
 from enum import Enum
@@ -155,6 +156,7 @@ def _permission_decision(allowed: bool, reason: str = "") -> Any:
 
 
 _DEFAULT_TURN_TIMEOUT = 600.0
+_DEFAULT_STARTUP_TIMEOUT = 60.0
 
 
 def _turn_timeout() -> float:
@@ -166,9 +168,26 @@ def _turn_timeout() -> float:
     return timeout if timeout > 0 else _DEFAULT_TURN_TIMEOUT
 
 
+def _startup_timeout() -> float:
+    """Seconds allowed for runtime resolution, authentication, and session start."""
+    try:
+        timeout = float(
+            os.environ.get("SUPERQODE_COPILOT_STARTUP_TIMEOUT", "") or _DEFAULT_STARTUP_TIMEOUT
+        )
+    except ValueError:
+        return _DEFAULT_STARTUP_TIMEOUT
+    return timeout if timeout > 0 else _DEFAULT_STARTUP_TIMEOUT
+
+
 def _startup_error(exc: BaseException) -> str:
     """Explain a failed client start in terms the user can act on."""
-    detail = str(exc).strip() or type(exc).__name__
+    if isinstance(exc, TimeoutError):
+        detail = (
+            f"startup exceeded {_startup_timeout():g}s "
+            "(set SUPERQODE_COPILOT_STARTUP_TIMEOUT to change the limit)"
+        )
+    else:
+        detail = str(exc).strip() or type(exc).__name__
     hint = (
         "Check `copilot login` (or `:copilot status`). If the Copilot CLI download "
         "is blocked on your network, set COPILOT_CLI_PATH to an installed "
@@ -251,11 +270,26 @@ class CopilotSDKRuntime:
 
     async def _ensure_started(self) -> None:
         if self._client is None:
-            from copilot import CopilotClient
+            from copilot import CopilotClient, RuntimeConnection
 
             kwargs: dict[str, Any] = {
                 "working_directory": str(self.config.working_directory),
             }
+            # The official CLI treats GH_TOKEN/GITHUB_TOKEN as higher priority
+            # than its OAuth login store. They are commonly unrelated git/CI
+            # tokens, so do not let them silently replace a working subscription
+            # login on the SDK route. Headless callers have the unambiguous
+            # COPILOT_GITHUB_TOKEN escape hatch below.
+            child_env = dict(os.environ)
+            child_env.pop("GH_TOKEN", None)
+            child_env.pop("GITHUB_TOKEN", None)
+            kwargs["env"] = child_env
+            # Reuse the user's installed and authenticated official CLI when it
+            # exists. This avoids the SDK's first-use runtime download and keeps
+            # both SuperQode routes on the same `copilot login` state.
+            cli_path = shutil.which("copilot")
+            if cli_path:
+                kwargs["connection"] = RuntimeConnection.for_stdio(path=cli_path)
             token = _explicit_github_token()
             if token:
                 kwargs["github_token"] = token
@@ -297,6 +331,23 @@ class CopilotSDKRuntime:
         else:
             self._session = await self._client.create_session(**session_kwargs)
         self.session_id = str(getattr(self._session, "session_id", self.session_id))
+
+    async def _ensure_started_with_timeout(self) -> None:
+        """Start the SDK runtime without ever leaving the caller waiting forever."""
+        try:
+            await asyncio.wait_for(self._ensure_started(), timeout=_startup_timeout())
+        except BaseException:
+            # A client whose start/session handshake was cancelled is not safe
+            # to reuse. Drop it so a retry starts from a clean lifecycle.
+            client = self._client
+            self._session = None
+            self._client = None
+            if client is not None:
+                try:
+                    await asyncio.wait_for(asyncio.shield(client.stop()), timeout=2.0)
+                except BaseException:  # noqa: BLE001 - bounded best-effort cleanup
+                    pass
+            raise
 
     async def _apply_pending(self) -> None:
         if self._pending_model is None or self._session is None:
@@ -347,21 +398,23 @@ class CopilotSDKRuntime:
         async with self._turn_lock:
             self.reset_cancellation()
             if self.needs_start:
-                # The first turn may spend a while downloading the pinned Copilot
-                # CLI. Say so, so a slow first prompt reads as work rather than
-                # as a frozen app.
+                # Explain the path before startup so a slow handshake reads as
+                # work rather than a frozen app.
+                startup_text = (
+                    "Starting the GitHub Copilot runtime with the installed Copilot CLI…"
+                    if shutil.which("copilot")
+                    else (
+                        "Starting the GitHub Copilot runtime "
+                        "(the first run may fetch its pinned CLI)…"
+                    )
+                )
                 yield HarnessEvent(
                     type="thinking",
-                    data={
-                        "text": (
-                            "Starting the GitHub Copilot runtime "
-                            "(the first run fetches the Copilot CLI)…"
-                        )
-                    },
+                    data={"text": startup_text},
                 )
             timeout = _turn_timeout()
             try:
-                await self._ensure_started()
+                await self._ensure_started_with_timeout()
                 await self._apply_pending()
             except Exception as exc:  # noqa: BLE001 - a failed start is a failed turn
                 yield HarnessEvent(
@@ -390,7 +443,10 @@ class CopilotSDKRuntime:
             async def send_turn() -> None:
                 nonlocal turn_error
                 try:
-                    await self._session.send_and_wait(prompt, timeout=timeout)
+                    await asyncio.wait_for(
+                        self._session.send_and_wait(prompt, timeout=timeout),
+                        timeout=timeout,
+                    )
                 except asyncio.CancelledError:
                     raise
                 except BaseException as exc:  # noqa: BLE001 - reported as turn_complete
@@ -577,7 +633,7 @@ class CopilotSDKRuntime:
         self._pending_model = selected
 
     async def models(self) -> list[dict[str, Any]]:
-        await self._ensure_started()
+        await self._ensure_started_with_timeout()
         models = await self._client.list_models()
         result: list[dict[str, Any]] = []
         for item in models or []:
@@ -602,7 +658,7 @@ class CopilotSDKRuntime:
         return result
 
     async def list_threads(self) -> list[Any]:
-        await self._ensure_started()
+        await self._ensure_started_with_timeout()
         method = getattr(self._client, "list_sessions", None)
         if method is None:
             return []
@@ -617,7 +673,7 @@ class CopilotSDKRuntime:
             self._session = None
         self._resume_session_id = selected
         self.session_id = selected
-        await self._ensure_started()
+        await self._ensure_started_with_timeout()
 
     def cancel(self) -> None:
         self._cancelled = True

@@ -9,30 +9,30 @@ def test_uv_tool_context_recommends_uv_tool_install(monkeypatch):
     assert ei.install_command("codex-sdk") == 'uv tool install "superqode[codex-sdk]"'
 
 
-def test_project_venv_recommends_uv_add(monkeypatch):
+def test_project_venv_keeps_product_install_guidance(monkeypatch):
     monkeypatch.setattr(ei, "_running_in_uv_tool", lambda: False)
     monkeypatch.setattr(ei, "_running_in_venv", lambda: True)
     monkeypatch.setattr(ei, "_running_from_superqode_checkout", lambda: False)
     monkeypatch.setattr(ei, "_has_pyproject", lambda: True)
     assert ei.running_context() == "project"
-    assert ei.install_command("codex-sdk") == 'uv add "superqode[codex-sdk]"'
+    assert ei.install_command("codex-sdk") == 'uv tool install "superqode[codex-sdk]"'
 
 
-def test_dev_checkout_recommends_editable_extra_install(monkeypatch):
+def test_dev_checkout_does_not_leak_editable_install_into_picker(monkeypatch):
     monkeypatch.setattr(ei, "_running_in_uv_tool", lambda: False)
     monkeypatch.setattr(ei, "_running_in_venv", lambda: True)
     monkeypatch.setattr(ei, "_running_from_superqode_checkout", lambda: True)
     assert ei.running_context() == "dev-checkout"
-    assert ei.install_command("mlx") == 'uv pip install -e ".[mlx]"'
+    assert ei.install_command("mlx") == 'uv tool install "superqode[mlx]"'
 
 
-def test_plain_venv_recommends_uv_pip_install(monkeypatch):
+def test_plain_venv_keeps_product_install_guidance(monkeypatch):
     monkeypatch.setattr(ei, "_running_in_uv_tool", lambda: False)
     monkeypatch.setattr(ei, "_running_in_venv", lambda: True)
     monkeypatch.setattr(ei, "_running_from_superqode_checkout", lambda: False)
     monkeypatch.setattr(ei, "_has_pyproject", lambda: False)
     assert ei.running_context() == "venv"
-    assert ei.install_command("codex-sdk") == 'uv pip install "superqode[codex-sdk]"'
+    assert ei.install_command("codex-sdk") == 'uv tool install "superqode[codex-sdk]"'
 
 
 def test_system_context_falls_back_to_uv_tool(monkeypatch):

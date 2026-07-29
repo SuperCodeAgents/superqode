@@ -33,7 +33,7 @@ are documented on the linked category page.
 | GEPA | Optimize text artifacts through reflective search | [Optimization](optimization.md) |
 | GEPA meta-harness | Maintain and evaluate an optimization candidate frontier | [Optimization](optimization.md) |
 | GEPA Omni | Explore with GEPA, AutoResearch, and GEPA meta-harness | [Optimization](optimization.md) |
-| GitHub Copilot SDK | Connect models and sessions from a Copilot account | [Coding agents](coding-agents.md) |
+| GitHub Copilot | Use a Copilot plan through the SDK or official CLI | [Coding agents](coding-agents.md) |
 | Google Agent Development Kit | Execute a HarnessSpec through Google ADK | [Runtimes and harnesses](runtimes-harnesses.md) |
 | Google Antigravity CLI | Connect the signed-in `agy` coding agent | [Coding agents](coding-agents.md) |
 | Google Antigravity SDK | Execute the Antigravity SDK through a runtime adapter | [Coding agents](coding-agents.md) |

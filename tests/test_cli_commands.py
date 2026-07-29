@@ -245,6 +245,23 @@ class TestHarnessCommand:
             assert "flavor" in schema_payload["properties"]
             assert "inherits" in schema_payload["properties"]
 
+    def test_harness_validate_json_uses_nonzero_exit_for_invalid_spec(self, runner):
+        with runner.isolated_filesystem():
+            Path("harness.yaml").write_text(
+                "name: typo\nmodel_policy:\n  temperatur: 0.2\n",
+                encoding="utf-8",
+            )
+
+            result = runner.invoke(
+                cli_main,
+                ["harness", "validate", "harness.yaml", "--json"],
+            )
+
+            assert result.exit_code == 1
+            payload = json.loads(result.output)
+            assert payload["valid"] is False
+            assert "did you mean 'temperature'" in payload["error"]
+
     def test_harness_minimal_init_inherits_template(self, runner):
         with runner.isolated_filesystem():
             result = runner.invoke(
@@ -271,6 +288,15 @@ class TestHarnessCommand:
             assert payload["valid"] is True
             assert payload["spec"]["inherits"] == "coding"
             assert payload["spec"]["execution_policy"]["allow_write"] is True
+
+            doctor = runner.invoke(
+                cli_main,
+                ["harness", "doctor", "--spec", "harness.yaml", "--json"],
+            )
+            assert doctor.exit_code == 0
+            doctor_payload = json.loads(doctor.output)
+            assert doctor_payload["summary"]["blockers"] == 0
+            assert doctor_payload["summary"]["warnings"] == 0
 
     def test_harness_test_dry_run_json(self, runner):
         with runner.isolated_filesystem():
@@ -2398,6 +2424,83 @@ class TestHeadlessCommand:
 
         assert result.exit_code == 0
         assert result.output.strip() == "summary"
+
+    def test_copilot_profile_uses_sdk_for_headless_runs(self, runner, monkeypatch):
+        """The dynamic TUI profile must not silently become builtin headlessly."""
+        import superqode.headless as headless
+
+        # The real CLI process exits after this invocation. CliRunner stays in
+        # one process, so preserve the surrounding runtime environment.
+        import os
+
+        previous_runtime = os.environ.pop("SUPERQODE_RUNTIME", None)
+
+        async def fake_run_headless(**kwargs):
+            assert kwargs["runtime"] == "copilot-sdk"
+            return AgentResponse(
+                content="copilot summary",
+                messages=[],
+                tool_calls_made=0,
+                iterations=1,
+                stopped_reason="complete",
+            )
+
+        monkeypatch.setattr(headless, "run_headless", fake_run_headless)
+
+        result = runner.invoke(
+            cli_main,
+            ["-p", "--connect", "copilot", "summarize", "repo"],
+        )
+        if previous_runtime is None:
+            os.environ.pop("SUPERQODE_RUNTIME", None)
+        else:
+            os.environ["SUPERQODE_RUNTIME"] = previous_runtime
+
+        assert result.exit_code == 0, result.output
+        assert result.output.strip() == "copilot summary"
+
+    def test_acp_profile_refuses_headless_instead_of_answering_as_another_vendor(
+        self, runner, monkeypatch
+    ):
+        """SUPERQODE_CONNECT is TUI-only, so an ACP profile must not run headlessly.
+
+        Without this the run fell through to the default provider/model and
+        answered from OpenAI when the user explicitly asked for Copilot CLI.
+        """
+        import superqode.headless as headless
+
+        async def fake_run_headless(**kwargs):  # pragma: no cover - must not run
+            raise AssertionError("an ACP profile must not reach the builtin runtime")
+
+        monkeypatch.setattr(headless, "run_headless", fake_run_headless)
+
+        result = runner.invoke(cli_main, ["-p", "--connect", "copilot-cli", "hello"])
+
+        assert result.exit_code != 0
+        assert "cannot serve a one-shot run" in result.output
+
+    def test_headless_failure_reports_the_error_instead_of_exiting_silently(
+        self, runner, monkeypatch
+    ):
+        """A failed run returns an AgentResponse, so main must print its error."""
+        import superqode.headless as headless
+
+        async def fake_run_headless(**kwargs):
+            return AgentResponse(
+                content="",
+                messages=[],
+                tool_calls_made=0,
+                iterations=0,
+                stopped_reason="error",
+                error="Missing credentials for openai/gpt-5.4",
+            )
+
+        monkeypatch.setattr(headless, "run_headless", fake_run_headless)
+
+        result = runner.invoke(cli_main, ["-p", "hello"])
+
+        assert result.exit_code == 1
+        assert "Missing credentials for openai/gpt-5.4" in result.output
 
     def test_model_aware_harness_supplies_default_provider_and_model(self, runner, monkeypatch):
         """A family harness should run directly without duplicate model flags."""

@@ -55,7 +55,7 @@ Switching can preserve the current conversation or fork an independent branch:
 | Local | Ollama, LM Studio, MLX, DwarfStar, llama.cpp, vLLM, SGLang, TGI, or another OpenAI-compatible server | `:connect local` | SuperQode runs the harness and calls the local model |
 | ACP | An external coding-agent process that implements Agent Client Protocol | `:connect acp` | The external agent owns its model and tool loop |
 | BYOK | A hosted model provider using an API key supplied by the user | `:connect byok` | SuperQode runs the harness and calls the provider |
-| SDK | A vendor agent SDK or authenticated client runtime | `:connect subscriptions`, then a product such as `:connect codex` or `:connect claude` | The vendor runtime owns model access; SuperQode supplies session and policy controls |
+| SDK | A vendor agent SDK or authenticated client runtime | `:connect subscriptions`, then a product such as `:connect codex`, or use an explicit API-key runtime | The vendor runtime owns model access; SuperQode supplies session and policy controls |
 | MCP | Tool and resource servers exposed through Model Context Protocol | `:mcp` | MCP extends the active harness or ACP agent; it is not a model connection |
 | A2A | Remote agents exposed through Agent2Agent endpoints | `:a2a connect <url>` | The remote agent owns its execution contract |
 
@@ -86,18 +86,23 @@ a direct profile, so the submenu never becomes a required step:
 
 ```text
 :connect codex
-:connect claude
+:connect cursor
+:connect amp
 :connect antigravity
 :connect grok
 :connect copilot
-:connect copilot-cli
 :connect gemini-cli
 :connect devin
+:connect droid
+:connect kiro
 :connect glm-cli
-:connect zai
 :connect qwen-code
 :connect kimi-code
 ```
+
+Only vendor-plan and vendor-managed sign-in routes appear in this submenu.
+API-key-only routes remain under `:connect byok`; transport alternatives such
+as the Copilot CLI remain in the ACP picker.
 
 The root picker is intentionally shorter than the full catalogs. The following
 commands show the authoritative installed and configured inventory:
@@ -116,13 +121,13 @@ that matches the account, runtime, and harness ownership required for the task.
 | Vendor or product | Available routes | Direct selection |
 | --- | --- | --- |
 | OpenAI Codex | Codex SDK, Codex ACP, OpenAI BYOK | `:connect codex`, `:connect acp codex`, `:connect byok openai <model>` |
-| Anthropic Claude | Claude Agent SDK, Claude Code ACP, Anthropic BYOK | `:connect claude`, `:connect acp claude`, `:connect byok anthropic <model>` |
+| Anthropic Claude | Claude Agent SDK, Anthropic BYOK | `:runtime claude-agent-sdk`, `:connect byok anthropic <model>` |
 | Google Antigravity | Authenticated Antigravity CLI runtime | `:connect antigravity` |
 | Google Gemini | Gemini CLI ACP, Google AI Studio BYOK, Google ADK runtime | `:connect gemini-cli`, `:connect acp gemini`, `:connect byok google <model>`, `:runtime adk` |
 | GitHub Copilot | Copilot SDK, Copilot CLI ACP | `:connect copilot`, `:connect copilot-cli`, `:connect acp copilot` |
 | xAI Grok | Grok Build ACP, Grok subscription model route, xAI BYOK | `:connect grok`, `:grok api [model]`, `:connect byok xai <model>` |
 | OpenCode | OpenCode ACP, OpenCode Zen BYOK | `:connect acp opencode`, `:connect byok opencode <model>` |
-| Z.AI GLM | Z.AI BYOK, GLM CLI ACP | `:connect zai`, `:connect glm-cli`, `:connect acp glm` |
+| Z.AI GLM | Z.AI BYOK, GLM Coding Plan ACP | `:connect byok zai <model>`, `:connect glm-cli`, `:connect acp glm` |
 | Poolside | Pool CLI ACP, Laguna S 2.1 through DwarfStar or llama.cpp | `:connect acp poolside`, `:connect local ds4 laguna-s-2.1` |
 | Moonshot AI Kimi | Kimi Code ACP, Moonshot BYOK | `:connect kimi-code`, `:connect byok moonshot kimi-k3` |
 | Alibaba Qwen | Qwen Code ACP, DashScope BYOK, local Qwen models | `:connect qwen-code`, `:connect byok alibaba <model>`, `:connect local ollama qwen3:8b` |
@@ -130,12 +135,13 @@ that matches the account, runtime, and harness ownership required for the task.
 | Mistral AI | Mistral Vibe ACP, Mistral BYOK, local Mistral models | `:connect acp mistral-vibe`, `:connect byok mistral <model>` |
 | MiniMax | MiniMax BYOK, local MiniMax model paths | `:connect byok minimax <model>`, `:connect local <provider> <model>` |
 | Meta | Meta first-party BYOK, local Meta model paths | `:connect byok meta muse-spark-1.1`, `:connect local <provider> <model>` |
-| Cursor | Cursor CLI ACP | `:connect acp cursor` |
+| Cursor | Cursor subscription through Cursor CLI ACP | `:connect cursor`, `:connect acp cursor` |
+| Amp | Amp subscription through its ACP adapter | `:connect amp`, `:connect acp amp` |
 | Cline | Cline CLI ACP | `:connect acp cline` |
-| Factory | Factory Droid ACP | `:connect acp droid` |
+| Factory | Factory Droid subscription through ACP | `:connect droid`, `:connect acp droid` |
 | Cognition | Devin ACP, Devin CLI runtime | `:connect devin`, `:connect acp devin`, `:runtime devin-cli` |
 | JetBrains | Junie ACP | `:connect acp junie` |
-| Amazon | Amazon Bedrock BYOK, Kiro ACP | `:connect byok amazon-bedrock <model>`, `:connect acp kiro` |
+| Amazon | Amazon Bedrock BYOK, Kiro/Amazon Q Developer subscription through ACP | `:connect byok amazon-bedrock <model>`, `:connect kiro`, `:connect acp kiro` |
 
 Product names in this table identify connection paths, not bundled
 subscriptions. Authentication and usage terms remain controlled by each
@@ -156,6 +162,9 @@ Open the ACP picker:
 :connect acp enterprise
 :connect acp all
 ```
+
+The default view contains installed and featured agents. The `all` form opens
+the complete live registry.
 
 Connect directly:
 
@@ -305,8 +314,8 @@ SuperQode's terminal, sessions, approvals, plans, and evidence surface.
 | Runtime | Selection | Authentication |
 | --- | --- | --- |
 | Codex SDK | `:connect codex` | Local Codex or ChatGPT login, or OpenAI API key |
-| GitHub Copilot SDK | `:connect copilot` | GitHub Copilot account, or `COPILOT_GITHUB_TOKEN` |
-| Claude Agent SDK | `:connect claude` | Anthropic API key |
+| GitHub Copilot | `:connect copilot` | GitHub Copilot account through the SDK or official CLI |
+| Claude Agent SDK | `:runtime claude-agent-sdk` | Anthropic API key |
 | Antigravity CLI | `:connect antigravity` | Google Sign-In through `agy` |
 | OpenAI Agents SDK | `:runtime openai-agents` | OpenAI provider credentials |
 | Google ADK | `:runtime adk` | Google provider credentials |

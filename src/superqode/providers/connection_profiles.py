@@ -1,16 +1,17 @@
 """Connection profiles — the product/account-level choices in ``:connect``.
 
-A *connection source* is what the user is connecting SuperQode to (Codex
-subscription, Claude, a BYOK provider, a local model, an ACP agent). Each
+A *connection source* is what the user is connecting SuperQode to (a vendor
+subscription, a BYOK provider, a local model, an ACP agent). Each
 profile declares a ``connector`` that the TUI/CLI dispatches on:
 
     runtime      self-contained runtime (own model+auth), e.g. codex-sdk
+    copilot      one Copilot subscription entry with SDK/CLI route selection
     acp          a specific ACP agent by short_name, e.g. "claude" or "grok"
     byok         the BYOK provider/model picker, optionally pinned to one provider
     local        the local provider/model picker
     acp-picker   the generic "pick any ACP agent" list
     harness-picker optional non-ACP harness integrations
-    subscription-picker the vendor-subscription submenu (Codex, Grok, Copilot, …)
+    subscription-picker vendor plans authenticated by their own local CLI/OAuth state
     external-cli a local vendor TUI that does not expose ACP/headless events yet
 
 Profiles are grouped into **menus** so the first screen a new user sees stays
@@ -19,9 +20,8 @@ other harnesses); ``subscriptions`` holds the vendor coding agents you sign in
 to. Every profile stays directly reachable by id (``:connect codex``) regardless
 of which menu shows it.
 
-This module has no TUI dependencies so it can be unit-tested and reused by both
-the TUI and the CLI. New products (Claude Agent SDK, Antigravity) slot in as new
-profiles without touching the connect flow.
+API-key-only products do not belong in the subscription menu. They are reached
+through BYOK or an explicit runtime command instead.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ class ConnectionProfile:
     id: str
     label: str
     description: str
-    connector: str  # runtime | acp | byok | local | acp-picker | harness-picker | external-cli
+    connector: str  # runtime | copilot | acp | byok | local | pickers | external-cli
     group: str = ""
     menu: str = CONNECT_MENU_ROOT
     runtime: Optional[str] = None  # for connector == "runtime"
@@ -94,11 +94,9 @@ def _copilot_acp_ready() -> bool:
     return shutil.which("copilot") is not None
 
 
-def _claude_agent_ready() -> bool:
-    """Claude Agent SDK installed + an Anthropic API key set (API-key runtime)."""
-    if importlib.util.find_spec("claude_agent_sdk") is None:
-        return False
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
+def _copilot_subscription_ready() -> bool:
+    """At least one supported Copilot subscription integration is installed."""
+    return _copilot_sdk_ready() or _copilot_acp_ready()
 
 
 def _kimi_code_ready() -> bool:
@@ -131,6 +129,26 @@ def _glm_cli_ready() -> bool:
 def _devin_cli_ready() -> bool:
     """Cognition's Devin CLI is installed (it owns its own sign-in)."""
     return shutil.which("devin") is not None
+
+
+def _cursor_cli_ready() -> bool:
+    """Cursor Agent CLI is installed; Cursor owns its local account login."""
+    return shutil.which("cursor-agent") is not None
+
+
+def _amp_cli_ready() -> bool:
+    """Amp and its ACP adapter are installed; Amp owns account authentication."""
+    return shutil.which("amp") is not None and shutil.which("acp-amp") is not None
+
+
+def _droid_cli_ready() -> bool:
+    """Factory Droid is installed; the CLI owns its account authentication."""
+    return shutil.which("droid") is not None
+
+
+def _kiro_cli_ready() -> bool:
+    """Kiro CLI is installed; its OAuth/IAM login remains vendor-managed."""
+    return shutil.which("kiro-cli") is not None
 
 
 def _grok_cli_ready() -> bool:
@@ -167,8 +185,8 @@ def _byok_ready() -> bool:
 
 # The root menu is deliberately five entries: the three ways SuperQode itself
 # can drive a model, the vendor-subscription submenu, and the optional
-# harnesses. Everything a vendor signs you in to lives one keypress deeper so
-# the first connect screen stays readable.
+# harnesses. A subscription entry must use an existing vendor plan through the
+# vendor's local CLI/OAuth state; API-key-only routes stay under BYOK.
 _ROOT_PROFILES: List[ConnectionProfile] = [
     ConnectionProfile(
         id="local",
@@ -181,7 +199,7 @@ _ROOT_PROFILES: List[ConnectionProfile] = [
     ConnectionProfile(
         id="acp",
         label="ACP (Agent Client Protocol)",
-        description="Connect any external ACP-compatible coding agent (incl. local Claude Code)",
+        description="Connect any installed external ACP-compatible coding agent",
         connector="acp-picker",
         detect=lambda: True,
     ),
@@ -197,7 +215,7 @@ _ROOT_PROFILES: List[ConnectionProfile] = [
     ConnectionProfile(
         id="subscriptions",
         label="Subscriptions",
-        description=("Vendor agents you sign in to: Codex, Claude, Grok, Copilot, Gemini, Devin …"),
+        description=("Use coding-agent plans you already pay for through vendor-managed sign-in"),
         connector="subscription-picker",
         detect=lambda: True,
     ),
@@ -225,18 +243,33 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
         unavailable_hint=missing_extra_hint("codex-sdk", suffix="then run `codex login`"),
     ),
     ConnectionProfile(
-        id="claude",
-        label="Claude Agent SDK",
-        description="Use your Anthropic API key via claude-agent-sdk "
-        "(local Claude Code over ACP is available under 'ACP agent')",
-        connector="runtime",
+        id="cursor",
+        label="Cursor subscription",
+        description="Use Cursor Agent through the account already signed in to Cursor CLI",
+        connector="acp",
         group="US Coding Agents",
         menu=CONNECT_MENU_SUBSCRIPTIONS,
-        runtime="claude-agent-sdk",
+        acp_agent="cursor",
         self_contained=True,
-        detect=_claude_agent_ready,
-        unavailable_hint=missing_extra_hint(
-            "claude-agent-sdk", suffix="then set ANTHROPIC_API_KEY"
+        detect=_cursor_cli_ready,
+        unavailable_hint=(
+            "install with `curl https://cursor.com/install -fsS | bash`, "
+            "then run `cursor-agent login`"
+        ),
+    ),
+    ConnectionProfile(
+        id="amp",
+        label="Amp subscription",
+        description="Use Amp through its local account login and ACP adapter",
+        connector="acp",
+        group="US Coding Agents",
+        menu=CONNECT_MENU_SUBSCRIPTIONS,
+        acp_agent="amp",
+        self_contained=True,
+        detect=_amp_cli_ready,
+        unavailable_hint=(
+            "install Amp and run `amp login`, then install its adapter with "
+            "`uv tool install acp-amp`"
         ),
     ),
     ConnectionProfile(
@@ -261,9 +294,9 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
             "Grok Build coding agent on your X/SuperGrok login (xAI's own harness, "
             "via the official CLI). SuperQode harness on the same plan: :grok api"
         ),
-        # Subscriptions default to the vendor's own agent, matching the Codex
-        # and Claude profiles. Running SuperQode's harness on this plan is the
-        # explicit opt-in `:grok api [model]` (grok-cli provider).
+        # Subscriptions default to the vendor's own agent. Running SuperQode's
+        # harness on this plan is the explicit opt-in `:grok api [model]`
+        # (grok-cli provider).
         connector="acp",
         group="US Coding Agents",
         menu=CONNECT_MENU_SUBSCRIPTIONS,
@@ -273,37 +306,22 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
     ),
     ConnectionProfile(
         id="copilot",
-        label="GitHub Copilot SDK",
+        label="GitHub Copilot",
         description=(
-            "Embed GitHub Copilot with your Copilot licence; SuperQode adds "
-            "HarnessSpec context, policy, evidence, evaluation, and session controls"
+            "Use your Copilot plan; prefers the SDK for SuperQode harness controls "
+            "and falls back to the official CLI over ACP"
         ),
-        connector="runtime",
+        connector="copilot",
         group="US Coding Agents",
         menu=CONNECT_MENU_SUBSCRIPTIONS,
         runtime="copilot-sdk",
-        self_contained=True,
-        detect=_copilot_sdk_ready,
-        unavailable_hint=missing_extra_hint(
-            "copilot-sdk",
-            suffix="then run `copilot login` or set COPILOT_GITHUB_TOKEN",
-        ),
-    ),
-    ConnectionProfile(
-        id="copilot-cli",
-        label="GitHub Copilot CLI",
-        description=(
-            "Drive the official Copilot CLI over ACP. The vendor CLI owns auth "
-            "and the agent loop, so this route works on Copilot Business/Enterprise "
-            "seats without the SDK's bundled runtime"
-        ),
-        connector="acp",
-        group="US Coding Agents",
-        menu=CONNECT_MENU_SUBSCRIPTIONS,
         acp_agent="copilot",
         self_contained=True,
-        detect=_copilot_acp_ready,
-        unavailable_hint="run `npm install -g @github/copilot`, then run `copilot login`",
+        detect=_copilot_subscription_ready,
+        unavailable_hint=(
+            f"{missing_extra_hint('copilot-sdk')}; or run "
+            "`npm install -g @github/copilot`; then run `copilot login`"
+        ),
     ),
     ConnectionProfile(
         id="gemini-cli",
@@ -337,9 +355,36 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
         ),
     ),
     ConnectionProfile(
+        id="droid",
+        label="Factory Droid subscription",
+        description="Use Factory Droid through its locally authenticated CLI and ACP mode",
+        connector="acp",
+        group="US Coding Agents",
+        menu=CONNECT_MENU_SUBSCRIPTIONS,
+        acp_agent="droid",
+        self_contained=True,
+        detect=_droid_cli_ready,
+        unavailable_hint="install Factory Droid, then complete the vendor CLI sign-in",
+    ),
+    ConnectionProfile(
+        id="kiro",
+        label="Kiro subscription",
+        description="Use a Kiro or Amazon Q Developer plan through Kiro CLI sign-in",
+        connector="acp",
+        group="US Coding Agents",
+        menu=CONNECT_MENU_SUBSCRIPTIONS,
+        acp_agent="kiro",
+        self_contained=True,
+        detect=_kiro_cli_ready,
+        unavailable_hint=(
+            "install Kiro CLI from https://kiro.dev/docs/cli/, then sign in "
+            "with your Kiro or Amazon Q Developer account"
+        ),
+    ),
+    ConnectionProfile(
         id="glm-cli",
-        label="GLM CLI",
-        description="Run GLM models through the community GLM ACP agent CLI",
+        label="GLM Coding Plan",
+        description="Use a paid GLM Coding Plan through its authenticated ACP agent",
         connector="acp",
         group="China Coding Agents",
         menu=CONNECT_MENU_SUBSCRIPTIONS,
@@ -348,18 +393,6 @@ _SUBSCRIPTION_PROFILES: List[ConnectionProfile] = [
         unavailable_hint=(
             "run `npm install -g glm-acp-agent`, then set your Z.AI key for the agent"
         ),
-    ),
-    ConnectionProfile(
-        id="zai",
-        label="Z.AI GLM API",
-        description="GLM-5.2/5.x with the SuperQode harness via Z.AI's general API",
-        connector="byok",
-        group="China Coding Agents",
-        menu=CONNECT_MENU_SUBSCRIPTIONS,
-        runtime="builtin",
-        byok_provider="zai",
-        detect=_zai_ready,
-        unavailable_hint=("set ZAI_API_KEY (general API key, not a restricted Coding Plan key)"),
     ),
     ConnectionProfile(
         id="qwen-code",
@@ -396,6 +429,16 @@ _PROFILES: List[ConnectionProfile] = [*_ROOT_PROFILES, *_SUBSCRIPTION_PROFILES]
 # the Connect picker or its completion list.
 _LEGACY_PROFILES: List[ConnectionProfile] = [
     ConnectionProfile(
+        id="copilot-cli",
+        label="GitHub Copilot CLI",
+        description="Official Copilot CLI over ACP; also available in the ACP picker",
+        connector="acp",
+        acp_agent="copilot",
+        self_contained=True,
+        detect=_copilot_acp_ready,
+        unavailable_hint="run `npm install -g @github/copilot`, then run `copilot login`",
+    ),
+    ConnectionProfile(
         id="copilot-acp",
         label="GitHub Copilot ACP",
         description="Older alias for the GitHub Copilot CLI route",
@@ -403,6 +446,29 @@ _LEGACY_PROFILES: List[ConnectionProfile] = [
         acp_agent="copilot",
         detect=_copilot_acp_ready,
         unavailable_hint="run `npm install -g @github/copilot`, then run `copilot login`",
+    ),
+    ConnectionProfile(
+        id="claude-api",
+        label="Claude Agent SDK (API key)",
+        description="Compatibility route for the Anthropic API-key runtime; prefer BYOK",
+        connector="runtime",
+        runtime="claude-agent-sdk",
+        self_contained=True,
+        detect=lambda: importlib.util.find_spec("claude_agent_sdk") is not None
+        and bool(os.environ.get("ANTHROPIC_API_KEY")),
+        unavailable_hint=missing_extra_hint(
+            "claude-agent-sdk", suffix="then set ANTHROPIC_API_KEY"
+        ),
+    ),
+    ConnectionProfile(
+        id="zai",
+        label="Z.AI GLM API",
+        description="Compatibility route for the Z.AI general API; prefer BYOK",
+        connector="byok",
+        runtime="builtin",
+        byok_provider="zai",
+        detect=_zai_ready,
+        unavailable_hint="set ZAI_API_KEY",
     ),
 ]
 

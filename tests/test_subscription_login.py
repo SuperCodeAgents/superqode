@@ -12,6 +12,7 @@ from superqode.providers import subscription_login as sl
 def test_get_login_spec_known_and_unknown():
     assert sl.get_login_spec("codex").id == "codex"
     assert sl.get_login_spec("GROK").id == "grok"
+    assert sl.get_login_spec("copilot").login_args == ("login",)
     with pytest.raises(KeyError):
         sl.get_login_spec("nope")
 
@@ -78,3 +79,32 @@ def test_run_subscription_login_binary_missing(monkeypatch, tmp_path):
     result = asyncio.run(sl.run_subscription_login("codex", auth_path=missing))
     assert result.ok is False
     assert "not installed" in result.reason
+
+
+def test_copilot_login_accepts_clean_exit_without_auth_file(monkeypatch, tmp_path):
+    class _Stdout:
+        async def read(self, _size):
+            return b""
+
+    class _Process:
+        returncode = 0
+        stdout = _Stdout()
+
+    process = _Process()
+
+    async def _create(*args, **kwargs):
+        return process
+
+    monkeypatch.setattr(sl.shutil, "which", lambda _name: "/usr/bin/copilot")
+    monkeypatch.setattr(sl.asyncio, "create_subprocess_exec", _create)
+    result = asyncio.run(
+        sl.run_subscription_login(
+            "copilot",
+            auth_path=tmp_path / "missing.json",
+            force=True,
+            open_browser=False,
+        )
+    )
+
+    assert result.ok is True
+    assert result.returncode == 0

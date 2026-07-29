@@ -496,8 +496,7 @@ Grok subscription (official Grok CLI login):
 :grok login
 ```
 
-`:connect grok` runs **Grok Build**, xAI's own coding agent, over ACP, matching
-the Codex and Claude subscription profiles. To run **SuperQode's harness** on
+`:connect grok` runs **Grok Build**, xAI's own coding agent, over ACP. To run **SuperQode's harness** on
 the same subscription instead, use `:grok api [model]`, which imports the local
 `grok login` session and routes through the CLI chat proxy (see the
 [BYOK provider docs](../providers/byok.md#grok-subscription-official-cli)).

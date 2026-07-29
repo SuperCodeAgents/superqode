@@ -21,7 +21,7 @@ AI-powered code editor with ACP support.
 
 ```bash
 # Install Cursor CLI
-npm install -g @cursorai/cli
+curl https://cursor.com/install -fsS | bash
 ```
 
 For ACP mode:
@@ -48,5 +48,5 @@ cursor-agent --api-key "$CURSOR_API_KEY" acp
 '''
 
 [actions."*".install]
-command = "npm install -g @cursorai/cli"
+command = "curl https://cursor.com/install -fsS | bash"
 description = "Install Cursor CLI"

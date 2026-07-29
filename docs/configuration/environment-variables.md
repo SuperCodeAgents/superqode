@@ -46,8 +46,10 @@ Every `SUPERQODE_*` variable in one place. Most behavior is configurable per-har
 | `SUPERQODE_MODEL` | model id | `<openai-fast-model>` | Default model for headless runs. |
 | `SUPERQODE_HARNESS` | path | unset | HarnessSpec YAML/JSON to load on start. |
 | `SUPERQODE_CONNECT` | profile name | unset | Auto-connect a connection profile when the TUI starts (set by `--connect`). |
+| `SUPERQODE_STDIN_WAIT` | seconds | `0.2` | How long a headless run waits for piped stdin before deciding none was sent. |
 | `SUPERQODE_RUNTIME` | runtime id | `builtin` | Select the default runtime adapter when no CLI or project runtime is set. |
 | `SUPERQODE_COPILOT_TIMEOUT` | seconds | `600` | Maximum wait for one GitHub Copilot SDK prompt turn. |
+| `SUPERQODE_COPILOT_STARTUP_TIMEOUT` | seconds | `60` | Maximum wait for GitHub Copilot SDK runtime and session startup. |
 | `SUPERQODE_CODEX_PREFER_LOCAL_CLI` | `0`/`1` | on | Prefer a compatible installed Codex CLI app-server over the SDK-pinned server. |
 | `SUPERQODE_ANTIGRAVITY_CLI_AGENT` | custom agent name | CLI default | Pass a custom agent to signed-in `agy --agent`. |
 | `SUPERQODE_ANTIGRAVITY_CLI_EFFORT` | `low`/`medium`/`high` | CLI default | Pass a thinking level to `agy --effort`; requires agy 1.1.5 or newer. |

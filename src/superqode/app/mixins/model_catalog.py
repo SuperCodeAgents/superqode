@@ -182,7 +182,13 @@ class ModelCatalogMixin:
 
     def _start_models_dev_refresh(self) -> None:
         """Refresh the models.dev catalog without blocking the TUI."""
-        self.run_worker(self._load_models_dev_data())
+        self.run_worker(
+            self._load_models_dev_data,
+            name="models-dev-refresh",
+            group="models-dev",
+            exit_on_error=False,
+            exclusive=True,
+        )
 
     def _apply_live_models(self, client) -> bool:
         """Push the client's current provider/model data into the live registry."""
@@ -1044,7 +1050,13 @@ class ModelCatalogMixin:
     @staticmethod
     def _normalize_acp_model_id(agent_type: str, model: str) -> str | None:
         """Normalize a UI model value before sending it to an ACP agent."""
-        if not model or agent_type not in ("codex", "grok", "openhands", "opencode"):
+        if not model or agent_type not in (
+            "codex",
+            "copilot",
+            "grok",
+            "openhands",
+            "opencode",
+        ):
             return None
         normalized = model.strip()
         # "auto"/"default" is a UI placeholder meaning "let the agent

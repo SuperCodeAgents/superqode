@@ -83,9 +83,9 @@ def classify_install_command(raw: str) -> InstallCommand:
             kind="pipe-to-shell",
             runnable=False,
             reason=(
-                "This installer pipes a remote script into a shell. SuperQode "
-                "does not run those for you, because the script is not visible "
-                "here and can change at any time."
+                "SuperQode does not run those for you. Remote scripts piped into "
+                "a shell can change without notice; review the vendor's command "
+                "before running it yourself."
             ),
         )
 

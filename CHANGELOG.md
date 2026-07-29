@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.61] - 2026-07-29
+
+### Added
+
+- **One GitHub Copilot entry that picks the installed route** - The
+  Subscriptions screen offers a single Copilot choice. It prefers the official
+  Python SDK when the extra is installed and otherwise uses an installed
+  Copilot CLI over GitHub's ACP server, so a CLI-only account is usable
+  immediately instead of being blocked behind an SDK setup prompt. When both
+  are present the SDK reuses the installed CLI, which skips its first-use
+  runtime download and shares the same `copilot login` state.
+- **`:copilot login`** - Runs GitHub's official OAuth device flow after an
+  explicit confirmation, shows the URL and code inside the TUI, does not open a
+  browser automatically, and reconnects on success.
+- **`:copilot mode`** - Picks the Copilot CLI session mode (Agent, Plan, or the
+  experimental Autopilot) from the modes the CLI advertises. Short names, full
+  ACP mode URIs, and displayed names are all accepted. Session modes work on
+  every Copilot plan, including Free, where model selection is unavailable.
+
+### Fixed
+
+- **Headless runs no longer hang on an inherited stdin** - `superqode -p` read
+  stdin whenever it was not a TTY, and `read()` blocks until EOF. CI runners,
+  process supervisors, editors, and agent harnesses routinely hand a child an
+  open pipe nobody ever closes, so the process waited forever. Readability is
+  now polled first (`SUPERQODE_STDIN_WAIT`, default 0.2s): a real pipe such as
+  `cat file | superqode -p "review"` still works, while an idle inherited stdin
+  returns in well under a second instead of never.
+- **A failed headless run explains itself** - `run_headless` reports failure by
+  returning a response carrying the reason rather than raising, so the reason
+  was never printed. The run ended with a blank line and a bare exit code 1.
+  The error is now written to stderr.
+- **An ACP profile no longer answers as a different vendor** - `--connect` sets
+  an environment hint read only by the TUI, so a one-shot `--connect
+  copilot-cli` silently fell through to the default provider and model and
+  answered from OpenAI. Headless use of an interactive ACP profile now exits
+  with a usage error naming the profile.
+- **`:copilot model` no longer reports a selection that never happened** - The
+  Copilot CLI answers `session/set_model` with success even for an id the
+  account cannot use, and the guard against that was skipped when the account
+  advertised no catalog at all. A plan with no selectable models (Copilot Free)
+  now reports that Copilot chooses the model itself, instead of confirming a
+  change that had no effect.
+- **`:copilot models` explains an empty catalog** - Reporting "no models were
+  returned" read like a failure on plans where Copilot always picks the model.
+  It now says so and points at the session controls that do apply.
+- **`:copilot sessions` and `:copilot resume` name their requirement** - Both
+  are SDK features and failed on a CLI-only install with an internal runtime
+  error. They now report that the SDK extra is required and print the install
+  command.
+- **`:copilot version` tolerates a missing stream** - Reading the CLI version
+  raised `AttributeError` when the process reported no stderr.
+- **Corrected the documented ACP connect command** - `superqode --connect acp
+  copilot` exited with "No such command"; the working form is `superqode
+  connect acp copilot`.
+
+### Changed
+
+- **Claude Pro and Max are no longer connection profiles** - Anthropic
+  documents those subscriptions for its own first-party clients and bills API
+  usage separately, so Claude is reached through BYOK or the
+  `claude-agent-sdk` runtime with an API key. `:harness switch claude` resolves
+  only to the API-key runtime.
+- **External installers are manual-only in the connection flow** - Only
+  SuperQode's own Python extras install automatically, and the executor
+  regenerates the command from an allow-list rather than trusting UI state.
+  npm, curl-to-shell, and vendor-agent installers show their exact command
+  instead of running it.
+
 ## [0.2.60] - 2026-07-29
 
 ### Fixed

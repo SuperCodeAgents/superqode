@@ -102,6 +102,18 @@ class CompletionMixin:
             return self._codex_sandbox_completion_candidates(value)
         if lowered.startswith(":codex "):
             return self._codex_subcommand_completion_candidates(value)
+        if lowered == ":copilot":
+            return [
+                PromptCompletionCandidate(
+                    value=":copilot",
+                    label=":copilot",
+                    description="Connect using the best installed GitHub Copilot route",
+                    kind="command",
+                ),
+                *self._copilot_subcommand_completion_candidates(":copilot "),
+            ]
+        if lowered.startswith(":copilot "):
+            return self._copilot_subcommand_completion_candidates(value)
         if lowered == ":agy":
             return [
                 PromptCompletionCandidate(

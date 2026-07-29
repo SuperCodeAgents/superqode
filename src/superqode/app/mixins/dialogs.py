@@ -2819,7 +2819,7 @@ class DialogsMixin:
                     (":codex status", "Show Codex SDK/app-server/account diagnostics"),
                     (":codex model|effort", "Pick Codex model and reasoning effort"),
                     (":codex sessions|resume|fork", "Manage Codex threads"),
-                    (":connect claude", "Use Claude Agent SDK with ANTHROPIC_API_KEY"),
+                    (":runtime claude-agent-sdk", "Use Claude Agent SDK with ANTHROPIC_API_KEY"),
                     (":claude status", "Show Claude Agent SDK status"),
                     (":claude model|permission", "Pick Claude model and permission mode"),
                     (":claude sessions|resume", "Manage Claude Agent SDK sessions"),

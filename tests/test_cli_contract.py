@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from unittest import mock
 
 import click
 
@@ -10,10 +11,11 @@ from superqode.main import cli_main
 
 
 EXPECTED_COMMAND_COUNT = 261
-# Rebaselined when the GitHub Copilot CLI route returned to the Connect picker:
-# the --connect choice list gained copilot-cli. No command was added, renamed,
-# or removed, so EXPECTED_COMMAND_COUNT is unchanged.
-EXPECTED_HELP_TREE_SHA256 = "aa36d63849da1a936c5ea6cf4881149a5afeffe4aa3ab1e4ba4a466af1595abd"
+# Rebaselined when the --connect choice list was aligned with the vendor-plan
+# screen: Cursor, Amp, Droid, and Kiro became direct profiles, while API-only
+# Z.AI and the duplicate Copilot ACP transport moved to compatibility aliases.
+# No Click command was added, renamed, or removed.
+EXPECTED_HELP_TREE_SHA256 = "cfc58995ae535ad5bf1102d6a78b7f8920f6f5f08b39ab92f08e6f4dbaee34d4"
 
 
 def _render_help_tree() -> tuple[int, str]:
@@ -40,3 +42,37 @@ def test_cli_help_tree_matches_refactor_baseline():
 
     assert command_count == EXPECTED_COMMAND_COUNT
     assert help_digest == EXPECTED_HELP_TREE_SHA256
+
+
+class TestHeadlessStdinNeverBlocks:
+    """`superqode -p` must not hang on an inherited stdin that never sends EOF."""
+
+    def test_idle_pipe_is_not_treated_as_input(self):
+        """An open pipe with no data must not be read (this caused the hang)."""
+        import os
+
+        from superqode.main import _stdin_has_input
+
+        read_fd, write_fd = os.pipe()
+        try:
+            with os.fdopen(read_fd, "r") as handle:
+                with mock.patch("superqode.main.sys.stdin", handle):
+                    assert _stdin_has_input() is False
+        finally:
+            os.close(write_fd)
+
+    def test_pipe_with_data_is_still_read(self):
+        """Real piped input (`cat f | superqode -p ...`) must keep working."""
+        import os
+
+        from superqode.main import _stdin_has_input
+
+        read_fd, write_fd = os.pipe()
+        os.write(write_fd, b"piped prompt\n")
+        os.close(write_fd)
+        try:
+            with os.fdopen(read_fd, "r") as handle:
+                with mock.patch("superqode.main.sys.stdin", handle):
+                    assert _stdin_has_input() is True
+        finally:
+            pass

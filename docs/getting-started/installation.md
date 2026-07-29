@@ -175,7 +175,7 @@ curl -fsSL https://super-agentic.ai/superqode.sh |
 ```
 
 Release automation can install an exact published version with
-`SUPERQODE_VERSION=0.2.60`.
+`SUPERQODE_VERSION=0.2.61`.
 
 ## Installation for Developers
 
@@ -195,18 +195,16 @@ uv run superqode --version
 
 ### Environment-Aware Extras
 
-Optional extras must be installed into the same Python environment that is running
-SuperQode. The TUI reports that environment and prints the exact command. It does
-not modify the environment until you run that command explicitly.
-
-Use the command that matches how you launched SuperQode:
+The TUI presents the normal packaged-product command and does not modify the
+environment until you run that command explicitly:
 
 | Running from | Command shape |
 | --- | --- |
 | `uv tool install superqode` | `uv tool install "superqode[<extra>]"` |
-| SuperQode source checkout | `uv pip install -e ".[<extra>]"` |
-| Another project venv | `uv add "superqode[<extra>]"` |
-| Plain virtualenv | `uv pip install "superqode[<extra>]"` |
+| SuperQode source checkout (contributors) | `uv sync --extra <extra>` |
+
+Do not add SuperQode to an unrelated application's dependencies merely to
+enable a CLI integration.
 
 To install the Codex, GitHub Copilot, Claude Agent, and Antigravity SDK runtimes together, use
 the optional `vendor-sdks` extra. It is intentionally excluded from the default

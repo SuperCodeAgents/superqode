@@ -102,16 +102,26 @@ a browsing aid rather than a required step:
 | Vendor agent | Selection |
 |------|----------|
 | OpenAI Codex | `:connect codex` |
-| Anthropic Claude | `:connect claude` |
+| Cursor | `:connect cursor` |
+| Amp | `:connect amp` |
 | Google Antigravity | `:connect antigravity` |
 | xAI Grok | `:connect grok` |
 | GitHub Copilot | `:connect copilot` |
 | Google Gemini CLI | `:connect gemini-cli` |
 | Cognition Devin | `:connect devin` |
-| GLM CLI | `:connect glm-cli` |
-| Z.AI GLM API | `:connect zai` |
+| Factory Droid | `:connect droid` |
+| Kiro / Amazon Q Developer | `:connect kiro` |
+| GLM Coding Plan | `:connect glm-cli` |
 | Qwen Code | `:connect qwen-code` |
 | Kimi Code | `:connect kimi-code` |
+
+API-key-only integrations, including the Anthropic and Z.AI general APIs, are
+listed under BYOK rather than Subscriptions.
+
+Claude Pro and Max are intentionally not listed as SuperQode subscription
+connections. Anthropic documents those plans for its first-party Claude Code
+client, while API usage is billed separately. Use Anthropic BYOK or the
+Claude Agent SDK runtime in SuperQode.
 
 Each row shows live status on the screen itself, either `ready` or `needs setup`
 with the exact command that fixes it.

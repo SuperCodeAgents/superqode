@@ -141,23 +141,15 @@ def environment_info() -> EnvironmentInfo:
 
 
 def install_command(extra: str) -> str:
-    """uv command that installs ``superqode[extra]`` into SuperQode's own env.
+    """Stable, user-facing command for enabling a SuperQode optional extra.
 
-    The recommended distribution is a global uv tool, so the default and the
-    fallback both use ``uv tool install``. When SuperQode is run from a project
-    or checkout virtualenv (e.g. during development) the command targets that
-    venv instead, so the extra lands where the running interpreter can import it.
+    Picker text is product guidance, not a development-environment debugger.
+    It must not recommend editable installs or mutate the user's application
+    dependencies merely because SuperQode happens to be running from a checkout
+    or project virtualenv. Internal installers use ``extra_install_command``
+    below when they must target the current interpreter precisely.
     """
     spec = f'"superqode[{extra}]"'
-    context = running_context()
-    if context == "dev-checkout":
-        return f'uv pip install -e ".[{extra}]"'
-    if context == "project":
-        return f"uv add {spec}"
-    if context == "venv":
-        return f"uv pip install {spec}"
-    # uv-tool (recommended) or system: install/refresh the global tool with the
-    # extra so it lands in the same environment SuperQode runs from.
     return f"uv tool install {spec}"
 
 

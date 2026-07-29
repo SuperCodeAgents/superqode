@@ -18,7 +18,7 @@ ASSUME_YES=0
 
 usage() {
   cat <<'EOF'
-Run a tightly bounded GEPA experiment with local rollouts and Claude subscription auth.
+Run a tightly bounded GEPA experiment with local rollouts and Anthropic API auth.
 
 Usage:
   scripts/run_tiny_omni_experiment.sh --spec PATH [options]
@@ -41,9 +41,9 @@ Examples:
     --spec examples/harnesses/omni-tiny-local.yaml \
     --mode omni
 
-The script unsets ANTHROPIC_API_KEY and ANTHROPIC_AUTH_TOKEN for the child
-process so Claude Code uses your signed-in subscription. It does not modify the
-source harness and it does not pull models automatically.
+The script requires ANTHROPIC_API_KEY for the optimizer. It does not use or
+reuse Claude Code subscription credentials, modify the source harness, or pull
+models automatically.
 EOF
 }
 
@@ -125,24 +125,15 @@ WORKING_DIR="$(absolute_from_call_dir "${WORKING_DIR}")"
 [[ -f "${TASKS_PATH}" ]] || fail "task file not found: ${TASKS_PATH}"
 [[ -d "${WORKING_DIR}" ]] || fail "working directory not found: ${WORKING_DIR}"
 
-command -v claude >/dev/null 2>&1 || fail "Claude Code is not installed"
 command -v ollama >/dev/null 2>&1 || fail "Ollama is not installed"
 command -v uv >/dev/null 2>&1 || fail "uv is not installed"
-
-CLAUDE_STATUS="$(claude auth status 2>/dev/null || true)"
-if ! grep -q '"loggedIn": true' <<<"${CLAUDE_STATUS}"; then
-  fail "Claude Code is signed out. Run 'claude', complete /login, then rerun this script"
-fi
+[[ -n "${ANTHROPIC_API_KEY:-}" ]] || fail "ANTHROPIC_API_KEY is required"
 
 if ! OLLAMA_MODELS="$(ollama list 2>/dev/null)"; then
   fail "Ollama is not responding. Start it with 'ollama serve'"
 fi
 if ! awk 'NR > 1 {print $1}' <<<"${OLLAMA_MODELS}" | grep -Fxq "${LOCAL_MODEL}"; then
   fail "Ollama model '${LOCAL_MODEL}' is not installed. Run: ollama pull ${LOCAL_MODEL}"
-fi
-
-if [[ -n "${ANTHROPIC_API_KEY:-}" || -n "${ANTHROPIC_AUTH_TOKEN:-}" ]]; then
-  echo "Note: Anthropic API environment credentials are set; they will be unset for this run."
 fi
 
 if [[ -z "${OUTPUT_DIR}" ]]; then
@@ -169,7 +160,7 @@ if [[ "${MODE}" = "smoke" ]]; then
     --max-evals 1
     --max-token-cost 0.10
   )
-  BUDGET_DESCRIPTION="1 optimizer evaluation; Claude cap: USD 0.10 equivalent"
+  BUDGET_DESCRIPTION="1 optimizer evaluation; Anthropic API cap: USD 0.10"
 else
   EXPERIMENT_ARGS=(
     --engine omni
@@ -184,9 +175,6 @@ else
 fi
 
 COMMAND=(
-  env
-  -u ANTHROPIC_API_KEY
-  -u ANTHROPIC_AUTH_TOKEN
   uv run
   --with "${GEPA_REQUIREMENT}"
   python

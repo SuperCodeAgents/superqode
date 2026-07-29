@@ -109,11 +109,21 @@ class _FakeClient:
         return [SimpleNamespace(session_id="saved-1", title="Review")]
 
 
+class _FakeRuntimeConnection:
+    requested_path = None
+
+    @classmethod
+    def for_stdio(cls, *, path=None, **_kwargs):
+        cls.requested_path = path
+        return SimpleNamespace(kind="stdio", path=path)
+
+
 @pytest.fixture
 def fake_copilot_sdk(monkeypatch):
     module = types.ModuleType("copilot")
     module.__path__ = []
     module.CopilotClient = _FakeClient
+    module.RuntimeConnection = _FakeRuntimeConnection
     rpc_module = types.ModuleType("copilot.rpc")
     rpc_module.PermissionDecisionApproveOnce = type(
         "PermissionDecisionApproveOnce", (_Decision,), {}
@@ -122,6 +132,7 @@ def fake_copilot_sdk(monkeypatch):
     monkeypatch.setitem(sys.modules, "copilot", module)
     monkeypatch.setitem(sys.modules, "copilot.rpc", rpc_module)
     _FakeClient.instances.clear()
+    _FakeRuntimeConnection.requested_path = None
     return module
 
 
@@ -237,6 +248,26 @@ async def test_client_is_built_off_the_event_loop(fake_copilot_sdk, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_installed_cli_is_reused_instead_of_triggering_sdk_download(
+    fake_copilot_sdk, tmp_path, monkeypatch
+):
+    from superqode.runtime import copilot_sdk
+    from superqode.runtime.copilot_sdk import CopilotSDKRuntime
+
+    monkeypatch.setattr(
+        copilot_sdk.shutil,
+        "which",
+        lambda name: "/opt/bin/copilot" if name == "copilot" else None,
+    )
+    runtime = CopilotSDKRuntime(config=_config(tmp_path))
+    await runtime._ensure_started()
+
+    assert _FakeRuntimeConnection.requested_path == "/opt/bin/copilot"
+    assert _FakeClient.instances[-1].kwargs["connection"].path == "/opt/bin/copilot"
+    await runtime.aclose()
+
+
+@pytest.mark.asyncio
 async def test_permission_bridge_never_blocks_the_event_loop(fake_copilot_sdk, tmp_path):
     """The TUI approval bridge blocks until the user answers the prompt.
 
@@ -288,6 +319,8 @@ async def test_only_an_explicit_copilot_token_reaches_the_sdk(
     runtime = CopilotSDKRuntime(config=_config(tmp_path))
     await runtime._ensure_started()
     assert "github_token" not in _FakeClient.instances[-1].kwargs
+    assert "GH_TOKEN" not in _FakeClient.instances[-1].kwargs["env"]
+    assert "GITHUB_TOKEN" not in _FakeClient.instances[-1].kwargs["env"]
     await runtime.aclose()
 
     monkeypatch.setenv("COPILOT_GITHUB_TOKEN", "gho_copilot")
@@ -336,6 +369,32 @@ async def test_startup_failure_is_reported_instead_of_raised(fake_copilot_sdk, t
     assert "Copilot CLI not found" in complete.data["error"]
     assert ":copilot cli" in complete.data["error"]
     assert events[-1].type == "model_result"
+
+
+@pytest.mark.asyncio
+async def test_startup_has_a_hard_deadline_and_never_hangs(fake_copilot_sdk, tmp_path, monkeypatch):
+    from superqode.runtime.copilot_sdk import CopilotSDKRuntime
+
+    monkeypatch.setenv("SUPERQODE_COPILOT_STARTUP_TIMEOUT", "0.01")
+    runtime = CopilotSDKRuntime(config=_config(tmp_path))
+
+    async def never_starts() -> None:
+        await asyncio.Event().wait()
+
+    runtime._ensure_started = never_starts
+    events = await asyncio.wait_for(
+        _collect_events(runtime, "anything"),
+        timeout=1,
+    )
+
+    complete = next(e for e in events if e.type == "turn_complete")
+    assert complete.data["status"] == "error"
+    assert "startup exceeded 0.01s" in complete.data["error"]
+    assert ":copilot cli" in complete.data["error"]
+
+
+async def _collect_events(runtime, prompt):
+    return [event async for event in runtime.run_harness_events(prompt)]
 
 
 @pytest.mark.asyncio

@@ -401,6 +401,10 @@ def harness_init(name, template, output, workflow_preset, force, minimal):
         if workflow_preset:
             click.echo(f"Applied workflow preset: {workflow_preset}")
         click.echo("Created .agents/skills and .agents/roles")
+        click.echo("\nNext steps:")
+        click.echo(f"  Validate:  superqode harness validate {output}")
+        click.echo(f"  Diagnose:  superqode harness doctor --spec {output}")
+        click.echo(f"  Run:       superqode --harness {output}")
         return
 
     spec = replace(get_harness_template(template), name=name)
@@ -430,6 +434,10 @@ def harness_init(name, template, output, workflow_preset, force, minimal):
     if workflow_preset:
         click.echo(f"Applied workflow preset: {workflow_preset}")
     click.echo("Created .agents/skills and .agents/roles")
+    click.echo("\nNext steps:")
+    click.echo(f"  Validate:  superqode harness validate {output}")
+    click.echo(f"  Diagnose:  superqode harness doctor --spec {output}")
+    click.echo(f"  Run:       superqode --harness {output}")
 
 
 @harness.command("import-omnigent")
@@ -516,7 +524,7 @@ def harness_validate(spec_arg, spec_option, json_output, schema_output):
         payload = {"valid": False, "error": str(exc)}
         if json_output:
             click.echo(json.dumps(payload, indent=2))
-            return
+            raise click.exceptions.Exit(1) from exc
         raise click.ClickException(str(exc)) from exc
 
     payload = {

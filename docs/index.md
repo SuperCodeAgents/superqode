@@ -62,7 +62,7 @@ already use:
 ```text
 :connect                               # open the complete connection picker
 :connect codex                         # Codex subscription
-:connect copilot                       # GitHub Copilot SDK
+:connect copilot                       # GitHub Copilot plan (SDK or CLI)
 :connect kimi-code                     # Kimi Code through its official ACP server
 :connect qwen-code                     # Qwen Code through its official ACP server
 :connect acp <agent>                   # any installed ACP coding agent

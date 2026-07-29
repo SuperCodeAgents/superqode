@@ -16,15 +16,13 @@ A harness describes what should happen. A runtime performs it.
 This distinction matters because users should be able to keep the same harness behavior while changing the
 execution engine. When an engine cannot honor a policy, SuperQode reports that clearly.
 
-The install commands below show the normal `uv tool install superqode` case. In
-the TUI and runtime doctor, SuperQode adjusts the hint to the environment that
-is actually running: source checkouts use
-`uv pip install -e ".[<extra>]"`, project virtualenvs use
-`uv add "superqode[<extra>]"`, and plain virtualenvs use
-`uv pip install "superqode[<extra>]"`. SuperQode prints the exact command but
-does not install optional runtimes without an explicit user action. See the
-[official uv documentation](https://docs.astral.sh/uv/) for uv installation and
-environment details.
+The TUI and runtime doctor consistently show the packaged-product command
+`uv tool install "superqode[<extra>]"`. This avoids leaking editable-checkout
+commands into user onboarding or adding SuperQode to an unrelated application's
+dependencies. Contributors working from this repository should use
+`uv sync --extra <extra>`. SuperQode never installs an optional runtime without
+explicit user action. See the
+[official uv documentation](https://docs.astral.sh/uv/) for environment details.
 
 | Runtime | Install | Notes |
 | --- | --- | --- |
@@ -119,7 +117,7 @@ the engine that executes it. The picker is profile-driven and shows live status:
 :connect
   How do you want to connect?
   [1] Local                        Ollama / LM Studio / MLX / vLLM ...
-  [2] ACP (Agent Client Protocol)  Any external ACP agent (incl. your local Claude Code)
+  [2] ACP (Agent Client Protocol)  Any installed external ACP agent
   [3] BYOK (Bring Your Own Key)    Your API key, such as OpenAI, Anthropic, or Gemini
   [4] Subscriptions                Vendor coding agents on a plan you already pay for
   [5] Other harnesses              Browse optional non-ACP integrations such as Tau
@@ -131,44 +129,67 @@ Option 4 opens the vendor screen. Esc returns to the screen above:
 :connect subscriptions
   US Coding Agents
   [1] Codex subscription   Drive OpenAI Codex with your ChatGPT/Codex login (~/.codex)
-  [2] Claude Agent SDK     Use your Anthropic API key via claude-agent-sdk
-  [3] Antigravity CLI      Use Google's agent harness with your Google Sign-In
-  [4] Grok subscription    Use Grok Build through the signed-in Grok CLI
-  [5] GitHub Copilot SDK   Embed Copilot through the official Python SDK
-  [6] Gemini CLI           Use Google's Gemini CLI through gemini --acp
-  [7] Devin                Use Cognition's Devin CLI through devin acp
+  [2] Cursor               Use the Cursor plan signed in to Cursor CLI
+  [3] Amp                  Use the Amp plan signed in to Amp CLI
+  [4] Antigravity CLI      Use Google's agent harness with your Google Sign-In
+  [5] Grok subscription    Use Grok Build through the signed-in Grok CLI
+  [6] GitHub Copilot       Use your plan through the SDK or official CLI
+  [7] Gemini CLI           Use Google's Gemini CLI through its vendor sign-in
+  [8] Devin                Use Cognition's Devin CLI through devin acp
+  [9] Factory Droid        Use the locally authenticated Droid CLI
+  [10] Kiro                Use a Kiro or Amazon Q Developer plan through Kiro CLI
 
   China Coding Agents
-  [8] GLM CLI              Use the community GLM ACP agent
-  [9] Z.AI GLM API         Use GLM through Z.AI's general API
-  [10] Qwen Code           Use QwenLM's first-party agent through qwen --acp
-  [11] Kimi Code           Use Moonshot AI's first-party agent through kimi acp
+  [11] GLM Coding Plan      Use the paid plan through its authenticated ACP agent
+  [12] Qwen Code            Use QwenLM's signed-in first-party agent
+  [13] Kimi Code            Use Moonshot AI's signed-in first-party agent
 ```
 
-**Claude** has one headline entry: **Claude Agent SDK** (API key via
-`ANTHROPIC_API_KEY`). Your *local* Claude Code (subscription login) is reached
-through **ACP agent** like any other ACP agent. It is not duplicated as its own
-profile. Neither path implies SuperQode using a Claude Pro/Max subscription.
+The screen is reserved for vendor plans and vendor-managed sign-in. API-key-only
+routes such as the Claude Agent SDK and Z.AI general API stay under BYOK or
+explicit runtime commands. SuperQode does not copy vendor tokens; the local
+vendor CLI or ACP adapter owns its credential store.
+
+### Missing dependency flow
+
+When a SuperQode-owned optional Python runtime is missing, the TUI keeps the
+user in place and offers three keyboard choices:
+
+1. **Install it for me**: installs only the allow-listed
+   `superqode[<runtime-extra>]` into the interpreter currently running
+   SuperQode, then continues the connection.
+2. **I will install it myself**: shows the exact environment-targeted command.
+3. **Cancel**: returns to the connection screen.
+
+This applies to runtimes such as `codex-sdk` and `copilot-sdk`. SuperQode does
+not run npm, curl-to-shell, system-package-manager, or other vendor-agent
+installers from the connection picker; those remain manual instructions.
 
 Direct commands and CLI:
 
 ```bash
 :connect subscriptions    # the vendor screen shown above
 :connect codex            # in the TUI, uses your Codex subscription
+:connect cursor           # Cursor subscription through Cursor Agent ACP
+:connect amp              # Amp subscription through its ACP adapter
 :connect kimi-code        # Moonshot AI Kimi Code through its official ACP server
 :connect qwen-code        # Qwen Code through its stable ACP server
 :connect gemini-cli       # Google Gemini CLI through gemini --acp
 :connect devin            # Cognition Devin CLI through devin acp
-:connect glm-cli          # community GLM ACP agent
+:connect droid            # Factory Droid subscription through ACP
+:connect kiro             # Kiro/Amazon Q Developer plan through Kiro ACP
+:connect glm-cli          # GLM Coding Plan through its ACP agent
 :connect copilot          # official Copilot SDK path
 :copilot models           # live model catalog for the active Copilot account
 :connect acp copilot      # advanced Copilot CLI ACP compatibility path
 :connect other-harnesses  # optional non-ACP integrations such as Tau
-:connect claude           # use Claude Agent SDK with ANTHROPIC_API_KEY
 :connect antigravity      # signed-in agy CLI (Google OAuth/keyring)
 :antigravity managed      # Google-hosted sandbox (Gemini API key)
+:connect byok anthropic   # Anthropic API-key path
+:connect byok zai         # Z.AI general API-key path
 :connect byok google      # Google API key path
-:connect acp              # generic ACP picker, including local Claude Code
+:connect acp              # installed and featured ACP agents
+:connect acp all          # complete live ACP registry
 superqode --connect codex # launch already on Codex
 superqode --connect codex --print "summarize this repo"   # headless
 ```
@@ -203,9 +224,9 @@ subcommands. The command selects Tau and connects the route, so a separate
 `:connect`, Tau TUI, or `/login` command is not required.
 
 Each source maps to a connector internally: **Codex** maps to the `codex-sdk` runtime
-(self-contained, `~/.codex` auth); **GitHub Copilot SDK** maps to the
-`copilot-sdk` runtime; the advanced Copilot ACP route remains in the generic
-ACP catalog;
+(self-contained, `~/.codex` auth); **GitHub Copilot** prefers the
+`copilot-sdk` runtime and falls back to the official CLI's ACP server; explicit
+SDK and CLI commands remain available;
 **Claude** maps to the `claude-agent-sdk` runtime
 (`ANTHROPIC_API_KEY`); **Antigravity** → the `antigravity-cli` runtime using
 `agy`'s Google Sign-In/keyring; **BYOK/Local**

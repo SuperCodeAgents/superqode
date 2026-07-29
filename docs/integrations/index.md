@@ -41,19 +41,15 @@ installation and operation of the systems connected to those execution paths.
 
 ## Install an optional extra
 
-Install integrations into the same Python environment that runs SuperQode.
-Select the command that matches the SuperQode installation:
+The product-facing setup command is stable:
 
 | SuperQode environment | Command |
 | --- | --- |
 | Installed as a `uv` tool | `uv tool install "superqode[<extra>]"` |
-| Running from this source repository | `uv pip install -e ".[<extra>]"` |
-| Added to another `uv` project | `uv add "superqode[<extra>]"` |
-| Running in a virtual environment | `uv pip install "superqode[<extra>]"` |
+| Running from this source repository (contributors) | `uv sync --extra <extra>` |
 
-SuperQode reports its active environment and prints an appropriate installation
-command when an optional integration is missing. It does not install optional
-packages automatically.
+SuperQode does not install optional packages automatically and does not ask
+users to modify an unrelated project's dependency manifest.
 
 ## Diagnose an integration
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from difflib import get_close_matches
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +37,7 @@ def load_harness_spec(path: str | Path) -> HarnessSpec:
     spec_path = Path(path).expanduser()
     data = _load_harness_data(spec_path)
     resolved = resolve_harness_inheritance(data, base_dir=spec_path.parent, seen=())
+    validate_harness_data(resolved)
     return harness_spec_from_dict(resolved)
 
 
@@ -223,6 +225,7 @@ def harness_spec_to_dict(spec: HarnessSpec) -> dict[str, Any]:
                 if spec.execution_policy.permission_rules
                 else {}
             ),
+            **({"config": spec.execution_policy.config} if spec.execution_policy.config else {}),
         },
         "agents": [
             {
@@ -323,6 +326,7 @@ def harness_spec_to_dict(spec: HarnessSpec) -> dict[str, Any]:
                 }
                 for step in spec.checks.custom_steps
             ],
+            **({"config": spec.checks.config} if spec.checks.config else {}),
         },
         "observability": {
             "events": spec.observability.events,
@@ -391,7 +395,16 @@ def harness_spec_json_schema() -> dict[str, Any]:
             "inherits": {"type": "string", "minLength": 1},
             "extends": {"type": "string", "minLength": 1},
             "description": {"type": "string"},
-            "flavor": {"type": "string", "enum": [item.value for item in HarnessFlavor]},
+            "flavor": {
+                "type": "string",
+                "enum": [
+                    *(item.value for item in HarnessFlavor),
+                    "no-tool",
+                    "notool",
+                    "none",
+                    "model_only",
+                ],
+            },
             "runtime": {
                 "type": "object",
                 "additionalProperties": False,
@@ -404,7 +417,7 @@ def harness_spec_json_schema() -> dict[str, Any]:
             },
             "model_policy": {
                 "type": "object",
-                "additionalProperties": True,
+                "additionalProperties": False,
                 "properties": {
                     "primary": {"type": "string"},
                     "fallbacks": {"type": "array", "items": {"type": "string"}},
@@ -421,7 +434,7 @@ def harness_spec_json_schema() -> dict[str, Any]:
             },
             "execution_policy": {
                 "type": "object",
-                "additionalProperties": True,
+                "additionalProperties": False,
                 "properties": {
                     "sandbox": {"type": "string"},
                     "approval_profile": {"type": "string"},
@@ -452,7 +465,7 @@ def harness_spec_json_schema() -> dict[str, Any]:
                 "items": {
                     "type": "object",
                     "required": ["id"],
-                    "additionalProperties": True,
+                    "additionalProperties": False,
                     "properties": {
                         "id": {"type": "string", "minLength": 1},
                         "role": {"type": "string"},
@@ -469,9 +482,15 @@ def harness_spec_json_schema() -> dict[str, Any]:
             },
             "workflow": {
                 "type": "object",
-                "additionalProperties": True,
+                "additionalProperties": False,
                 "properties": {
-                    "mode": {"type": "string", "enum": [item.value for item in WorkflowMode]},
+                    "mode": {
+                        "type": "string",
+                        "enum": [
+                            *(item.value for item in WorkflowMode),
+                            *(item.value.replace("_", "-") for item in WorkflowMode),
+                        ],
+                    },
                     "preset": {"type": "string"},
                     "max_task_depth": {"type": "integer"},
                     "parallelism": {"type": "integer"},
@@ -481,7 +500,7 @@ def harness_spec_json_schema() -> dict[str, Any]:
             },
             "recursion": {
                 "type": "object",
-                "additionalProperties": True,
+                "additionalProperties": False,
                 "properties": {
                     "enabled": {"type": "boolean"},
                     "max_depth": {"type": "integer", "minimum": 0},
@@ -497,7 +516,7 @@ def harness_spec_json_schema() -> dict[str, Any]:
             },
             "remote_harness": {
                 "type": "object",
-                "additionalProperties": True,
+                "additionalProperties": False,
                 "properties": {
                     "enabled": {"type": "boolean"},
                     "provider": {"type": "string"},
@@ -509,7 +528,7 @@ def harness_spec_json_schema() -> dict[str, Any]:
             },
             "context": {
                 "type": "object",
-                "additionalProperties": True,
+                "additionalProperties": False,
                 "properties": {
                     "instruction_files": {"type": "array", "items": {"type": "string"}},
                     "skills_dir": {"type": "string"},
@@ -522,7 +541,7 @@ def harness_spec_json_schema() -> dict[str, Any]:
             },
             "checks": {
                 "type": "object",
-                "additionalProperties": True,
+                "additionalProperties": False,
                 "properties": {
                     "enabled": {"type": "boolean"},
                     "fail_on_error": {"type": "boolean"},
@@ -532,6 +551,7 @@ def harness_spec_json_schema() -> dict[str, Any]:
                         "items": {
                             "type": "object",
                             "required": ["name", "command"],
+                            "additionalProperties": False,
                             "properties": {
                                 "name": {"type": "string"},
                                 "command": {"type": "string"},
@@ -540,11 +560,12 @@ def harness_spec_json_schema() -> dict[str, Any]:
                             },
                         },
                     },
+                    "config": {"type": "object"},
                 },
             },
             "observability": {
                 "type": "object",
-                "additionalProperties": True,
+                "additionalProperties": False,
                 "properties": {
                     "events": {"type": "boolean"},
                     "traces": {"type": "boolean"},
@@ -566,18 +587,19 @@ def harness_spec_json_schema() -> dict[str, Any]:
             },
             "hooks": {
                 "type": "object",
-                "additionalProperties": True,
+                "additionalProperties": False,
                 "properties": {
                     "enabled": {"type": "boolean"},
                     "rules": {
                         "type": "array",
                         "items": {
                             "type": "object",
-                            "required": ["point", "handler"],
-                            "additionalProperties": True,
+                            "required": ["point"],
+                            "additionalProperties": False,
                             "properties": {
                                 "point": {"type": "string"},
                                 "handler": {"type": "string"},
+                                "target": {"type": "string"},
                                 "matcher": {"type": "string"},
                                 "name": {"type": "string"},
                                 "config": {"type": "object"},
@@ -588,7 +610,7 @@ def harness_spec_json_schema() -> dict[str, Any]:
             },
             "optimization": {
                 "type": "object",
-                "additionalProperties": True,
+                "additionalProperties": False,
                 "properties": {
                     "enabled": {"type": "boolean"},
                     "require_human_apply": {"type": "boolean"},
@@ -603,6 +625,69 @@ def harness_spec_json_schema() -> dict[str, Any]:
         },
         "required": ["name"],
     }
+
+
+def validate_harness_data(data: dict[str, Any]) -> None:
+    """Validate a resolved HarnessSpec mapping and reject ignored mistakes."""
+    raw = data.get("harness") if isinstance(data.get("harness"), dict) else data
+    _validate_schema_value(raw, harness_spec_json_schema(), path="HarnessSpec")
+
+
+def _validate_schema_value(value: Any, schema: dict[str, Any], *, path: str) -> None:
+    expected = schema.get("type")
+    if expected == "object":
+        if not isinstance(value, dict):
+            raise ValueError(f"{path} must be a mapping, got {_type_name(value)}")
+        properties = schema.get("properties", {})
+        for required in schema.get("required", ()):
+            if required not in value:
+                raise ValueError(f"{path} requires field {required!r}")
+        if schema.get("additionalProperties") is False:
+            for key in value:
+                if key not in properties:
+                    suggestion = get_close_matches(str(key), properties, n=1, cutoff=0.65)
+                    hint = f"; did you mean {suggestion[0]!r}?" if suggestion else "."
+                    config_hint = (
+                        " Put extension values under 'config'." if "config" in properties else ""
+                    )
+                    raise ValueError(f"Unknown field {key!r} at {path}{hint}{config_hint}".rstrip())
+        for key, item in value.items():
+            child_schema = properties.get(key)
+            if child_schema is not None:
+                _validate_schema_value(item, child_schema, path=f"{path}.{key}")
+    elif expected == "array":
+        if not isinstance(value, (list, tuple)):
+            raise ValueError(f"{path} must be a list, got {_type_name(value)}")
+        item_schema = schema.get("items")
+        if isinstance(item_schema, dict):
+            for index, item in enumerate(value):
+                _validate_schema_value(item, item_schema, path=f"{path}[{index}]")
+    elif expected == "string":
+        if not isinstance(value, str):
+            raise ValueError(f"{path} must be a string, got {_type_name(value)}")
+        if len(value) < int(schema.get("minLength", 0)):
+            raise ValueError(f"{path} must not be empty")
+    elif expected == "integer":
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ValueError(f"{path} must be an integer, got {_type_name(value)}")
+    elif expected == "number":
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"{path} must be a number, got {_type_name(value)}")
+    elif expected == "boolean" and not isinstance(value, bool):
+        raise ValueError(f"{path} must be a boolean, got {_type_name(value)}")
+
+    if "enum" in schema and value not in schema["enum"]:
+        choices = ", ".join(repr(choice) for choice in schema["enum"])
+        raise ValueError(f"{path} must be one of: {choices}")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if "minimum" in schema and value < schema["minimum"]:
+            raise ValueError(f"{path} must be at least {schema['minimum']}")
+        if "maximum" in schema and value > schema["maximum"]:
+            raise ValueError(f"{path} must be at most {schema['maximum']}")
+
+
+def _type_name(value: Any) -> str:
+    return type(value).__name__
 
 
 def _runtime(value: Any) -> RuntimeSpec:
@@ -785,11 +870,7 @@ def _checks(value: Any) -> ChecksSpec:
         fail_on_error=bool(data.get("fail_on_error", False)),
         timeout_seconds=int(data.get("timeout_seconds", 300) or 0),
         custom_steps=tuple(steps),
-        config={
-            k: v
-            for k, v in data.items()
-            if k not in {"enabled", "fail_on_error", "timeout_seconds", "custom_steps"}
-        },
+        config=dict(data.get("config") or {}) if isinstance(data.get("config"), dict) else {},
     )
 
 

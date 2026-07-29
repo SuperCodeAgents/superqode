@@ -2400,6 +2400,11 @@ class AgentRunMixin:
                     if not ok:
                         self._acp_client = None
                         self._acp_client_key = None
+                        if agent_type == "copilot":
+                            self._call_ui(
+                                log.add_info,
+                                "If Copilot is signed out, run `:copilot login`, then retry.",
+                            )
                         if agent_type == "grok":
                             self._call_ui(
                                 log.add_info,

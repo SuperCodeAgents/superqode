@@ -22,7 +22,7 @@ Connection commands:
 ```text
 :connect
 :connect codex        # Codex SDK using your local Codex login
-:connect claude       # Claude Code through ACP
+:runtime claude-agent-sdk # Claude Agent SDK using ANTHROPIC_API_KEY
 :connect antigravity  # signed-in agy CLI; run `agy` once to log in
 :connect acp          # any configured ACP agent
 :connect byok         # direct hosted provider/API key
@@ -211,7 +211,7 @@ Use a vendor/runtime path:
 
 ```bash
 superqode --runtime codex-sdk --print "review this repo"
-superqode --connect claude --print "summarize the last change"
+superqode --runtime claude-agent-sdk --print "summarize the last change"
 ```
 
 Run with a portable harness spec:

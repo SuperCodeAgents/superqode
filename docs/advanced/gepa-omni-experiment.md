@@ -37,12 +37,20 @@ The evaluation contract contained:
 
 ## Models and authentication
 
+!!! warning "Historical authentication record"
+
+    This experiment predates the current integration boundary and used a
+    Claude subscription credential. SuperQode no longer documents or supports
+    that route for third-party optimization. Reproduce this experiment with
+    `ANTHROPIC_API_KEY`; do not treat the historical authentication result as
+    current product validation.
+
 | Role | Model or engine | Authentication |
 | --- | --- | --- |
 | Harness rollouts | Ollama `qwen3.5:9b` | Local |
 | GEPA reflection | `ollama/qwen3.5:9b` | Local |
-| AutoResearch proposer | Claude Haiku | Claude subscription OAuth |
-| MetaHarness proposer | Claude Haiku | Claude subscription OAuth |
+| AutoResearch proposer | Claude Haiku | Historical subscription OAuth; unsupported now |
+| MetaHarness proposer | Claude Haiku | Historical subscription OAuth; unsupported now |
 | Continuation | GEPA with local reflection | Local |
 
 Before the run, `claude auth status` reported `authMethod: claude.ai` and a Pro

@@ -118,20 +118,20 @@ scripts/run_tiny_omni_experiment.sh \
 ```
 
 The script uses `uv run --with` to load the pinned, tested GEPA Omni commit for
-the command, so it does not require a permanent GEPA installation. It stops with
-instructions when Claude is signed out, Ollama is unavailable, or the chosen
-model is not installed. Pass `--help` to see path and output options. The
+the command, so it does not require a permanent GEPA installation. It requires
+`ANTHROPIC_API_KEY` for the optimizer and stops with instructions when that key
+is absent, Ollama is unavailable, or the chosen model is not installed. It does
+not reuse Claude Code subscription credentials. Pass `--help` to see path and output options. The
 prepared example uses `qwen3.5:9b` for both local rollouts and GEPA reflection.
 Smoke mode uses one held-in and one held-out plumbing task. Omni mode uses three
 held-in decision cases and two distinct sealed held-out cases.
 
-Start with a single AutoResearch evaluation. This verifies Claude subscription
+Start with a single AutoResearch evaluation. This verifies Anthropic API
 authentication and the end-to-end staging path before spending the minimum
 four-evaluation Omni budget. It is a plumbing check, not optimization evidence:
 
 ```bash
-env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
-  superqode harness optimize-omni \
+superqode harness optimize-omni \
     --spec path/to/your-harness.yaml \
     --tasks examples/evals/omni-tiny.yaml \
     --engine autoresearch \
@@ -148,8 +148,7 @@ For a release experiment, give each of the four Omni phases enough budget for
 one baseline and one candidate pass over the three optimizer-visible cases:
 
 ```bash
-env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN \
-  superqode harness optimize-omni \
+superqode harness optimize-omni \
     --spec path/to/your-harness.yaml \
     --tasks examples/evals/omni-release.yaml \
     --engine omni \

@@ -666,8 +666,17 @@ class HelperStartupMixin:
     def _onboarding_marker() -> Path:
         return Path.home() / ".superqode" / ".onboarded"
 
+    def _mark_onboarding_complete(self) -> None:
+        """Persist first-run completion only after a connection succeeds."""
+        marker = self._onboarding_marker()
+        try:
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            marker.write_text("1", encoding="utf-8")
+        except Exception:
+            pass
+
     def _maybe_show_onboarding(self, log: ConversationLog) -> None:
-        """Show a one-time getting-started card on the very first launch."""
+        """Show getting-started help until the first successful connection."""
         marker = self._onboarding_marker()
         try:
             if marker.exists():
@@ -714,18 +723,12 @@ class HelperStartupMixin:
         t.append(" for palettes  •  ", style=THEME["dim"])
         t.append("Ctrl+G", style=THEME["cyan"])
         t.append(" to stash\n", style=THEME["dim"])
-        t.append("  ╰─ This welcome card won't show again - ", style=THEME["purple"])
+        t.append("  ╰─ This card stays until your first connection - ", style=THEME["purple"])
         t.append(":help", style=f"bold {THEME['cyan']}")
         t.append(" anytime  •  ", style=THEME["purple"])
         t.append("Ctrl+L", style=f"bold {THEME['cyan']}")
         t.append(" to redraw.\n", style=THEME["purple"])
         log.write(t)
-
-        try:
-            marker.parent.mkdir(parents=True, exist_ok=True)
-            marker.write_text("1", encoding="utf-8")
-        except Exception:
-            pass
 
     def _init_config(self, args: str, log: ConversationLog):
         """Initialize superqode.yaml and local-first starter harnesses."""

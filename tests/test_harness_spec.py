@@ -166,6 +166,31 @@ model_policy:
         load_harness_spec(child)
 
 
+def test_load_harness_spec_rejects_unknown_fields_with_suggestion(tmp_path: Path):
+    path = tmp_path / "harness.yaml"
+    path.write_text(
+        "name: typo\nmodel_policy:\n  temperatur: 0.2\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"Unknown field 'temperatur'.*did you mean 'temperature'",
+    ):
+        load_harness_spec(path)
+
+
+def test_load_harness_spec_rejects_wrong_field_types(tmp_path: Path):
+    path = tmp_path / "harness.yaml"
+    path.write_text(
+        "name: wrong-type\nexecution_policy:\n  allow_write: sometimes\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="execution_policy.allow_write must be a boolean"):
+        load_harness_spec(path)
+
+
 def test_harness_spec_round_trip_preserves_core_fields():
     spec = harness_spec_from_dict(
         {
@@ -173,11 +198,16 @@ def test_harness_spec_round_trip_preserves_core_fields():
             "flavor": "coding",
             "runtime": {"backend": "adk", "fallback_backends": ["builtin"]},
             "context": {"prompt_persistence": "full"},
-            "execution_policy": {"allow_write": True, "allow_shell": True},
+            "execution_policy": {
+                "allow_write": True,
+                "allow_shell": True,
+                "config": {"audit_label": "team"},
+            },
             "agents": [{"id": "coder", "tools": ["read_file", "bash"]}],
             "checks": {
                 "enabled": True,
                 "custom_steps": [{"name": "tests", "command": "pytest -q", "timeout": 120}],
+                "config": {"report_format": "junit"},
             },
         }
     )
@@ -191,9 +221,11 @@ def test_harness_spec_round_trip_preserves_core_fields():
     assert restored.context.prompt_persistence == "full"
     assert restored.execution_policy.allow_write is True
     assert restored.execution_policy.allow_shell is True
+    assert restored.execution_policy.config["audit_label"] == "team"
     assert restored.agents[0].tools == ("read_file", "bash")
     assert restored.checks.enabled is True
     assert restored.checks.custom_steps[0].command == "pytest -q"
+    assert restored.checks.config["report_format"] == "junit"
 
 
 def test_harness_spec_round_trip_preserves_recursion_and_remote_harness():

@@ -182,7 +182,7 @@ Summarize this repository and suggest the smallest safe improvement.
 | ACP | You want an external coding agent with its own tool loop | `superqode agents list` and `superqode agents doctor <agent>` |
 | BYOK | You want hosted providers with your own API keys | Set `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, or another provider key |
 | Local | You want private or offline inference | Start Ollama, LM Studio, MLX, vLLM, SGLang, DS4, or another local server |
-| SDK | You want to use your ChatGPT or Claude subscription, or vendor-native agent behavior | `:connect codex`, `:connect claude`, or `:connect antigravity` in the TUI |
+| SDK | You want a supported vendor runtime or vendor-native agent behavior | `:connect codex`, `:connect antigravity`, or an explicit API-key runtime in the TUI |
 
 See [Connection Methods and Vendors](../concepts/modes.md) for the supported
 connection methods, product profiles, providers, local engines, and ACP agents.

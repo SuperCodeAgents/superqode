@@ -341,7 +341,10 @@ superqode harness diff base.yaml custom.yaml
 
 ### `harness validate`
 
-Validate a spec file, or emit the HarnessSpec JSON Schema.
+Validate a spec file, or emit the HarnessSpec JSON Schema. Unknown fields and
+incorrect field types are rejected instead of being silently ignored. Both
+plain and `--json` validation return a non-zero exit code for invalid specs, so
+the command can be used as a CI gate.
 
 ```bash
 superqode harness validate harness.yaml

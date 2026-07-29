@@ -52,8 +52,9 @@ You can also launch directly into the Z.AI profile:
 superqode --connect zai
 ```
 
-Both entries are on the Subscriptions screen of the connect picker, reachable
-with `:connect subscriptions`.
+Z.AI's general API is a BYOK route, so it is not shown on the Subscriptions
+screen. A paid GLM Coding Plan is available separately through
+`:connect glm-cli`.
 
 ## GLM CLI (community ACP agent)
 
@@ -109,4 +110,3 @@ Override the live model when necessary:
 ```bash
 export SUPERQODE_LIVE_ZAI_MODEL=glm-5.1
 ```
-

@@ -254,8 +254,7 @@ For an eligible local X/SuperGrok account, the **Grok subscription** profile has
 two routes on the same `grok login`:
 
 - `:connect grok` runs **Grok Build**, xAI's own coding agent, over ACP. This
-  is the default, matching the Codex and Claude subscription profiles: the
-  vendor's agent owns the loop.
+  is the default subscription route: the vendor's agent owns the loop.
 - `:grok api [model]` runs **SuperQode's own harness** on the subscription. It
   imports the `grok login` session and talks to the CLI chat proxy, so
   `core`/`workbench`, SuperQode's tools, and memory drive Grok 4.5.

@@ -18,7 +18,9 @@ Connects to local/self-hosted model servers. Opens a local provider picker (Olla
 
 ### 2. ACP (Agent Client Protocol) (connector: acp-picker)
 
-Opens an interactive picker showing all discovered ACP agents. Always available. No model auth setup is needed before browsing the catalog.
+Opens an interactive picker showing installed and featured ACP agents. The
+complete discovered registry remains available through `:connect acp all`.
+No model auth setup is needed before browsing the catalog.
 
 ### 3. BYOK (Bring Your Own Key) (connector: byok, runtime: builtin)
 
@@ -41,9 +43,19 @@ installation status.
 
 Self-contained: brings its own model and auth via Codex login. Requires openai_codex package and ~/.codex/auth.json. Auto-connects on selection.
 
-### Claude Agent SDK (connector: runtime, runtime: claude-agent-sdk)
+### Claude Code Subscription (connector: acp, agent: claude)
 
-Self-contained: uses Anthropic API key directly. Requires claude_agent_sdk package and ANTHROPIC_API_KEY. Auto-connects on selection.
+Uses the locally authenticated Claude Code ACP adapter. The vendor adapter owns
+the subscription login and credential store. The API-key SDK remains available
+explicitly through `:runtime claude-agent-sdk`.
+
+### Cursor Subscription (connector: acp, agent: cursor)
+
+Uses the signed-in Cursor Agent CLI and its native ACP mode.
+
+### Amp Subscription (connector: acp, agent: amp)
+
+Uses the signed-in Amp CLI through the `acp-amp` adapter.
 
 ### Antigravity CLI (connector: runtime)
 
@@ -51,14 +63,15 @@ Handoff profile: shows the command to run `agy` in a terminal. Does not connect 
 
 ### Grok Subscription (connector: acp, agent: grok)
 
-Runs **Grok Build**, xAI's own coding agent, on an eligible SuperGrok or X Premium+ account. This matches the Codex and Claude subscription profiles: the vendor's agent owns the loop. Requires the `grok` binary on PATH and a local `grok login` (`~/.grok/auth.json`). SuperQode starts `grok agent stdio` over ACP.
+Runs **Grok Build**, xAI's own coding agent, on an eligible SuperGrok or X Premium+ account. The vendor's agent owns the loop. Requires the `grok` binary on PATH and a local `grok login` (`~/.grok/auth.json`). SuperQode starts `grok agent stdio` over ACP.
 
 To run **SuperQode's own harness** on the same subscription instead, use `:grok api [model]`. That imports the CLI session token into SuperQode's auth store and routes through the `grok-cli` provider (CLI chat proxy), so `core`/`workbench` and SuperQode's tools drive Grok 4.5.
 
-### GitHub Copilot SDK (connector: runtime, runtime: copilot-sdk)
+### GitHub Copilot (connector: copilot)
 
-Uses the official GitHub Copilot SDK with the signed-in Copilot account or an
-explicit GitHub token. Requires the optional `copilot-sdk` extra.
+One visible subscription entry. It prefers the official GitHub Copilot SDK
+(`copilot-sdk`) for SuperQode-native harness controls and falls back to the
+installed official CLI (`copilot --acp --stdio`) when the SDK is absent.
 
 ### Gemini CLI (connector: acp, agent: gemini)
 
@@ -71,15 +84,18 @@ use Antigravity instead.
 Runs Cognition's Devin CLI through `devin acp`. Requires the `devin` command
 and a completed `devin auth login`. Devin owns its own credential store.
 
-### GLM CLI (connector: acp, agent: glm)
+### Factory Droid Subscription (connector: acp, agent: droid)
 
-Runs the community `glm-acp-agent` CLI, which uses GLM models as its reasoning
-engine. It is not a first-party Z.ai client.
+Uses Factory Droid through its locally authenticated CLI and ACP mode.
 
-### Z.AI GLM API (connector: byok, runtime: builtin)
+### Kiro Subscription (connector: acp, agent: kiro)
 
-Uses the Z.AI general API through the builtin SuperQode harness. Requires
-`ZAI_API_KEY`.
+Uses a Kiro or Amazon Q Developer plan through Kiro CLI's vendor-managed sign-in.
+
+### GLM Coding Plan (connector: acp, agent: glm)
+
+Runs `glm-acp-agent` with a paid GLM Coding Plan. The Z.AI general API remains
+available under `:connect byok zai`.
 
 ### Qwen Code (connector: acp, agent: qwen)
 
@@ -103,14 +119,18 @@ Direct shortcuts:
 
 - `:connect subscriptions` - open the vendor screen
 - `:connect codex` - connect Codex SDK directly
+- `:connect cursor` - Cursor subscription through ACP
+- `:connect amp` - Amp subscription through ACP
 - `:connect gemini-cli` - Google Gemini CLI over ACP
 - `:connect devin` - Cognition Devin CLI over ACP
-- `:connect glm-cli` - community GLM ACP agent
-- `:connect copilot` - connect through the official GitHub Copilot SDK
+- `:connect droid` - Factory Droid subscription through ACP
+- `:connect kiro` - Kiro/Amazon Q Developer subscription through ACP
+- `:connect glm-cli` - GLM Coding Plan through ACP
+- `:connect copilot` - prefer the official SDK, with installed CLI/ACP fallback
 - `:connect acp copilot` - advanced Copilot CLI ACP compatibility path
 - `:connect other-harnesses` - browse optional non-ACP harnesses such as Tau
 - `:copilot models` - list models available to the signed-in Copilot account
-- `:connect claude` - connect Claude Agent SDK directly
+- `:runtime claude-agent-sdk` - explicit Anthropic API-key SDK runtime
 - `:connect antigravity` - use `agy` headless mode with its Google Sign-In/keyring
 - `:connect byok google` - use a Google API key through the BYOK path
 - `:runtime antigravity-sdk` - optional direct Antigravity SDK/API-key runtime
@@ -152,8 +172,8 @@ superqode connect setup deepseek --json
 ## Runtime Mapping
 
 - Codex profile -> runtime: codex-sdk
-- GitHub Copilot SDK profile -> runtime: copilot-sdk
-- GitHub Copilot ACP compatibility route -> ACP subprocess: copilot --acp --stdio
+- GitHub Copilot profile -> SDK runtime when installed, otherwise Copilot ACP subprocess
+- Explicit `:copilot sdk` / `:copilot cli` -> force either official route
 - Claude profile -> runtime: claude-agent-sdk
 - BYOK/Local -> runtime: builtin
 - ACP -> no runtime change (ACP subprocess)

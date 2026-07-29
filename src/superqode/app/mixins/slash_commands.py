@@ -2614,35 +2614,71 @@ class SlashCommandMixin:
         self.push_screen(ThemePicker(current=self._current_theme), callback=_on_dismissed)
 
     def _handle_diagnostics(self, args: str, log: ConversationLog):
-        """Handle :diagnostics command - show code diagnostics."""
+        """Handle :diagnostics command with a fast, non-blocking source scan."""
         from superqode.tools.diagnostics import quick_diagnostics
 
         path = args.strip() if args else "."
-        target_path = Path.cwd() / path
+        requested = Path(path).expanduser()
+        target_path = requested if requested.is_absolute() else Path.cwd() / requested
 
         if not target_path.exists():
             log.add_error(f"Path not found: {path}")
             return
 
-        # Collect files
-        files_to_check = []
+        # Keep this list aligned with quick_diagnostics. Full multi-language
+        # checks remain available through the diagnostics tool and project
+        # linter commands; the TUI fast path currently parses Python only.
+        supported_extensions = {".py", ".pyi"}
+        ignored_directories = {
+            ".git",
+            ".mypy_cache",
+            ".pytest_cache",
+            ".ruff_cache",
+            ".superqode",
+            ".tox",
+            ".venv",
+            "__pycache__",
+            "dist",
+            "build",
+            "node_modules",
+            "venv",
+        }
+        files_to_check: list[Path] = []
         if target_path.is_file():
             files_to_check = [target_path]
         else:
-            # Check common code files
-            for ext in [".py", ".js", ".ts", ".go", ".rs", ".c", ".cpp"]:
-                files_to_check.extend(list(target_path.rglob(f"*{ext}"))[:50])
+            for root, directories, filenames in os.walk(target_path):
+                directories[:] = sorted(
+                    directory for directory in directories if directory not in ignored_directories
+                )
+                for filename in sorted(filenames):
+                    candidate = Path(root) / filename
+                    if candidate.suffix.lower() in supported_extensions:
+                        files_to_check.append(candidate)
+                        if len(files_to_check) == 50:
+                            break
+                if len(files_to_check) == 50:
+                    break
+
+        if not files_to_check:
+            log.add_info(f"No supported source files found in {path}")
+            return
 
         all_diagnostics = []
-        for file_path in files_to_check[:50]:
+        failed_files = 0
+        for file_path in files_to_check:
             try:
                 diags = quick_diagnostics(file_path)
                 all_diagnostics.extend(diags)
-            except Exception:
-                continue
+            except Exception:  # noqa: BLE001 - one unreadable file must not break the TUI
+                failed_files += 1
 
         if not all_diagnostics:
-            log.add_success(f"No diagnostics found in {path}")
+            suffix = f"; {failed_files} file(s) could not be checked" if failed_files else ""
+            log.add_success(
+                f"No fast syntax diagnostics found in {path} "
+                f"({len(files_to_check)} file(s) checked{suffix})"
+            )
             return
 
         # Display diagnostics
@@ -2671,7 +2707,11 @@ class SlashCommandMixin:
         if len(all_diagnostics) > 20:
             t.append(f"\n  ... and {len(all_diagnostics) - 20} more\n", style=THEME["muted"])
 
-        log.write(t)
+        t.append(
+            "\n  Fast scan only. Use the project linter/test command for full diagnostics.\n",
+            style=THEME["dim"],
+        )
+        self._show_command_output(log, t)
 
     def _handle_edit(self, log: ConversationLog):
         """Handle :edit command - open external editor to compose message."""

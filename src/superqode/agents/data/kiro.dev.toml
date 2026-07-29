@@ -20,7 +20,7 @@ Agentic coding CLI with full ACP support.
 ## Installation
 
 ```bash
-npm install -g kiro-cli
+curl -fsSL https://cli.kiro.dev/install | bash
 ```
 
 For ACP mode:
@@ -40,5 +40,5 @@ See https://kiro.dev/docs/cli/acp/ for the full ACP documentation.
 '''
 
 [actions."*".install]
-command = "npm install -g kiro-cli"
+command = "curl -fsSL https://cli.kiro.dev/install | bash"
 description = "Install Kiro CLI"

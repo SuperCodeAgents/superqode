@@ -1,14 +1,15 @@
 """Launch vendor CLI subscription logins from SuperQode.
 
-When Codex or Grok has no local session, SuperQode can start the official CLI
-login the same way users do outside the TUI:
+When a supported vendor CLI has no local session, SuperQode can start its
+official login command the same way users do outside the TUI:
 
 * Codex  → ``codex login --device-auth``  (ChatGPT device code)
 * Grok   → ``grok login --device-auth``   (X/SuperGrok device code)
+* Copilot → ``copilot login``             (GitHub OAuth device flow)
 
-Device-auth is used deliberately: it prints a URL + one-time code to stdout so
-the SuperQode TUI can show them, open the browser when possible, and wait for
-the CLI to finish writing ``~/.codex/auth.json`` / ``~/.grok/auth.json``.
+These commands print a URL + one-time code to stdout so the SuperQode TUI can
+show them and wait for the vendor CLI to store credentials in its own file or
+OS credential store.
 
 SuperQode never implements the vendor OAuth itself and never copies tokens
 during this flow — the vendor CLI owns the credential store.
@@ -56,6 +57,10 @@ class SubscriptionLoginSpec:
     # Grok so we defer to ``grok_cli_auth.GROK_AUTH_FILE`` (which tests patch),
     # keeping this module and the CLI-auth module pointing at one file.
     auth_path_getter: Optional[Callable[[], Path]] = None
+    # Some CLIs keep credentials only in the OS credential store, so there is
+    # no portable auth file to probe. For those, a clean login-process exit is
+    # the vendor's success signal.
+    success_on_zero_exit: bool = False
 
     def current_auth_path(self) -> Path:
         """Resolve the vendor auth file *now* (never import-time frozen)."""
@@ -99,9 +104,24 @@ GROK_LOGIN = SubscriptionLoginSpec(
     auth_path_getter=_grok_auth_path,
 )
 
+COPILOT_LOGIN = SubscriptionLoginSpec(
+    id="copilot",
+    label="GitHub Copilot",
+    binary="copilot",
+    # Copilot normally uses the OS credential store. This path is deliberately
+    # only a fallback probe for installations that choose file storage.
+    auth_subpath=(".copilot", "auth.json"),
+    login_args=("login",),
+    install_hint="Install it manually with: npm install -g @github/copilot",
+    success_hint="GitHub Copilot login complete. Connecting…",
+    env_key_fallbacks=("COPILOT_GITHUB_TOKEN",),
+    success_on_zero_exit=True,
+)
+
 _SPECS = {
     CODEX_LOGIN.id: CODEX_LOGIN,
     GROK_LOGIN.id: GROK_LOGIN,
+    COPILOT_LOGIN.id: COPILOT_LOGIN,
 }
 
 
@@ -360,6 +380,16 @@ async def run_subscription_login(
             returncode=returncode,
         )
 
+    if spec.success_on_zero_exit and returncode == 0:
+        return LoginResult(
+            ok=True,
+            reason="signed in",
+            auth_path=None,
+            opened_browser=opened_browser,
+            lines=lines,
+            returncode=returncode,
+        )
+
     if timed_out:
         return LoginResult(
             ok=False,
@@ -393,6 +423,7 @@ async def run_subscription_login(
 
 __all__ = [
     "CODEX_LOGIN",
+    "COPILOT_LOGIN",
     "GROK_LOGIN",
     "DEFAULT_LOGIN_TIMEOUT_SECONDS",
     "LoginResult",

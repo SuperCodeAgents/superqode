@@ -3678,7 +3678,7 @@ def test_prompt_completion_prioritizes_full_connect_and_quit_commands():
     ]
     # The completion order mirrors the connect screen: methods first, then the
     # subscription products behind them.
-    assert connect_values[:10] == [
+    assert connect_values[:9] == [
         ":connect",
         ":connect local",
         ":connect acp",
@@ -3686,13 +3686,13 @@ def test_prompt_completion_prioritizes_full_connect_and_quit_commands():
         ":connect subscriptions",
         ":connect other-harnesses",
         ":connect codex",
-        ":connect claude",
         ":connect grok",
         ":connect copilot",
     ]
-    # Copilot's two routes sit next to each other in the completion list.
-    assert connect_values[10] == ":connect copilot-cli"
-    assert connect_values[11] == ":connect antigravity"
+    assert ":connect cursor" in connect_values
+    assert ":connect amp" in connect_values
+    assert ":connect droid" in connect_values
+    assert ":connect kiro" in connect_values
     assert ":connect gemini-cli" in connect_values
     assert ":connect devin" in connect_values
     assert ":connect glm-cli" in connect_values
@@ -5734,17 +5734,21 @@ def test_connect_subscriptions_screen_lists_vendor_agents():
 
     assert app._connect_menu == "subscriptions"
     assert rendered.index("US Coding Agents") < rendered.index("China Coding Agents")
-    assert rendered.index("[1] Codex subscription") < rendered.index("[2] Claude Agent SDK")
-    assert rendered.index("[2] Claude Agent SDK") < rendered.index("[3] Antigravity CLI")
-    assert rendered.index("[3] Antigravity CLI") < rendered.index("[4] Grok subscription")
-    assert rendered.index("[4] Grok subscription") < rendered.index("[5] GitHub Copilot SDK")
-    # Copilot lists both routes: the SDK, then the vendor CLI over ACP.
-    assert rendered.index("[5] GitHub Copilot SDK") < rendered.index("[6] GitHub Copilot CLI")
-    assert rendered.index("[6] GitHub Copilot CLI") < rendered.index("[7] Gemini CLI")
+    assert "Claude Code subscription" not in rendered
+    assert rendered.index("[1] Codex subscription") < rendered.index("[2] Cursor subscription")
+    assert rendered.index("[2] Cursor subscription") < rendered.index("[3] Amp subscription")
+    assert rendered.index("[3] Amp subscription") < rendered.index("[4] Antigravity CLI")
+    assert rendered.index("[4] Antigravity CLI") < rendered.index("[5] Grok subscription")
+    assert rendered.index("[5] Grok subscription") < rendered.index("[6] GitHub Copilot")
+    assert rendered.index("[6] GitHub Copilot") < rendered.index("[7] Gemini CLI")
     assert rendered.index("[7] Gemini CLI") < rendered.index("[8] Devin")
-    assert rendered.index("[9] GLM CLI") < rendered.index("[10] Z.AI GLM API")
-    assert rendered.index("[10] Z.AI GLM API") < rendered.index("[11] Qwen Code")
-    assert rendered.index("[11] Qwen Code") < rendered.index("[12] Kimi Code")
+    assert rendered.index("[9] Factory Droid subscription") < rendered.index(
+        "[10] Kiro subscription"
+    )
+    assert rendered.index("[11] GLM Coding Plan") < rendered.index("[12] Qwen Code")
+    assert rendered.index("[12] Qwen Code") < rendered.index("[13] Kimi Code")
+    assert "Z.AI GLM API" not in rendered
+    assert "GitHub Copilot CLI" not in rendered
     assert "Esc back" in rendered
 
 

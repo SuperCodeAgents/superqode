@@ -268,9 +268,18 @@ def _acp_browser_item(total: int) -> HarnessPickerItem:
 
 def harness_connection_profile(reference: str):
     """Return a vendor profile exposed through the harness picker."""
+    from dataclasses import replace
+
     from superqode.providers.connection_profiles import get_connection_profile
 
-    profile = get_connection_profile(reference)
+    requested = (reference or "").strip().casefold()
+    # ``claude`` remains the concise harness-switch name, but it resolves only
+    # to the Anthropic API-key runtime. It is not a subscription connection
+    # profile and therefore never appears in :connect or --connect choices.
+    if requested == "claude":
+        profile = get_connection_profile("claude-api")
+        return replace(profile, id="claude") if profile is not None else None
+    profile = get_connection_profile(requested)
     return profile if profile is not None and profile.id in VENDOR_HARNESS_IDS else None
 
 
@@ -282,7 +291,6 @@ def harness_picker_items(
 ) -> list[HarnessPickerItem]:
     """Build the complete, section-ordered interactive picker inventory."""
     from superqode.harness import list_harnesses, recommended_harnesses
-    from superqode.providers.connection_profiles import get_connection_profile
 
     if native_entries is not None:
         supplied = list(native_entries)
@@ -313,7 +321,7 @@ def harness_picker_items(
 
     vendors: list[HarnessPickerItem] = []
     for profile_id in VENDOR_HARNESS_IDS:
-        profile = get_connection_profile(profile_id)
+        profile = harness_connection_profile(profile_id)
         if profile is not None:
             vendors.append(_vendor_item(profile))
     all_acp_items = acp_picker_items(include_registry=True)

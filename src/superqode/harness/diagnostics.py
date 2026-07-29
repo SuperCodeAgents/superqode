@@ -1605,7 +1605,11 @@ def _permission_check(spec: HarnessSpec) -> tuple[str, str, dict[str, Any]]:
         errors.append("write/edit tools are requested but allow_write is false")
     if "bash" in requested_tools and not policy.allow_shell:
         errors.append("bash tool is requested but allow_shell is false")
-    if policy.allow_shell and not policy.allowed_commands:
+    if (
+        policy.allow_shell
+        and not policy.allowed_commands
+        and policy.approval_profile.strip().lower() in {"yolo", "auto", "full-auto"}
+    ):
         warnings.append("shell is enabled without an allowed_commands list")
     if policy.allow_network:
         warnings.append("network access is enabled")
@@ -1734,22 +1738,22 @@ def _sandbox_check(name: str) -> dict[str, Any]:
 def _checks_check(spec: HarnessSpec, root: Path) -> dict[str, Any]:
     if not spec.checks.enabled:
         return {
-            "status": "warning",
-            "message": "Checks is disabled.",
+            "status": "ok",
+            "message": "Project checks are not configured.",
             "data": {
                 "enabled": False,
-                "fix": "Add checks.custom_steps when this harness should prove changes before completion.",
+                "fix": "Optional: add checks.custom_steps to verify changes before completion.",
             },
         }
     steps = [step for step in spec.checks.custom_steps if step.enabled]
     if not steps:
         return {
-            "status": "warning",
-            "message": "Checks is enabled but no custom checks steps are configured.",
+            "status": "ok",
+            "message": "No custom project check steps are configured.",
             "data": {
                 "enabled": True,
                 "steps": [],
-                "fix": "Add commands such as tests, lint, typecheck, or project smoke checks.",
+                "fix": "Optional: add tests, lint, typecheck, or project smoke commands.",
             },
         }
     missing: list[str] = []

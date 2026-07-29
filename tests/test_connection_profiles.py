@@ -35,15 +35,16 @@ def test_root_menu_is_five_entries_local_first():
 def test_subscriptions_menu_holds_the_vendor_agents():
     assert connection_profile_ids(menu=CONNECT_MENU_SUBSCRIPTIONS) == [
         "codex",
-        "claude",
+        "cursor",
+        "amp",
         "antigravity",
         "grok",
         "copilot",
-        "copilot-cli",
         "gemini-cli",
         "devin",
+        "droid",
+        "kiro",
         "glm-cli",
-        "zai",
         "qwen-code",
         "kimi-code",
     ]
@@ -60,15 +61,16 @@ def test_registry_has_expected_profiles():
         "subscriptions",
         "other-harnesses",
         "codex",
-        "claude",
+        "cursor",
+        "amp",
         "antigravity",
         "grok",
         "copilot",
-        "copilot-cli",
         "gemini-cli",
         "devin",
+        "droid",
+        "kiro",
         "glm-cli",
-        "zai",
         "qwen-code",
         "kimi-code",
     ]
@@ -97,21 +99,38 @@ def test_gemini_devin_and_glm_are_acp_subscription_profiles():
     assert "@google/gemini-cli" in gemini.unavailable_hint
 
 
-def test_new_cli_profiles_detect_their_binaries(monkeypatch):
+def test_subscription_cli_profiles_detect_their_binaries(monkeypatch):
     import superqode.providers.connection_profiles as cp
 
-    installed = {"gemini", "devin", "glm-acp-agent"}
+    installed = {
+        "gemini",
+        "devin",
+        "glm-acp-agent",
+        "cursor-agent",
+        "amp",
+        "acp-amp",
+        "droid",
+        "kiro-cli",
+    }
     monkeypatch.setattr(
         cp.shutil, "which", lambda name: f"/usr/bin/{name}" if name in installed else None
     )
     assert cp._gemini_cli_ready() is True
     assert cp._devin_cli_ready() is True
     assert cp._glm_cli_ready() is True
+    assert cp._cursor_cli_ready() is True
+    assert cp._amp_cli_ready() is True
+    assert cp._droid_cli_ready() is True
+    assert cp._kiro_cli_ready() is True
 
     installed.clear()
     assert cp._gemini_cli_ready() is False
     assert cp._devin_cli_ready() is False
     assert cp._glm_cli_ready() is False
+    assert cp._cursor_cli_ready() is False
+    assert cp._amp_cli_ready() is False
+    assert cp._droid_cli_ready() is False
+    assert cp._kiro_cli_ready() is False
 
 
 def test_zai_profile_targets_first_party_byok_provider(monkeypatch):
@@ -131,22 +150,31 @@ def test_codex_profile_is_runtime_connector():
     assert codex.self_contained is True
 
 
-def test_claude_profile_is_agent_sdk_runtime():
-    # The single Claude headline profile is the Agent SDK (API key). Claude over
-    # ACP is reached via the generic ACP picker, not a duplicate profile.
-    claude = get_connection_profile("claude")
-    assert claude.connector == "runtime"
-    assert claude.runtime == "claude-agent-sdk"
-    assert "api key" in claude.description.lower()
-    assert "subscription" not in (claude.label + claude.description).lower()
-    assert "install claude code" not in claude.unavailable_hint.lower()
-    assert "anthropic_api_key" in claude.unavailable_hint.lower()
+def test_claude_is_not_a_subscription_profile_but_api_route_remains():
+    assert "claude" not in connection_profile_ids(menu=CONNECT_MENU_SUBSCRIPTIONS)
+    assert get_connection_profile("claude") is None
+    assert "claude" not in connection_profile_ids()
+
+    api = get_connection_profile("claude-api")
+    assert api.connector == "runtime"
+    assert api.runtime == "claude-agent-sdk"
+    assert api.menu == CONNECT_MENU_ROOT
+    assert "claude-api" not in connection_profile_ids()
+
+
+def test_claude_harness_shortcut_resolves_only_to_the_api_runtime():
+    from superqode.app.harness_picker import harness_connection_profile
+
+    profile = harness_connection_profile("claude")
+    assert profile.id == "claude"
+    assert profile.label == "Claude Agent SDK (API key)"
+    assert profile.connector == "runtime"
+    assert profile.runtime == "claude-agent-sdk"
 
 
 def test_kimi_and_qwen_are_first_party_acp_profiles():
     kimi = get_connection_profile("kimi-code")
     qwen = get_connection_profile("qwen-code")
-    zai = get_connection_profile("zai")
 
     assert kimi.connector == "acp"
     assert kimi.acp_agent == "kimi"
@@ -157,33 +185,30 @@ def test_kimi_and_qwen_are_first_party_acp_profiles():
     assert qwen.acp_agent == "qwen"
     assert "qwenlm" in qwen.description.lower()
     assert "@qwen-code/qwen-code" in qwen.unavailable_hint
-    assert zai.group == qwen.group == kimi.group == "China Coding Agents"
+    assert qwen.group == kimi.group == "China Coding Agents"
 
 
-def test_copilot_offers_both_the_sdk_and_the_cli_route():
-    """Copilot ships two visible routes.
-
-    The SDK embeds Copilot's bundled runtime; the CLI route hands auth and the
-    agent loop to the vendor CLI over ACP, which is what Copilot Business and
-    Enterprise seats fall back to when the SDK runtime cannot be used.
-    """
-    sdk = get_connection_profile("copilot")
-    assert sdk.connector == "runtime"
-    assert sdk.runtime == "copilot-sdk"
-    assert sdk.self_contained is True
-    assert sdk.group == "US Coding Agents"
-    assert "licence" in sdk.description.lower()
+def test_copilot_is_one_visible_subscription_with_sdk_and_cli_routes():
+    profile = get_connection_profile("copilot")
+    assert profile.label == "GitHub Copilot"
+    assert profile.connector == "copilot"
+    assert profile.runtime == "copilot-sdk"
+    assert profile.acp_agent == "copilot"
+    assert profile.self_contained is True
+    assert profile.group == "US Coding Agents"
+    assert "sdk" in profile.description.lower()
+    assert "cli" in profile.description.lower()
 
     cli = get_connection_profile("copilot-cli")
     assert cli.connector == "acp"
     assert cli.acp_agent == "copilot"
     assert cli.self_contained is True
-    assert cli.group == "US Coding Agents"
+    assert cli.group == ""
     assert "@github/copilot" in cli.unavailable_hint
 
     visible = [profile.id for profile in list_connection_profiles()]
-    assert "copilot-cli" in visible
-    # The old id stays resolvable for muscle memory, but stays out of the picker.
+    assert "copilot-cli" not in visible
+    # CLI aliases stay resolvable for muscle memory and remain in the ACP picker.
     assert "copilot-acp" not in visible
     acp = get_connection_profile("copilot-acp")
     assert acp.connector == "acp"
@@ -307,6 +332,15 @@ class _DispatchStub:
     def _connect_acp_cmd(self, name, log):
         self.calls.append(("acp", name))
 
+    def _connect_copilot_subscription(self, profile, log):
+        from superqode.app_main import SuperQodeApp
+
+        SuperQodeApp._connect_copilot_subscription(self, profile, log)
+
+    def _show_dependency_install_picker(self, runtime, log):
+        self.calls.append(("dependency-picker", runtime))
+        return True
+
     def _show_byok_providers(self, log):
         self.calls.append(("byok",))
 
@@ -318,6 +352,9 @@ class _DispatchStub:
 
     def _show_agents(self, log):
         self.calls.append(("acp-picker",))
+
+    def _begin_subscription_login(self, product, log, **kwargs):
+        self.calls.append(("login", product))
 
     def _show_connect_type_picker(self, log, clear_log=True, menu=None):
         self.calls.append(("connect-picker", menu))
@@ -351,12 +388,6 @@ def test_dispatch_codex_routes_to_runtime(_dispatch):
     assert ("runtime", "codex-sdk") in stub.calls
 
 
-def test_dispatch_claude_routes_to_runtime(_dispatch):
-    stub = _DispatchStub()
-    _dispatch(stub, get_connection_profile("claude"), log=None)
-    assert ("runtime", "claude-agent-sdk") in stub.calls
-
-
 def test_dispatch_kimi_and_qwen_route_to_official_acp_agents(_dispatch):
     stub = _DispatchStub()
     _dispatch(stub, get_connection_profile("kimi-code"), log=None)
@@ -386,10 +417,38 @@ def test_dispatch_unavailable_first_party_acp_profile_shows_setup(_dispatch):
     assert log.messages == ["Qwen Code needs setup: install Qwen Code, then run `qwen auth`"]
 
 
-def test_dispatch_copilot_routes_to_sdk_runtime(_dispatch):
+def test_dispatch_copilot_prefers_sdk_runtime(_dispatch, monkeypatch):
+    import superqode.providers.connection_profiles as cp
+
+    monkeypatch.setattr(cp, "_copilot_sdk_ready", lambda: True)
+    monkeypatch.setattr(cp, "_copilot_acp_ready", lambda: True)
     stub = _DispatchStub()
     _dispatch(stub, get_connection_profile("copilot"), log=None)
     assert ("runtime", "copilot-sdk") in stub.calls
+
+
+def test_dispatch_copilot_falls_back_to_installed_cli(_dispatch, monkeypatch):
+    import superqode.providers.connection_profiles as cp
+
+    monkeypatch.setattr(cp, "_copilot_sdk_ready", lambda: False)
+    monkeypatch.setattr(cp, "_copilot_acp_ready", lambda: True)
+    stub = _DispatchStub()
+    _dispatch(stub, get_connection_profile("copilot"), log=None)
+    assert ("acp", "copilot") in stub.calls
+    assert not any(call[0] == "runtime" for call in stub.calls)
+
+
+def test_dispatch_copilot_without_either_route_opens_safe_extra_picker(_dispatch, monkeypatch):
+    import superqode.providers.connection_profiles as cp
+
+    monkeypatch.setattr(cp, "_copilot_sdk_ready", lambda: False)
+    monkeypatch.setattr(cp, "_copilot_acp_ready", lambda: False)
+    stub = _DispatchStub()
+
+    _dispatch(stub, get_connection_profile("copilot"), log=None)
+
+    assert not any(call[0] in {"runtime", "acp"} for call in stub.calls)
+    assert ("dependency-picker", "copilot-sdk") in stub.calls
 
 
 def test_dispatch_copilot_acp_routes_to_agent(_dispatch):
@@ -509,6 +568,9 @@ def test_antigravity_connection_announcement_never_mentions_codex():
         def _sync_self_contained_status(self, _runtime):
             pass
 
+        def _mark_onboarding_complete(self):
+            pass
+
         def run_worker(self, *_args, **_kwargs):
             raise AssertionError("Antigravity must not run Codex model resolution")
 
@@ -533,6 +595,9 @@ def test_managed_connection_announcement_uses_managed_route_commands():
 
     class Stub:
         def _sync_self_contained_status(self, _runtime):
+            pass
+
+        def _mark_onboarding_complete(self):
             pass
 
     log = Log()
@@ -662,7 +727,8 @@ def test_connect_profiles_in_commands_and_completion():
 
     assert ":connect codex" in COMMANDS
     assert ":copilot" in COMMANDS
-    assert ":connect claude" in COMMANDS
+    assert ":copilot login" in COMMANDS
+    assert ":connect claude" not in COMMANDS
     assert ":connect antigravity" in COMMANDS
     assert ":connect grok" in COMMANDS
     assert ":connect zai" in COMMANDS
@@ -671,21 +737,46 @@ def test_connect_profiles_in_commands_and_completion():
     assert {
         "codex",
         "copilot",
-        "claude",
+        "cursor",
+        "amp",
         "antigravity",
         "grok",
-        "zai",
+        "droid",
+        "kiro",
         "other-harnesses",
         "byok",
         "local",
         "acp",
     } <= values
+    assert "zai" not in values
     assert "copilot-acp" not in values
 
 
-def test_no_duplicate_acp_claude_profile():
-    """Claude over ACP must NOT be a separate headline profile (it's already in
-    the generic ACP picker) — only the Agent SDK Claude profile exists."""
+def test_copilot_login_starts_the_consent_gated_vendor_flow():
+    from superqode.app_main import SuperQodeApp
+
+    class Stub:
+        def __init__(self):
+            self.calls = []
+
+        def _begin_subscription_login(self, product, log, **kwargs):
+            self.calls.append((product, kwargs))
+            return True
+
+        def _connect_copilot_subscription(self, profile, log):
+            raise AssertionError("login callback must not run before user consent")
+
+    stub = Stub()
+    SuperQodeApp._copilot_cmd(stub, "login", log=None)
+
+    assert len(stub.calls) == 1
+    product, kwargs = stub.calls[0]
+    assert product == "copilot"
+    assert kwargs["force"] is True
+    assert callable(kwargs["on_success"])
+
+
+def test_claude_subscription_is_not_a_visible_profile():
     assert get_connection_profile("claude-agent") is None
     acp_claude_profiles = [
         p for p in list_connection_profiles() if p.connector == "acp" and p.acp_agent == "claude"
@@ -694,7 +785,7 @@ def test_no_duplicate_acp_claude_profile():
 
 
 def test_grok_headline_profile_is_the_acp_grok_build_agent():
-    """`:connect grok` IS the Grok Build ACP profile (like Codex/Claude subscriptions)."""
+    """`:connect grok` is the Grok Build ACP subscription profile."""
     acp_grok = [
         p for p in list_connection_profiles() if p.connector == "acp" and p.acp_agent == "grok"
     ]

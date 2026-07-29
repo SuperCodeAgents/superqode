@@ -130,79 +130,10 @@ class CommandImplMixin:
             log.add_info(f"Skipped installing {name}. Choose a connection above.")
             return
 
-        self.run_worker(self._install_agent_then_connect(agent_data, install, log))
-
-    async def _install_agent_then_connect(self, agent_data: dict, install, log) -> None:
-        """Install an ACP agent, then connect when it becomes available.
-
-        Failures are reported exactly as the package manager reported them.
-        SuperQode does not retry, escalate to sudo, or adjust the user's
-        toolchain: a Node version problem is theirs to see and decide about.
-        """
-        name = str(agent_data.get("name") or agent_data.get("short_name") or "agent")
-        argv = install.argv
-        if not argv:
-            log.add_error(f"No runnable install command for {name}.")
-            return
-
-        log.add_info(f"Installing {name}: {install.command}")
-
-        def run_install() -> subprocess.CompletedProcess[str]:
-            return subprocess.run(
-                argv,
-                cwd=Path.cwd(),
-                text=True,
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                timeout=1800,
-                check=False,
-            )
-
-        self.is_busy = True
-        try:
-            completed = await asyncio.to_thread(run_install)
-        except FileNotFoundError:
-            log.add_error(
-                f"{argv[0]} was not found. Install {argv[0]} first, or choose "
-                "'I will install it myself'."
-            )
-            return
-        except (OSError, subprocess.SubprocessError) as exc:
-            log.add_error(f"{name} installation failed: {exc}")
-            return
-        finally:
-            self.is_busy = False
-
-        output = "\n".join(
-            part.strip() for part in (completed.stdout, completed.stderr) if part and part.strip()
+        log.add_error(
+            "The connection flow does not automatically install external agents. "
+            "Choose 'I will install it myself' to see the vendor command."
         )
-        if completed.returncode != 0:
-            if hasattr(log, "add_shell"):
-                log.add_shell(install.command, output or "Installation failed.", False)
-            else:
-                log.add_error(output or "Installation failed.")
-            log.add_error(
-                f"{name} installation exited with {completed.returncode}. "
-                "The output above is from the installer, not SuperQode."
-            )
-            return
-
-        if hasattr(log, "add_shell"):
-            log.add_shell(install.command, output or "Installation completed.", True)
-
-        from superqode.commands.acp import check_agent_installed
-
-        if not check_agent_installed(agent_data):
-            # A clean exit code does not prove the launcher is on PATH; say so
-            # rather than failing later inside the connect attempt.
-            log.add_error(
-                f"{name} installed but its launcher is still not on PATH. "
-                "Open a new shell or check the installer output above."
-            )
-            return
-
-        log.add_success(f"{name} installed. Connecting...")
-        self._connect_agent(str(agent_data.get("short_name") or ""))
 
     def _handle_dependency_install_input(self, text: str, log) -> bool:
         """Resolve a typed answer to the missing-dependency prompt."""
@@ -236,12 +167,18 @@ class CommandImplMixin:
     async def _install_runtime_extra_then_continue(self, pending: dict, log) -> None:
         """Install a runtime's extra, then connect to it without a restart."""
         import importlib
+        from superqode.providers.env_introspect import extra_install_command
+        from superqode.runtime import runtime_extra
 
         runtime_name = str(pending.get("runtime") or "")
-        command = str(pending.get("command") or "")
-        if not command or not runtime_name:
+        extra = runtime_extra(runtime_name)
+        if not runtime_name or not extra or str(pending.get("extra") or "") != extra:
             log.add_error("No installation command is available for this runtime.")
             return
+        # Rebuild the command from the allow-listed runtime mapping instead of
+        # trusting mutable prompt data. This path can only install a
+        # ``superqode[...]`` extra into the interpreter running SuperQode.
+        command = extra_install_command(extra)
 
         log.add_info(f"Installing {runtime_name} into SuperQode's current environment...")
 
@@ -2064,15 +2001,63 @@ class CommandImplMixin:
         log.write(text)
 
     # ---- GitHub Copilot SDK and ACP command surface -----------------------
+    @staticmethod
+    def _copilot_subcommand_completion_candidates(
+        value: str,
+    ) -> list[PromptCompletionCandidate]:
+        """Complete the supported Copilot SDK/CLI command family."""
+        prefix = ":copilot "
+        partial = value[len(prefix) :].lower()
+        subcommands = (
+            ("help", "Show GitHub Copilot commands available through SuperQode"),
+            ("connect", "Connect using the best installed official route"),
+            ("login", "Run the official Copilot OAuth device flow"),
+            ("status", "Show local SDK, CLI, route, and authentication guidance"),
+            ("models", "Choose from the signed-in account's live model catalog"),
+            ("model", "Select a model for future Copilot turns"),
+            ("mode", "Choose the CLI session mode (agent, plan, autopilot)"),
+            ("sessions", "List sessions from the Copilot SDK route"),
+            ("resume", "Resume a session through the Copilot SDK route"),
+            ("sdk", "Force the official Copilot Python SDK route"),
+            ("cli", "Force the official Copilot CLI ACP route"),
+            ("version", "Show the installed Copilot CLI version"),
+        )
+        return [
+            PromptCompletionCandidate(
+                value=f"{prefix}{subcommand}",
+                label=subcommand,
+                description=description,
+                kind="copilot",
+            )
+            for subcommand, description in subcommands
+            if subcommand.startswith(partial) and f"{prefix}{subcommand}" != value
+        ]
+
     def _copilot_cmd(self, args: str, log) -> None:
         """Handle native SDK and official ACP routes for GitHub Copilot."""
         parts = (args or "").split(maxsplit=1)
-        sub = parts[0].strip().lower() if parts and parts[0].strip() else "sdk"
+        sub = parts[0].strip().lower() if parts and parts[0].strip() else "connect"
         rest = parts[1].strip() if len(parts) > 1 else ""
-        if sub in {"connect", "start", "sdk"}:
+        if sub in {"connect", "start"}:
+            from superqode.providers.connection_profiles import get_connection_profile
+
+            self._connect_copilot_subscription(get_connection_profile("copilot"), log)
+        elif sub == "sdk":
             self._runtime_cmd("copilot-sdk", log)
         elif sub in {"cli", "acp"}:
             self._connect_acp_cmd("copilot", log)
+        elif sub in {"login", "auth", "signin", "sign-in"}:
+            from superqode.providers.connection_profiles import get_connection_profile
+
+            self._begin_subscription_login(
+                "copilot",
+                log,
+                on_success=lambda: self._connect_copilot_subscription(
+                    get_connection_profile("copilot"), log
+                ),
+                reason="GitHub Copilot authentication is required.",
+                force=True,
+            )
         elif sub in {"status", "doctor"}:
             self._copilot_status(log)
         elif sub in {"models", "ls"}:
@@ -2082,6 +2067,8 @@ class CommandImplMixin:
                 self._copilot_model_cmd(rest, log)
             else:
                 self.run_worker(self._copilot_models_cmd(log), exclusive=False)
+        elif sub == "mode":
+            self._copilot_mode_cmd(rest, log)
         elif sub in {"sessions", "threads"}:
             self.run_worker(self._copilot_sessions_cmd(log), exclusive=False)
         elif sub == "resume":
@@ -2089,13 +2076,70 @@ class CommandImplMixin:
                 log.add_info("Usage: :copilot resume <session-id>")
             else:
                 self.run_worker(self._copilot_resume_cmd(rest, log), exclusive=False)
+        elif sub in {"version", "--version", "-v"}:
+            self._copilot_version(log)
         elif sub in {"help", "?"}:
-            log.add_info("Usage: :copilot [sdk|cli|status|models|model <id>|sessions|resume <id>]")
+            self._show_copilot_help(log)
         else:
             log.add_error(f"Unknown GitHub Copilot command: {sub}")
-            log.add_info("Usage: :copilot [sdk|cli|status|models|model <id>|sessions|resume <id>]")
+            log.add_info("Use :copilot help to see the complete command catalog.")
 
-    def _copilot_runtime_or_connect(self, log):
+    @staticmethod
+    def _show_copilot_help(log) -> None:
+        text = Text()
+        text.append("\n  GitHub Copilot commands\n\n", style=f"bold {THEME['cyan']}")
+        commands = (
+            (":copilot connect", "Connect using the SDK, or CLI over ACP as fallback"),
+            (":copilot login", "Authenticate with GitHub's official device flow"),
+            (":copilot status", "Show installed routes and active connection"),
+            (":copilot models", "Open the live account-aware model picker"),
+            (":copilot model <id>", "Select a model for future turns"),
+            (":copilot mode [name]", "Pick the CLI session mode (agent/plan/autopilot)"),
+            (":copilot sessions", "List persisted SDK sessions"),
+            (":copilot resume <id>", "Resume an SDK session"),
+            (":copilot sdk", "Force the official Python SDK route"),
+            (":copilot cli", "Force the official CLI ACP route"),
+            (":copilot version", "Show the installed CLI version"),
+        )
+        for command, description in commands:
+            text.append(f"  {command:<31}", style=THEME["cyan"])
+            text.append(f"{description}\n", style=THEME["muted"])
+        text.append(
+            "\n  Copilot Free advertises no selectable models over the CLI route, "
+            "so Copilot picks the model itself and :copilot model is rejected. "
+            "Paid and organization plans advertise a catalog. Session modes work "
+            "on every plan.\n",
+            style=THEME["muted"],
+        )
+        log.write(text)
+
+    @staticmethod
+    def _copilot_version(log) -> None:
+        binary = shutil.which("copilot")
+        if not binary:
+            log.add_error("GitHub Copilot CLI was not found on PATH.")
+            return
+        try:
+            completed = subprocess.run(
+                [binary, "--version"],
+                text=True,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                check=False,
+                timeout=10,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            log.add_error(f"Could not read the GitHub Copilot CLI version: {exc}")
+            return
+        output = "\n".join(
+            part.strip() for part in (completed.stdout, completed.stderr) if part and part.strip()
+        )
+        if completed.returncode == 0:
+            log.add_info(output or "GitHub Copilot CLI is installed.")
+        else:
+            log.add_error(output or f"GitHub Copilot CLI exited with {completed.returncode}.")
+
+    def _active_copilot_sdk_runtime(self):
         pure = getattr(self, "_pure_mode", None)
         runtime = getattr(pure, "_runtime", None) if pure is not None else None
         if (
@@ -2103,6 +2147,20 @@ class CommandImplMixin:
             and getattr(pure, "runtime_name", "") == "copilot-sdk"
             and getattr(getattr(pure, "session", None), "connected", False)
         ):
+            return runtime
+        return None
+
+    def _copilot_prefers_sdk(self) -> bool:
+        """Match :connect copilot's deterministic SDK-first route selection."""
+        import importlib.util
+
+        return self._active_copilot_sdk_runtime() is not None or (
+            importlib.util.find_spec("copilot") is not None
+        )
+
+    def _copilot_runtime_or_connect(self, log):
+        runtime = self._active_copilot_sdk_runtime()
+        if runtime is not None:
             return runtime
         self._runtime_cmd("copilot-sdk", log)
         pure = getattr(self, "_pure_mode", None)
@@ -2132,24 +2190,51 @@ class CommandImplMixin:
         if os.environ.get("COPILOT_GITHUB_TOKEN"):
             text.append("COPILOT_GITHUB_TOKEN set\n", style=THEME["success"])
         else:
-            text.append("delegated to the Copilot login store\n", style=THEME["text"])
-        # GH_TOKEN/GITHUB_TOKEN are ignored on purpose: they are usually plain
-        # git PATs with no Copilot entitlement, and handing one to the SDK makes
-        # it skip the working `copilot login` and stall.
+            text.append(
+                "Copilot login store / GitHub CLI fallback (checked on connect)\n",
+                style=THEME["text"],
+            )
+        # GH_TOKEN/GITHUB_TOKEN are ignored on the SDK route: they are commonly
+        # unrelated git/CI tokens and can override a working `copilot login`.
+        # The explicit CLI/ACP route retains GitHub's documented precedence.
         ignored = [name for name in ("GH_TOKEN", "GITHUB_TOKEN") if os.environ.get(name)]
         if ignored:
             text.append("               ", style=THEME["muted"])
             text.append(
-                f"{' and '.join(ignored)} ignored (not Copilot credentials)\n",
+                f"{' and '.join(ignored)} ignored by SDK (CLI route may use them)\n",
                 style=THEME["muted"],
             )
         pure = getattr(self, "_pure_mode", None)
         runtime = getattr(pure, "_runtime", None) if pure is not None else None
         connected = runtime is not None and getattr(pure, "runtime_name", "") == "copilot-sdk"
+        acp_client = getattr(self, "_acp_client", None)
+        acp_key = getattr(self, "_acp_client_key", None)
+        cli_connected = bool(
+            acp_client is not None
+            and getattr(acp_client, "is_running", lambda: False)()
+            and isinstance(acp_key, tuple)
+            and len(acp_key) > 1
+            and "copilot" in str(acp_key[1])
+        )
+        text.append("  Default      ", style=THEME["muted"])
+        if sdk_ok:
+            text.append("SDK", style=THEME["success"])
+            if cli_ok:
+                text.append(" (installed CLI reused when possible)", style=THEME["muted"])
+            text.append("\n")
+        elif cli_ok:
+            text.append("CLI over ACP\n", style=THEME["success"])
+        else:
+            text.append("needs setup\n", style=THEME["warning"])
         text.append("  SDK active   ", style=THEME["muted"])
         text.append(
             "yes\n" if connected else "no\n",
             style=THEME["success" if connected else "muted"],
+        )
+        text.append("  CLI active   ", style=THEME["muted"])
+        text.append(
+            "yes\n" if cli_connected else "no\n",
+            style=THEME["success" if cli_connected else "muted"],
         )
         if connected:
             text.append("  Model        ", style=THEME["muted"])
@@ -2166,7 +2251,8 @@ class CommandImplMixin:
             text.append("  CLI setup    ", style=THEME["muted"])
             text.append("npm install -g @github/copilot\n", style=THEME["cyan"])
         text.append("  Authenticate ", style=THEME["muted"])
-        text.append("copilot login\n", style=THEME["cyan"])
+        text.append(":copilot login", style=THEME["cyan"])
+        text.append("  (or run copilot login yourself)\n", style=THEME["muted"])
         text.append("  Routes       ", style=THEME["muted"])
         text.append(":copilot sdk", style=THEME["cyan"])
         text.append("  •  ", style=THEME["dim"])
@@ -2175,6 +2261,12 @@ class CommandImplMixin:
 
     def _copilot_model_cmd(self, model: str, log) -> None:
         """Set the GitHub Copilot model, from the picker or an explicit id."""
+        if not self._copilot_prefers_sdk() and shutil.which("copilot"):
+            self.run_worker(
+                self._copilot_set_acp_model_cmd(model, log),
+                exclusive=False,
+            )
+            return
         try:
             runtime = self._copilot_runtime_or_connect(log)
             runtime.set_model(model)
@@ -2187,15 +2279,40 @@ class CommandImplMixin:
 
     async def _copilot_models_cmd(self, log) -> None:
         try:
-            runtime = self._copilot_runtime_or_connect(log)
-            models = await runtime.models()
+            if self._copilot_prefers_sdk():
+                runtime = self._copilot_runtime_or_connect(log)
+                models = await runtime.models()
+                active = getattr(runtime, "active_model", "")
+            elif shutil.which("copilot"):
+                models, active = await self._copilot_acp_models()
+            else:
+                raise RuntimeError(
+                    "Neither the Copilot SDK nor Copilot CLI is installed. "
+                    "Run :copilot connect for setup options."
+                )
         except Exception as exc:  # noqa: BLE001
             log.add_error(f"Could not list GitHub Copilot models: {exc}")
             return
-        active = getattr(runtime, "active_model", "")
         entries = [
-            (str(item.get("id") or ""), str(item.get("name") or item.get("id") or ""))
+            (
+                str(
+                    item.get("id")
+                    or item.get("modelId")
+                    or item.get("modelID")
+                    or item.get("value")
+                    or ""
+                ),
+                str(
+                    item.get("name")
+                    or item.get("displayName")
+                    or item.get("id")
+                    or item.get("modelId")
+                    or item.get("value")
+                    or ""
+                ),
+            )
             for item in models or []
+            if isinstance(item, dict)
         ]
         if self._show_vendor_model_picker(
             log,
@@ -2209,10 +2326,259 @@ class CommandImplMixin:
 
         text = Text()
         text.append("\n  GitHub Copilot models\n\n", style=f"bold {THEME['text']}")
-        text.append("  No models were returned for this Copilot account.\n", style=THEME["muted"])
+        text.append(
+            "  This Copilot account advertises no selectable models, so Copilot\n"
+            "  chooses the model for each turn. Copilot Free is limited this way;\n"
+            "  paid and organization plans advertise a catalog here.\n\n",
+            style=THEME["muted"],
+        )
+        text.append("  Session controls that do work on this plan: ", style=THEME["muted"])
+        text.append(":copilot mode\n", style=THEME["cyan"])
         log.write(text)
 
+    @staticmethod
+    def _copilot_mode_label(mode_id: str) -> str:
+        """Short name for an ACP session mode URI (``...#plan`` -> ``plan``)."""
+        return str(mode_id or "").rsplit("#", 1)[-1].strip().lower()
+
+    def _copilot_mode_cmd(self, mode: str, log) -> None:
+        """List or set the Copilot ACP session mode (Agent/Plan/Autopilot)."""
+        if self._copilot_prefers_sdk():
+            log.add_error("Session modes are a Copilot CLI (ACP) feature.")
+            log.add_info("Run :copilot cli to use the CLI route, then retry.")
+            return
+        if not shutil.which("copilot"):
+            log.add_error("GitHub Copilot CLI was not found on PATH.")
+            log.add_info("Install it with: npm install -g @github/copilot")
+            return
+        self.run_worker(self._copilot_mode_worker(mode, log), exclusive=False)
+
+    async def _copilot_mode_worker(self, mode: str, log) -> None:
+        try:
+            modes, current = await self._copilot_acp_modes()
+        except Exception as exc:  # noqa: BLE001
+            log.add_error(f"Could not read GitHub Copilot session modes: {exc}")
+            return
+
+        selected = (mode or "").strip()
+        if not selected:
+            entries = [
+                (str(item.get("id") or ""), str(item.get("name") or item.get("id") or ""))
+                for item in modes
+                if isinstance(item, dict)
+            ]
+            if self._show_vendor_model_picker(
+                log,
+                title="Select GitHub Copilot Mode",
+                entries=entries,
+                on_choose=lambda chosen: self._copilot_mode_cmd(chosen, log),
+                current=current,
+                retry_hint="Run :copilot mode to choose again.",
+            ):
+                return
+            log.add_info("This Copilot session advertises no selectable modes.")
+            return
+
+        wanted = self._copilot_mode_label(selected)
+        match = next(
+            (
+                str(item.get("id"))
+                for item in modes
+                if isinstance(item, dict)
+                and wanted
+                in {
+                    self._copilot_mode_label(str(item.get("id") or "")),
+                    str(item.get("name") or "").strip().lower(),
+                }
+            ),
+            None,
+        )
+        if match is None:
+            names = ", ".join(
+                self._copilot_mode_label(str(item.get("id") or ""))
+                for item in modes
+                if isinstance(item, dict)
+            )
+            log.add_error(f"Unknown GitHub Copilot mode: {selected}")
+            if names:
+                log.add_info(f"Available modes: {names}")
+            return
+
+        try:
+
+            async def operation() -> bool:
+                client = await self._copilot_acp_client_on_loop()
+                return bool(await client.set_mode(match))
+
+            if not await self._run_copilot_acp_operation(operation()):
+                raise RuntimeError("the Copilot ACP server rejected the mode change")
+        except Exception as exc:  # noqa: BLE001
+            log.add_error(f"Could not set the GitHub Copilot mode: {exc}")
+            return
+        log.add_success(f"GitHub Copilot mode set to {self._copilot_mode_label(match)}")
+
+    async def _copilot_acp_modes(self) -> tuple[list[dict], str]:
+        async def operation() -> tuple[list[dict], str]:
+            client = await self._copilot_acp_client_on_loop()
+            modes = client.get_session_modes()
+            current = await client.get_current_mode()
+            return list(modes.get("availableModes") or []), str(current or "")
+
+        return await self._run_copilot_acp_operation(operation())
+
+    async def _copilot_acp_models(self) -> tuple[list[dict], str]:
+        async def operation() -> tuple[list[dict], str]:
+            client = await self._copilot_acp_client_on_loop()
+            models = await client.get_available_models()
+            current = await client.get_current_model()
+            return list(models or []), str(current or "")
+
+        return await self._run_copilot_acp_operation(operation())
+
+    async def _copilot_set_acp_model_cmd(self, model: str, log) -> None:
+        selected = (model or "").strip()
+        if not selected:
+            log.add_info("Usage: :copilot model <id>")
+            return
+
+        async def operation() -> bool:
+            client = await self._copilot_acp_client_on_loop()
+            models = list(await client.get_available_models() or [])
+            available_ids = {
+                str(
+                    item.get("id")
+                    or item.get("modelId")
+                    or item.get("modelID")
+                    or item.get("value")
+                    or ""
+                )
+                for item in models
+                if isinstance(item, dict)
+            }
+            available_ids.discard("")
+            if not available_ids:
+                # The Copilot CLI accepts session/set_model without validating
+                # it, so a plan with no advertised catalog would silently
+                # report success for any string. Refuse instead of lying.
+                raise ValueError(
+                    "this Copilot account advertises no selectable models, so "
+                    "Copilot chooses the model itself. Copilot Free is limited "
+                    "this way; paid and organization plans advertise a catalog."
+                )
+            if selected not in available_ids:
+                raise ValueError(
+                    f"{selected!r} is not available to this Copilot account. "
+                    "Run :copilot models to choose from the live catalog."
+                )
+            model_option = next(
+                (
+                    item
+                    for item in client.get_session_config_options()
+                    if isinstance(item, dict)
+                    and (item.get("id") == "model" or item.get("category") == "model")
+                ),
+                None,
+            )
+            if model_option is not None:
+                option_id = str(model_option.get("id") or "model")
+                return bool(await client.set_config_option(option_id, selected))
+            return bool(await client.set_model(selected))
+
+        try:
+            switched = await self._run_copilot_acp_operation(operation())
+            if not switched:
+                raise RuntimeError("the Copilot ACP server rejected the model change")
+            self.current_model = selected
+            self.current_provider = "github"
+            command = "copilot --acp --stdio"
+            self._acp_client_key = (str(Path.cwd()), command, selected)
+            self._set_status_model(selected)
+            log.add_success(f"GitHub Copilot model set to {selected}")
+        except Exception as exc:  # noqa: BLE001
+            log.add_error(f"Could not set GitHub Copilot model: {exc}")
+
+    async def _run_copilot_acp_operation(self, operation):
+        """Run a Copilot ACP coroutine on the persistent ACP event loop."""
+        from superqode.app.async_utils import _AsyncLoopThread
+
+        if getattr(self, "_acp_loop_runner", None) is None:
+            self._acp_loop_runner = _AsyncLoopThread()
+        timeout = float(os.getenv("SUPERQODE_ACP_STARTUP_TIMEOUT", "15")) + 15.0
+        return await asyncio.to_thread(
+            self._acp_loop_runner.run,
+            operation,
+            timeout,
+        )
+
+    async def _copilot_acp_client_on_loop(self):
+        """Return a warm authenticated Copilot ACP client on its owning loop."""
+        from superqode.acp.client import ACPClient
+
+        binary = shutil.which("copilot")
+        if not binary:
+            raise RuntimeError("GitHub Copilot CLI was not found on PATH")
+        command = "copilot --acp --stdio"
+        model = str(getattr(self, "current_model", "") or "").strip()
+        key = (str(Path.cwd()), command, model)
+        client = getattr(self, "_acp_client", None)
+        if (
+            client is not None
+            and getattr(self, "_acp_client_key", None) == key
+            and client.is_running()
+        ):
+            return client
+        if client is not None:
+            try:
+                await client.stop()
+            except Exception:
+                pass
+
+        startup_messages: list[str] = []
+
+        async def on_thinking(message: str) -> None:
+            if message:
+                startup_messages.append(str(message))
+
+        client = ACPClient(
+            project_root=Path.cwd(),
+            command=command,
+            model=model or None,
+            startup_timeout=float(os.getenv("SUPERQODE_ACP_STARTUP_TIMEOUT", "15")),
+            request_timeout=float(os.getenv("SUPERQODE_ACP_REQUEST_TIMEOUT", "12")),
+            prompt_timeout=float(os.getenv("SUPERQODE_ACP_PROMPT_TIMEOUT", "180")),
+        )
+        client.on_thinking = on_thinking
+        self._acp_client = client
+        self._acp_client_key = key
+        if await client.start():
+            return client
+
+        self._acp_client = None
+        self._acp_client_key = None
+        detail = startup_messages[-1] if startup_messages else "the ACP handshake failed"
+        if "authentication required" in detail.lower():
+            raise RuntimeError(
+                "authentication is required. Run :copilot login, complete the "
+                "GitHub device flow, then retry."
+            )
+        raise RuntimeError(detail)
+
+    def _copilot_requires_sdk_route(self, feature: str, log) -> bool:
+        """Report SDK-only features clearly instead of raising runtime internals."""
+        if self._copilot_prefers_sdk():
+            return False
+        log.add_error(
+            f"{feature} is provided by the GitHub Copilot SDK, and only the "
+            "Copilot CLI route is available here."
+        )
+        from superqode.providers.env_introspect import install_command
+
+        log.add_info(f"Install the SDK with: {install_command('copilot-sdk')}")
+        return True
+
     async def _copilot_sessions_cmd(self, log) -> None:
+        if self._copilot_requires_sdk_route("Session listing", log):
+            return
         try:
             runtime = self._copilot_runtime_or_connect(log)
             sessions = await runtime.list_threads()
@@ -2239,6 +2605,8 @@ class CommandImplMixin:
         log.write(text)
 
     async def _copilot_resume_cmd(self, session_id: str, log) -> None:
+        if self._copilot_requires_sdk_route("Session resume", log):
+            return
         try:
             runtime = self._copilot_runtime_or_connect(log)
             await runtime.resume_thread(session_id)
@@ -3513,7 +3881,7 @@ class CommandImplMixin:
         profile = item.target
         pure = getattr(self, "_pure_mode", None)
         session = getattr(pure, "session", None)
-        if profile.connector == "runtime":
+        if profile.connector in {"runtime", "copilot"}:
             return bool(
                 getattr(session, "connected", False)
                 and str(getattr(pure, "runtime_name", "") or "") == str(profile.runtime or "")
@@ -5753,7 +6121,7 @@ class CommandImplMixin:
         subargs = parts[1] if len(parts) > 1 else ""
 
         if sub in ("list", ""):
-            self._show_agents(log)
+            self._show_agents(log, include_all=False, catalog_tier="featured")
         elif sub == "connect":
             # Deprecated: Use :connect acp instead
             log.add_warning(":acp connect is deprecated. Use :connect acp instead.")
@@ -5784,7 +6152,7 @@ class CommandImplMixin:
         subargs = parts[1] if len(parts) > 1 else ""
 
         if sub in ("list", ""):
-            self._show_agents(log)
+            self._show_agents(log, include_all=False, catalog_tier="featured")
         elif sub in ("doctor", "check"):
             self.run_worker(self._acp_doctor_cmd(subargs, log))
         elif sub == "install":

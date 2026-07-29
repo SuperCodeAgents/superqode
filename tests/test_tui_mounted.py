@@ -17,6 +17,14 @@ from superqode.app_main import SuperQodeApp, SelectionAwareInput
 from superqode.app.widgets import ColorfulStatusBar, ConversationLog
 
 
+@pytest.fixture(autouse=True)
+def _isolate_mounted_app_startup(monkeypatch):
+    """Keep interaction tests independent of process-wide startup state."""
+    monkeypatch.delenv("SUPERQODE_CONNECT", raising=False)
+    monkeypatch.setattr(SuperQodeApp, "_prewarm_litellm", lambda self: None)
+    monkeypatch.setattr(SuperQodeApp, "_start_models_dev_refresh", lambda self: None)
+
+
 async def test_status_setters_update_mounted_status_bar():
     """_set_status_runtime/_set_status_model must update the MOUNTED status bar."""
     app = SuperQodeApp()
@@ -84,8 +92,15 @@ async def test_mouse_drag_selection_copies_to_clipboard():
     app._copy_text_to_clipboard = lambda text: (copies.append(text), True)[1]
 
     async with app.run_test(size=(100, 40)) as pilot:
-        await pilot.pause()
+        # Let any persisted startup connection finish before creating the
+        # controlled transcript used by this interaction test.
+        for _ in range(5):
+            await pilot.pause()
+        await pilot.pause(0.5)
         app._welcome_active = False
+        app._prompts.clear()
+        app._reset_connect_selection_states()
+        copies.clear()
         log = app.query_one("#log", ConversationLog)
         log.clear()
         log.reset_response_stream("qwen")
@@ -106,11 +121,10 @@ async def test_mouse_drag_selection_copies_to_clipboard():
         await pilot._post_mouse_events(
             [events.MouseMove, events.MouseUp], offset=Offset(x0 + 24, sy), button=1
         )
-        for _ in range(5):
-            await pilot.pause()
+        await pilot.pause(0.5)
 
         assert copies, "mouse-drag selection did not trigger a clipboard copy"
-        assert "select" in copies[0]  # copied a chunk of the answer text
+        assert any("select" in copied for copied in copies)  # copied answer text
 
 
 async def test_status_runtime_hides_builtin():
@@ -901,6 +915,28 @@ async def test_missing_runtime_offers_a_navigable_install_prompt(monkeypatch):
         assert app._prompts.index == 0
 
 
+async def test_missing_copilot_routes_to_the_safe_dependency_picker(monkeypatch):
+    """Copilot setup stays inside the TUI without offering an npm install."""
+    import superqode.providers.connection_profiles as cp
+
+    monkeypatch.setattr(cp, "_copilot_sdk_ready", lambda: False)
+    monkeypatch.setattr(cp, "_copilot_acp_ready", lambda: False)
+
+    app = SuperQodeApp()
+    async with app.run_test(size=(100, 40)) as pilot:
+        log = app.query_one("#log", ConversationLog)
+        app._dispatch_connection_profile(cp.get_connection_profile("copilot"), log)
+        await pilot.pause()
+
+        rendered = "\n".join(line.text for line in log.lines)
+        assert app._prompts.is_active("dependency_install")
+        assert "copilot-sdk is not installed" in rendered
+        assert "superqode[copilot-sdk]" in rendered
+        assert "Install it for me" in rendered
+        assert "I will install it myself" in rendered
+        assert "@github/copilot" not in rendered
+
+
 async def test_choosing_manual_install_shows_the_command_without_installing():
     """'I will install it myself' must not run anything."""
     from superqode.runtime import RuntimeInfo
@@ -954,6 +990,10 @@ async def test_install_choice_runs_the_command_and_resumes(monkeypatch):
     async with app.run_test(size=(100, 40)) as pilot:
         log = app.query_one("#log", ConversationLog)
         monkeypatch.setattr(_subprocess, "run", fake_run)
+        monkeypatch.setattr(
+            "superqode.providers.env_introspect.extra_install_command",
+            lambda extra: f"uv pip install --python /safe/py 'superqode[{extra}]'",
+        )
         monkeypatch.setattr(app, "_runtime_cmd", lambda name, log: resumed.append(name))
         # Stand in for the extra becoming importable after a real install.
         monkeypatch.setattr(_runtime_pkg, "list_runtimes", lambda: [installed])
@@ -961,12 +1001,14 @@ async def test_install_choice_runs_the_command_and_resumes(monkeypatch):
         pending = {
             "runtime": "codex-sdk",
             "extra": "codex-sdk",
-            "command": "uv pip install --python /x/py 'superqode[codex-sdk]'",
+            # Prompt state is not trusted by the executor.
+            "command": "npm install -g something-unrelated",
         }
         await app._install_runtime_extra_then_continue(pending, log)
         await pilot.pause()
 
-        assert ["uv", "pip", "install", "--python", "/x/py", "superqode[codex-sdk]"] in ran
+        assert ["uv", "pip", "install", "--python", "/safe/py", "superqode[codex-sdk]"] in ran
+        assert not any(argv[:2] == ["npm", "install"] for argv in ran)
         # codex-sdk is self-contained, so it connects directly after installing.
         assert resumed == ["codex-sdk"]
 
@@ -1407,8 +1449,8 @@ async def test_number_keys_select_in_any_registry_prompt(monkeypatch):
         assert chosen == ["claude-sonnet-4-6"]
 
 
-async def test_connect_acp_lists_the_whole_registry_by_default():
-    """A curated default hid most of the catalogue behind an undiscoverable flag."""
+async def test_connect_acp_defaults_to_featured_and_keeps_all_discoverable():
+    """First-run stays focused while the complete registry remains explicit."""
     app = SuperQodeApp()
     async with app.run_test(size=(100, 60)) as pilot:
         log = app.query_one("#log", ConversationLog)
@@ -1417,17 +1459,16 @@ async def test_connect_acp_lists_the_whole_registry_by_default():
             await pilot.pause()
 
         assert app._awaiting_acp_agent_selection is True
-        assert app._acp_catalog_view == "all"
+        assert app._acp_catalog_view == "featured"
         default_count = len(app._acp_agent_list)
 
-        # The narrowed view must be a strict subset, proving the default is wider.
-        app._connect_acp_cmd("featured", log)
+        app._connect_acp_cmd("all", log)
         for _ in range(12):
             await pilot.pause()
 
-        assert app._acp_catalog_view == "featured"
-        assert len(app._acp_agent_list) <= default_count
-        assert default_count > len(app._acp_agent_list) or default_count > 0
+        assert app._acp_catalog_view == "all"
+        assert len(app._acp_agent_list) >= default_count
+        assert default_count > 0
 
 
 async def test_arrow_keys_keep_the_chosen_acp_view():
@@ -1559,13 +1600,9 @@ async def test_manual_install_omits_the_link_when_none_is_known():
         assert "http" not in rendered.split("official documentation")[1]
 
 
-async def test_npm_agent_offers_to_install_and_connects(monkeypatch):
-    """A named package install is offered, run, and followed by a connect."""
-    import subprocess as _subprocess
-
+async def test_npm_agent_is_manual_only(monkeypatch):
+    """Even a simple vendor npm command is never run by SuperQode."""
     agent = {"short_name": "kilo", "name": "Kilo CLI"}
-    ran = []
-    connected = []
 
     app = SuperQodeApp()
     async with app.run_test(size=(100, 40)) as pilot:
@@ -1578,24 +1615,17 @@ async def test_npm_agent_offers_to_install_and_connects(monkeypatch):
         await pilot.pause()
 
         rendered = "\n".join(line.text for line in log.lines)
-        assert "Install it for me" in rendered
+        assert "Install it for me" not in rendered
+        assert "I will install it myself" in rendered
         assert "npm install -g @kilocode/cli" in rendered
+        assert "External agent installers are manual-only" in rendered
+        assert len(list(app._prompts.active.options())) == 2
 
-        monkeypatch.setattr(
-            _subprocess,
-            "run",
-            lambda argv, **kw: ran.append(list(argv))
-            or _subprocess.CompletedProcess(argv, 0, "added 1 package", ""),
-        )
-        monkeypatch.setattr("superqode.commands.acp.check_agent_installed", lambda data: True)
-        monkeypatch.setattr(app, "_connect_agent", lambda name: connected.append(name))
-
+        # Enter chooses the manual path; it must only display guidance.
         await pilot.press("enter")
-        for _ in range(8):
-            await pilot.pause()
-
-        assert ["npm", "install", "-g", "@kilocode/cli"] in ran
-        assert connected == ["kilo"]
+        await pilot.pause()
+        rendered = "\n".join(line.text for line in log.lines)
+        assert "Install Kilo CLI yourself with" in rendered
 
 
 async def test_pipe_to_shell_agent_is_never_offered_for_install(monkeypatch):
@@ -1622,12 +1652,9 @@ async def test_pipe_to_shell_agent_is_never_offered_for_install(monkeypatch):
         assert len(list(app._prompts.active.options())) == 2
 
 
-async def test_failed_agent_install_reports_and_does_not_connect(monkeypatch):
-    """A toolchain failure is the user's to investigate, reported verbatim."""
-    import subprocess as _subprocess
-
+async def test_external_agent_install_choice_is_defensively_rejected(monkeypatch):
+    """A stale or direct install action cannot execute a vendor installer."""
     agent = {"short_name": "kilo", "name": "Kilo CLI"}
-    connected = []
 
     app = SuperQodeApp()
     async with app.run_test(size=(100, 40)) as pilot:
@@ -1635,22 +1662,11 @@ async def test_failed_agent_install_reports_and_does_not_connect(monkeypatch):
         from superqode.agents.install_commands import classify_install_command
 
         install = classify_install_command("npm install -g @kilocode/cli")
-        monkeypatch.setattr(
-            _subprocess,
-            "run",
-            lambda argv, **kw: _subprocess.CompletedProcess(
-                argv, 1, "", "npm ERR! engine Unsupported engine"
-            ),
-        )
-        monkeypatch.setattr(app, "_connect_agent", lambda name: connected.append(name))
-
-        await app._install_agent_then_connect(agent, install, log)
+        app._apply_agent_install_choice("install", agent_data=agent, install=install, log=log)
         await pilot.pause()
 
         rendered = "\n".join(line.text for line in log.lines)
-        assert "Unsupported engine" in rendered
-        assert "exited with 1" in rendered
-        assert connected == [], "a failed install must not connect"
+        assert "does not automatically install external agents" in rendered
 
 
 async def test_connect_byok_parses_model_ids_containing_slashes():

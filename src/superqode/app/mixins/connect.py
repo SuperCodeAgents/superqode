@@ -222,9 +222,21 @@ class ConnectMixin:
                 "Both drive the Copilot CLI over ACP; `:connect copilot` uses the SDK."
             )
         if conn == "acp" and not profile.available and log is not None:
+            # Grok exposes a device-auth flow that SuperQode can safely relay
+            # while the vendor CLI remains the credential owner.
+            if getattr(profile, "id", "") == "grok":
+                self._begin_subscription_login(
+                    "grok",
+                    log,
+                    on_success=lambda: self._connect_acp_cmd("grok", log),
+                    reason="A local Grok subscription login is required.",
+                )
+                return
             log.add_info(f"{profile.label} needs setup: {profile.unavailable_hint}")
             return
-        if conn == "runtime":
+        if conn == "copilot":
+            self._connect_copilot_subscription(profile, log)
+        elif conn == "runtime":
             # Self-contained runtime (e.g. Codex) — auto-connects in _runtime_cmd.
             self._runtime_cmd(profile.runtime or "", log)
         elif conn == "acp":
@@ -261,6 +273,36 @@ class ConnectMixin:
                 )
         else:
             log.add_error(f"Unknown connection type: {getattr(profile, 'id', profile)}")
+
+    def _connect_copilot_subscription(self, profile, log: ConversationLog) -> None:
+        """Select the best installed official route for one Copilot entry.
+
+        The SDK retains SuperQode's harness controls. When it is not installed,
+        an existing Copilot CLI subscription remains immediately usable over
+        GitHub's ACP server instead of being blocked behind an SDK setup prompt.
+        """
+        from superqode.providers.connection_profiles import (
+            _copilot_acp_ready,
+            _copilot_sdk_ready,
+        )
+
+        if _copilot_sdk_ready():
+            self._runtime_cmd(profile.runtime or "copilot-sdk", log)
+            return
+        if _copilot_acp_ready():
+            if log is not None:
+                log.add_info(
+                    "Using the installed GitHub Copilot CLI over ACP. "
+                    "Use `:copilot models` for the signed-in account's live model "
+                    "catalog. If this CLI is signed out, run `:copilot login` "
+                    "without leaving the TUI."
+                )
+            self._connect_acp_cmd(profile.acp_agent or "copilot", log)
+            return
+        if self._show_dependency_install_picker(profile.runtime or "copilot-sdk", log):
+            return
+        if log is not None:
+            log.add_info(f"{profile.label} needs setup: {profile.unavailable_hint}")
 
     def _select_byok_model_by_number(self, num: int):
         """Select a BYOK model by number."""
@@ -392,7 +434,7 @@ class ConnectMixin:
             (
                 p.label
                 for p in list_connection_profiles()
-                if p.connector == "runtime" and p.runtime == runtime_name
+                if p.connector in {"runtime", "copilot"} and p.runtime == runtime_name
             ),
             runtime_name,
         )
@@ -490,6 +532,7 @@ class ConnectMixin:
                 dedupe_key=f"runtime:{runtime_name}",
             )
         self._sync_self_contained_status(runtime_name)
+        self._mark_onboarding_complete()
         if runtime_name == "codex-sdk":
             self.run_worker(self._resolve_codex_active_model(log), exclusive=False)
 
@@ -1124,6 +1167,7 @@ class ConnectMixin:
             persist=False,
             dedupe_key=f"connection:{mode}:{provider}:{model}",
         )
+        self._mark_onboarding_complete()
 
     def _connect_byok_cmd(self, args: str, log: ConversationLog):
         """Handle :connect byok command - Interactive provider/model picker."""
@@ -1366,7 +1410,11 @@ class ConnectMixin:
                 current_group = profile.group
             num = i + 1
             available = profile.available
-            status = "ready" if available else "needs setup"
+            status = (
+                "available"
+                if menu == CONNECT_MENU_ROOT and available
+                else ("installed" if available else "needs setup")
+            )
             status_color = THEME["success"] if available else THEME["warning"]
             is_highlighted = i == highlighted_idx
             if is_highlighted:
@@ -1888,9 +1936,10 @@ class ConnectMixin:
     def _connect_acp_cmd(self, args: str, log: ConversationLog):
         """Handle :connect acp command - Connect to ACP agent."""
         if not args:
-            # Default to the complete registry: a curated default hid most of
-            # the catalogue behind a flag people had no reason to discover.
-            self._show_agents(log)
+            # Keep first-run selection focused. Installed agents are always
+            # included; the full live registry remains one explicit command
+            # away via `:connect acp all`.
+            self._show_agents(log, include_all=False, catalog_tier="featured")
             return
 
         command = args.strip().lower()
@@ -2071,6 +2120,7 @@ class ConnectMixin:
                 )
                 if callable(announce_harness_switch):
                     announce_harness_switch(log, agent)
+                self._mark_onboarding_complete()
             else:
                 self._pending_harness_acp_transition = None
                 self._announce_transition(

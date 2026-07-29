@@ -11,6 +11,7 @@ Features:
 - Run linters directly if LSP unavailable
 """
 
+import ast
 import asyncio
 import shutil
 import subprocess
@@ -19,6 +20,48 @@ from typing import Any, Dict, List, Optional
 from enum import Enum
 
 from .base import Tool, ToolResult, ToolContext
+
+
+def quick_diagnostics(path: Path) -> List[Dict[str, Any]]:
+    """Return fast, non-blocking syntax diagnostics for one source file.
+
+    The TUI command must remain responsive and cannot start a language server
+    or a project-wide linter once per file. Python's parser gives us a useful
+    deterministic check; other languages are handled by the asynchronous
+    ``DiagnosticsTool`` and the repository linter commands.
+    """
+    source_path = Path(path)
+    if source_path.suffix.lower() not in {".py", ".pyi"}:
+        return []
+
+    try:
+        source = source_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        return [
+            {
+                "file": str(source_path),
+                "line": 1,
+                "column": 1,
+                "severity": "warning",
+                "message": f"Could not read file: {exc}",
+                "source": "superqode",
+            }
+        ]
+
+    try:
+        ast.parse(source, filename=str(source_path))
+    except SyntaxError as exc:
+        return [
+            {
+                "file": str(source_path),
+                "line": int(exc.lineno or 1),
+                "column": int(exc.offset or 1),
+                "severity": "error",
+                "message": exc.msg or "invalid syntax",
+                "source": "python",
+            }
+        ]
+    return []
 
 
 class Severity(Enum):

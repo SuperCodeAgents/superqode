@@ -896,6 +896,11 @@ class HelpersMixin(
                     log.add_info,
                     "You can also run `grok login` in a terminal, then :connect grok.",
                 )
+            elif spec.id == "copilot":
+                self._call_ui(
+                    log.add_info,
+                    "You can also run `copilot login` in a terminal, then :connect copilot.",
+                )
             return
 
         if result.opened_browser:

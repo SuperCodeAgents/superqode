@@ -75,6 +75,9 @@ def test_tiny_runner_uses_uv_overlay_python_entrypoint():
     assert "\n  python\n  -m superqode.main\n" in script
     assert "--max-evals 24" in script
     assert "--max-token-cost 2.00" in script
+    assert '[[ -n "${ANTHROPIC_API_KEY:-}" ]]' in script
+    assert "claude auth status" not in script
+    assert "-u ANTHROPIC_API_KEY" not in script
 
 
 def test_harness_omni_evaluator_rejects_permission_widening_before_rollout(tmp_path, monkeypatch):

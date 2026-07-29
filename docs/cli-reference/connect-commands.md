@@ -28,23 +28,30 @@ superqode -C PROFILE [COMMAND]
 | Profile | Description |
 |---------|-------------|
 | `codex` | Self-contained. Uses Codex SDK. Auto-sets runtime to `codex-sdk`. Requires `openai_codex` package and `~/.codex/auth.json`. |
-| `copilot` | Self-contained. Uses the official GitHub Copilot SDK. Auto-sets runtime to `copilot-sdk`. Requires the `copilot-sdk` extra and Copilot authentication. |
-| `claude` | Self-contained. Uses Claude Agent SDK. Auto-sets runtime to `claude-agent-sdk`. Requires `claude_agent_sdk` package and `ANTHROPIC_API_KEY`. |
+| `copilot` | One Copilot-plan entry. Prefers the official SDK when installed and otherwise uses an installed Copilot CLI over ACP. |
+| `cursor` | Cursor subscription through the signed-in Cursor Agent CLI and its native ACP mode. |
+| `amp` | Amp subscription through the signed-in Amp CLI and ACP adapter. |
 | `antigravity` | Self-contained `agy` runtime using Google Sign-In and the OS keyring. |
 | `grok` | Grok Build (xAI's own agent) on your Grok subscription over ACP (`grok agent stdio`). Requires the `grok` binary and `grok login`. To run SuperQode's harness on the same subscription instead, use `:grok api`. |
+| `droid` | Factory Droid subscription through the authenticated Droid CLI ACP mode. |
+| `kiro` | Kiro or Amazon Q Developer subscription through the signed-in Kiro CLI ACP mode. |
 | `byok` | Bring Your Own Key. Connect to a cloud provider with your own API key. |
 | `local` | Connect to a local or self-hosted provider (Ollama, MLX, LM Studio, etc.). |
 | `acp` | Connect to an ACP (Agent Client Protocol) coding agent. |
 
 ### Self-Contained Profiles
 
-`codex`, `copilot`, `claude`, and `antigravity` are self-contained profiles. They each bundle their own
-runtime, so the `runtime` setting is automatically selected:
+`codex` and `antigravity` are self-contained profiles. Copilot dynamically
+selects an installed official integration:
 
 - `--connect codex` sets runtime to `codex-sdk`
-- `--connect copilot` sets runtime to `copilot-sdk`
-- `--connect claude` sets runtime to `claude-agent-sdk`
+- `--connect copilot` prefers `copilot-sdk`, otherwise starts `copilot --acp --stdio`
 - `--connect antigravity` sets runtime to `antigravity-cli`
+
+Claude Pro and Max are not connection profiles because Anthropic documents
+those subscriptions for its first-party clients and bills API usage separately.
+Use `--runtime claude-agent-sdk` or `--connect byok anthropic <model>` with an
+Anthropic API key.
 
 ### Examples
 
@@ -59,10 +66,10 @@ superqode --connect codex -p "explain this project"
 superqode --connect copilot -p "review this project"
 
 # Advanced compatibility path through the Copilot CLI ACP server
-superqode --connect acp copilot
+superqode connect acp copilot
 
-# Run a headless task via Claude Agent SDK
-superqode --connect claude -p "refactor this module"
+# Run a headless task via the Claude Agent SDK API-key route
+superqode --runtime claude-agent-sdk -p "refactor this module"
 
 # Connect to a local model
 superqode --connect local ollama qwen3:8b
@@ -94,32 +101,31 @@ Uses the Codex SDK as the runtime backend.
 | Auth | `~/.codex/auth.json` (managed by the Codex CLI) |
 | Runtime | Auto-set to `codex-sdk` |
 
-### claude
-
-Uses the Claude Agent SDK as the runtime backend.
-
-| Requirement | Details |
-|-------------|---------|
-| Python package | `claude_agent_sdk` |
-| Auth | `ANTHROPIC_API_KEY` environment variable |
-| Runtime | Auto-set to `claude-agent-sdk` |
-
 ### copilot
 
-Uses the official GitHub Copilot SDK runtime. Install
-`superqode[copilot-sdk]`, then authenticate with `copilot login` or
-`COPILOT_GITHUB_TOKEN`.
+Uses a signed-in GitHub Copilot plan. Install `superqode[copilot-sdk]` for
+SuperQode-native harness controls, or install `@github/copilot` for the ACP
+route. If both are present, the SDK is preferred and reuses the installed CLI.
+Authenticate with `copilot login` or `COPILOT_GITHUB_TOKEN`.
+From inside the TUI, `:copilot login` starts the official device flow after a
+confirmation and keeps the URL/code visible in the current terminal.
 
 ```text
 :connect copilot
+:copilot login
 :copilot models
 :copilot model <id>
+:copilot mode [agent|plan|autopilot]
 :copilot sessions
 ```
 
-Use `:connect acp copilot` or `:copilot acp` for the advanced Copilot CLI ACP
-compatibility path. The old `:connect copilot-acp` shortcut remains accepted
-for compatibility but is hidden from normal discovery. See
+`:copilot mode` is a CLI/ACP session control and works on every Copilot plan.
+`:copilot models` and `:copilot model` depend on what the signed-in account
+advertises; plans that advertise no catalog let Copilot choose the model.
+
+Use `:copilot sdk` or `:copilot cli` to override automatic selection.
+`:connect acp copilot` and the old `:connect copilot-acp` shortcut remain
+accepted for compatibility but are hidden from normal discovery. See
 [GitHub Copilot](../providers/github-copilot.md) for the ownership and
 capability differences.
 
@@ -136,8 +142,7 @@ matrix and the supported CLI, SDK, and SuperQode harness routes.
 ### grok
 
 Runs **Grok Build**, xAI's own coding agent, on your Grok subscription over ACP
-(`grok agent stdio`). This matches the Codex and Claude subscription profiles:
-the vendor's agent owns the loop.
+(`grok agent stdio`). The vendor's agent owns the loop.
 
 | Requirement | Details |
 |-------------|---------|

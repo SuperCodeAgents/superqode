@@ -521,6 +521,35 @@ session = SessionState()
 import click
 
 
+_STDIN_WAIT_ENV = "SUPERQODE_STDIN_WAIT"
+_STDIN_DEFAULT_WAIT = 0.2
+
+
+def _stdin_has_input() -> bool:
+    """Whether piped stdin actually has data, without blocking indefinitely.
+
+    ``sys.stdin.read()`` blocks until EOF. A non-TTY stdin is not proof that
+    EOF will ever arrive: CI runners, process supervisors, editors, and agent
+    harnesses routinely hand a child an open pipe nobody ever closes, which
+    froze headless runs forever. Wait briefly for readability instead, so real
+    pipes (``cat f | superqode -p ...``) still work while an idle inherited
+    stdin no longer hangs the process.
+    """
+    import select
+
+    try:
+        wait = float(os.environ.get(_STDIN_WAIT_ENV, "") or _STDIN_DEFAULT_WAIT)
+    except ValueError:
+        wait = _STDIN_DEFAULT_WAIT
+    try:
+        readable, _, _ = select.select([sys.stdin], [], [], max(0.0, wait))
+        return bool(readable)
+    except (OSError, ValueError, TypeError):
+        # select() cannot poll this handle (notably Windows pipes). Preserve the
+        # historical read rather than silently dropping piped input.
+        return True
+
+
 class SuperQodeGroup(click.Group):
     """Click group that allows headless prompts where subcommands normally go."""
 
@@ -685,6 +714,12 @@ def cli_main(
     elif quiet_logs and not verbose_logs:
         _os.environ["SUPERQODE_LOG_VERBOSITY"] = "minimal"
 
+    # A prompt/output flag means this invocation will not enter the TUI. This is
+    # needed while resolving dynamic connection profiles below.
+    headless_intent = bool(
+        print_mode or output_mode == "json" or _headless_messages or ctx.args or resume or fork_from
+    )
+
     # Runtime precedence: CLI flag > superqode.yaml > env > default. We resolve
     # the YAML value here (best-effort: ignore failures so a broken config
     # doesn't crash startup) and set the env var so downstream code that uses
@@ -714,6 +749,26 @@ def cli_main(
             # explicit --runtime still wins.
             if _profile.connector == "runtime" and _profile.runtime and not runtime_name:
                 effective_runtime = _profile.runtime
+            # ACP sessions are interactive today; a one-shot Copilot command
+            # therefore uses the SDK path explicitly. The TUI leaves this unset
+            # so its single Copilot entry can fall back to CLI/ACP.
+            elif (
+                _profile.connector == "copilot"
+                and _profile.runtime
+                and not runtime_name
+                and headless_intent
+            ):
+                effective_runtime = _profile.runtime
+            # SUPERQODE_CONNECT below is read only by the TUI. An ACP profile
+            # therefore has no effect on a one-shot run, which would silently
+            # fall back to the default provider/model and answer from an
+            # entirely different vendor than the one that was asked for.
+            elif _profile.connector == "acp" and headless_intent and not runtime_name:
+                raise click.UsageError(
+                    f"--connect {_profile.id} starts an interactive ACP session and "
+                    "cannot serve a one-shot run. Use the TUI for this agent, or pass "
+                    "an explicit --runtime/--provider for headless use."
+                )
             # Hint the TUI to auto-run the connection on startup.
             _os.environ["SUPERQODE_CONNECT"] = _profile.id
     if effective_runtime:
@@ -762,7 +817,7 @@ def cli_main(
             )
 
             prompt_parts = [" ".join(messages).strip()]
-            if not sys.stdin.isatty():
+            if not sys.stdin.isatty() and _stdin_has_input():
                 stdin_text = sys.stdin.read().strip()
                 if stdin_text:
                     prompt_parts.insert(0, stdin_text)
@@ -836,6 +891,11 @@ def cli_main(
                         click.echo(json.dumps(response.structured_output, indent=2))
                 else:
                     click.echo(response.content)
+                # A failed run returns an AgentResponse carrying the reason
+                # rather than raising, so the error has to be printed here.
+                # Without this the caller saw an empty line and a bare exit 1.
+                if response.error:
+                    click.echo(f"Error: {response.error}", err=True)
                 rendered_changes = render_change_summary(change_summary, changes)
                 if rendered_changes:
                     click.echo()
