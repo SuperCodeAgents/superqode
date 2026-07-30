@@ -56,8 +56,8 @@ except ImportError:
         text_primary = "#fafafa"
         text_secondary = "#e4e4e7"
         text_muted = "#a1a1aa"
-        text_dim = "#71717a"
-        text_ghost = "#52525b"
+        text_dim = "#a1a1aa"
+        text_ghost = "#71717a"
         bg_elevated = "#0a0a0a"
         border_default = "#27272a"
 
@@ -121,7 +121,7 @@ class ProviderConnectWidget(Container):
 
     ProviderConnectWidget .hint {
         height: 1;
-        color: #52525b;
+        color: #71717a;
         margin-top: 1;
     }
     """

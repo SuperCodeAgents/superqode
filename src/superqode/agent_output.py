@@ -62,8 +62,8 @@ COLORS = {
     "bg_response": "#0f0a1a",
     # Text
     "text": "#e4e4e7",
-    "text_muted": "#71717a",
-    "text_dim": "#52525b",
+    "text_muted": "#a1a1aa",
+    "text_dim": "#71717a",
     # Borders
     "border": "#2a2a2a",
     "border_active": "#a855f7",

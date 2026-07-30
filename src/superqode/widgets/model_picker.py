@@ -28,8 +28,8 @@ except ImportError:
         primary = "#7c3aed"
         success = "#10b981"
         text_secondary = "#e4e4e7"
-        text_dim = "#71717a"
-        text_ghost = "#52525b"
+        text_dim = "#a1a1aa"
+        text_ghost = "#71717a"
 
 
 @dataclass
@@ -100,7 +100,7 @@ class ModelPickerWidget(Container):
 
     ModelPickerWidget .hint {
         height: 1;
-        color: #52525b;
+        color: #71717a;
         margin-top: 1;
     }
     """

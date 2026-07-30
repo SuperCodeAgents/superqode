@@ -84,7 +84,7 @@ class StatusBarState:
 
 # Status styling
 STATUS_STYLES = {
-    AgentStatus.IDLE: {"icon": "○", "color": "#52525b", "animate": False},
+    AgentStatus.IDLE: {"icon": "○", "color": "#71717a", "animate": False},
     AgentStatus.CONNECTING: {"icon": "◐", "color": "#fbbf24", "animate": True},
     AgentStatus.THINKING: {"icon": "💭", "color": "#ec4899", "animate": True},
     AgentStatus.STREAMING: {"icon": "●", "color": "#22c55e", "animate": True},
@@ -201,7 +201,7 @@ class EnhancedStatusBar(Static):
         if state.connected:
             result.append("● ", style="bold #22c55e")
         else:
-            result.append("○ ", style="#52525b")
+            result.append("○ ", style="#71717a")
 
         # Connection type badge
         if state.connection_type:
@@ -221,7 +221,7 @@ class EnhancedStatusBar(Static):
                 model_display = model_display[:17] + "..."
             result.append(model_display, style="#a1a1aa")
         else:
-            result.append("No agent", style="#52525b")
+            result.append("No agent", style="#71717a")
 
         result.append("  │  ", style="#27272a")
 
@@ -357,7 +357,7 @@ class MiniStatusIndicator(Static):
         if self._connected:
             result.append("● ", style="bold #22c55e")
         else:
-            result.append("○ ", style="#52525b")
+            result.append("○ ", style="#71717a")
 
         # Status icon
         status_style = STATUS_STYLES.get(self._status, STATUS_STYLES[AgentStatus.IDLE])

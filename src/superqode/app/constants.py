@@ -64,8 +64,14 @@ THEME = {
     "error": "#ef4444",
     "warning": "#f59e0b",
     "text": "#e4e4e7",
-    "muted": "#71717a",
-    "dim": "#52525b",
+    # Secondary text must stay readable: #71717a measured 4.35:1 on the
+    # black surface, below the 4.5:1 needed for body text. Same zinc
+    # family, one step up, now 8.19:1. No brand colour changes.
+    "muted": "#a1a1aa",
+    # Tertiary/decorative text. #52525b measured 2.72:1, effectively
+    # unreadable; #71717a gives 4.35:1, comfortably above the 3:1 floor
+    # for non-essential text.
+    "dim": "#71717a",
 }
 
 # Rich emoji set for different contexts

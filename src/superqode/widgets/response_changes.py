@@ -21,8 +21,8 @@ SQ_COLORS = {
     "text_primary": "#fafafa",
     "text_secondary": "#e4e4e7",
     "text_muted": "#a1a1aa",
-    "text_dim": "#71717a",
-    "text_ghost": "#52525b",
+    "text_dim": "#a1a1aa",
+    "text_ghost": "#71717a",
     "border_subtle": "#1a1a1a",
     "primary_light": "#a855f7",
 }

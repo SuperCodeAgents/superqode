@@ -45,7 +45,7 @@ except ImportError:
         text_primary = "#fafafa"
         text_secondary = "#e4e4e7"
         text_muted = "#a1a1aa"
-        text_dim = "#71717a"
+        text_dim = "#a1a1aa"
         bg_elevated = "#0a0a0a"
         border_default = "#27272a"
 

@@ -147,7 +147,7 @@ class InstallGuidancePanel(ModalScreen):
     }
 
     #install-subtitle {
-        color: #71717a;
+        color: #a1a1aa;
     }
 
     #requirements-section {
@@ -190,7 +190,7 @@ class InstallGuidancePanel(ModalScreen):
     }
 
     .copy-hint {
-        color: #52525b;
+        color: #71717a;
         text-align: right;
     }
 
@@ -345,8 +345,8 @@ THEME = {
     "warning": "#f59e0b",
     "info": "#3b82f6",
     "text": "#e4e4e7",
-    "muted": "#71717a",
-    "dim": "#52525b",
+    "muted": "#a1a1aa",
+    "dim": "#71717a",
     "bg": "#0a0a0a",
     "card_bg": "#18181b",
     "border": "#3f3f46",
@@ -427,7 +427,7 @@ class AgentCard(Static):
     }
 
     AgentCard .agent-author {
-        color: #71717a;
+        color: #a1a1aa;
     }
 
     AgentCard .agent-desc {
@@ -436,7 +436,7 @@ class AgentCard(Static):
     }
 
     AgentCard .agent-meta {
-        color: #52525b;
+        color: #71717a;
         margin-top: 1;
     }
     """

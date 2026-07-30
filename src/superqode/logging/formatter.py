@@ -41,8 +41,8 @@ class Theme:
 
     # Text
     text = "#e4e4e7"
-    muted = "#71717a"
-    dim = "#52525b"
+    muted = "#a1a1aa"
+    dim = "#71717a"
 
     # Background
     bg = "#0a0a0a"

@@ -49,7 +49,7 @@ except ImportError:
         text_primary = "#fafafa"
         text_secondary = "#e4e4e7"
         text_muted = "#a1a1aa"
-        text_dim = "#71717a"
+        text_dim = "#a1a1aa"
         bg_surface = "#0a0a0a"
         border_default = "#27272a"
 
@@ -293,7 +293,7 @@ class FileAutocomplete(Container):
         height: 1;
         background: #1a1a1a;
         padding: 0 1;
-        color: #71717a;
+        color: #a1a1aa;
     }
     """
 

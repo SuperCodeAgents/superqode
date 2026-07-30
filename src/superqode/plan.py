@@ -60,11 +60,11 @@ class PlanTask:
 # SuperQode plan colors
 PLAN_COLORS = {
     # Status colors
-    "pending": "#71717a",
+    "pending": "#a1a1aa",
     "in_progress": "#06b6d4",
     "completed": "#22c55e",
     "failed": "#ef4444",
-    "skipped": "#52525b",
+    "skipped": "#71717a",
     # Priority colors
     "low": "#3b82f6",
     "medium": "#f59e0b",

@@ -141,7 +141,7 @@ ConversationLog {
     background: #0a0a0f;
     border: heavy #7c3aed;
     border-title-color: #a855f7;
-    border-subtitle-color: #52525b;
+    border-subtitle-color: #71717a;
     margin: 1 2 0 2;
     padding: 0 1;
     overflow: hidden;
@@ -182,7 +182,7 @@ ConversationLog {
 #prompt-completions.visible {
     display: block;
 }
-#hints { text-align: center; color: #52525b; height: 1; margin-top: 1; padding: 0; }
+#hints { text-align: center; color: #71717a; height: 1; margin-top: 1; padding: 0; }
 
 #active-tools {
     display: none;
@@ -246,7 +246,7 @@ ColorfulDirectoryTree > .tree--cursor {
 }
 
 ColorfulDirectoryTree:focus > .tree--cursor {
-    background: #52525b;
+    background: #71717a;
     color: #ec4899;
     text-style: bold;
     border-left: tall #a855f7;
@@ -319,7 +319,7 @@ AgentPanel .stat-row {
 
 AgentPanel .stat-label {
     width: 12;
-    color: #71717a;
+    color: #a1a1aa;
 }
 
 AgentPanel .stat-value {

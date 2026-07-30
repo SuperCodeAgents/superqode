@@ -34,7 +34,7 @@ STREAM_COLORS = {
     "success": "#22c55e",  # Green - completed
     "error": "#ef4444",  # Red - errors
     "warning": "#f59e0b",  # Amber - warnings
-    "pending": "#71717a",  # Gray - pending
+    "pending": "#a1a1aa",  # Gray - pending
     "progress": "#3b82f6",  # Blue - in progress
 }
 

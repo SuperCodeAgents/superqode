@@ -131,7 +131,7 @@ class MessagePreview(Static):
         result = Text()
 
         # Time and icon
-        result.append(f"{self.message.time_str} ", style="#52525b")
+        result.append(f"{self.message.time_str} ", style="#71717a")
         result.append(f"{style['icon']} ", style=style["color"])
 
         # Sender
@@ -277,9 +277,9 @@ class ConversationTimeline(Container):
 
         # Footer
         footer_text = Text()
-        footer_text.append("[↑/↓] Navigate  ", style="#52525b")
-        footer_text.append("[Enter] View  ", style="#52525b")
-        footer_text.append("[/] Search", style="#52525b")
+        footer_text.append("[↑/↓] Navigate  ", style="#71717a")
+        footer_text.append("[Enter] View  ", style="#71717a")
+        footer_text.append("[/] Search", style="#71717a")
         footer.update(footer_text)
 
     def _select_message(self, index: int) -> None:
@@ -369,7 +369,7 @@ class MessageDetail(Container):
             return
 
         if not self._message:
-            header.update(Text("No message selected", style="#52525b"))
+            header.update(Text("No message selected", style="#71717a"))
             content.update("")
             meta.update("")
             return
@@ -387,7 +387,7 @@ class MessageDetail(Container):
         if msg.model_name:
             header_text.append(f"  ({msg.model_name})", style="#6b7280")
 
-        header_text.append(f"\n{msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')}", style="#52525b")
+        header_text.append(f"\n{msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')}", style="#71717a")
 
         header.update(header_text)
 
@@ -410,7 +410,7 @@ class MessageDetail(Container):
                 meta_text.append("\n")
             meta_text.append(f"📁 Files: {', '.join(msg.files_mentioned[:3])}", style="#6b7280")
             if len(msg.files_mentioned) > 3:
-                meta_text.append(f" +{len(msg.files_mentioned) - 3} more", style="#52525b")
+                meta_text.append(f" +{len(msg.files_mentioned) - 3} more", style="#71717a")
 
         meta.update(meta_text)
 
@@ -463,7 +463,7 @@ class ConversationNavigator(Static):
         text.append("📜 ", style="#3b82f6")
 
         if self._message_count == 0:
-            text.append("No messages", style="#52525b")
+            text.append("No messages", style="#71717a")
         else:
             text.append(f"{self._current_index + 1}/{self._message_count}", style="#a1a1aa")
 

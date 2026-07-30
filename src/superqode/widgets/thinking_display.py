@@ -329,7 +329,7 @@ class ThinkingPanel(Container):
 
         # Collapse indicator
         icon = "▶" if self.collapsed else "▼"
-        text.append(f"  {icon}", style="#52525b")
+        text.append(f"  {icon}", style="#71717a")
 
         header.update(text)
 
@@ -468,7 +468,7 @@ class ExtendedThinkingPanel(Container):
                 preview = lines[0][:80] + "..." if len(lines[0]) > 80 else lines[0]
                 content_text.append(preview, style="italic #a1a1aa")
                 if len(lines) > 1:
-                    content_text.append(f"\n... ({len(lines)} lines)", style="#52525b")
+                    content_text.append(f"\n... ({len(lines)} lines)", style="#71717a")
             content.update(content_text)
         else:
             content.update(Text(self._thinking_text, style="#a1a1aa"))
@@ -478,7 +478,7 @@ class ExtendedThinkingPanel(Container):
         word_count = len(self._thinking_text.split())
         footer_text.append(f"📊 {word_count} words", style="#6b7280")
         footer_text.append("  │  ", style="#27272a")
-        footer_text.append("[Space] Toggle", style="#52525b")
+        footer_text.append("[Space] Toggle", style="#71717a")
         footer.update(footer_text)
 
     def toggle(self) -> None:
@@ -552,7 +552,7 @@ class ThinkingIndicator(Static):
             text.append("💭 ", style="#6b7280")
             text.append(f"{self._thought_count}", style="#a1a1aa")
         else:
-            text.append("💭 -", style="#52525b")
+            text.append("💭 -", style="#71717a")
 
         return text
 

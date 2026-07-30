@@ -195,7 +195,7 @@ class ColorfulStatusBar(Static):
         for i, char in enumerate("Qode"):
             color = qode_colors[i % len(qode_colors)]
             result.append(char, style=f"bold {color}")
-        result.append(f" v{__version__}", style="#71717a")
+        result.append(f" v{__version__}", style="#a1a1aa")
 
         # Connection and model are always explicit, including before the user
         # has selected one. Long names compact, but the state never disappears.
@@ -229,21 +229,21 @@ class ColorfulStatusBar(Static):
             )
         else:
             separator()
-            result.append("Model: not connected", style="#71717a")
+            result.append("Model: not connected", style="#a1a1aa")
 
         # A specialized runtime is useful when a model is also named. The
         # default built-in runtime is intentionally omitted as visual noise.
         runtime = (self.active_runtime or "").strip()
         if runtime and self.active_model:
             separator()
-            result.append("rt ", style="#52525b")
+            result.append("rt ", style="#71717a")
             runtime_limit = 20 if medium else 7
             result.append(self._truncate_status_value(runtime, runtime_limit), style="#06b6d4")
 
         harness = (self.active_harness or "").strip()
         if harness:
             separator()
-            result.append("harness " if wide else "h ", style="#52525b")
+            result.append("harness " if wide else "h ", style="#71717a")
             harness_limit = 18 if wide else 10 if medium else 6
             result.append(
                 self._truncate_status_value(harness, harness_limit),
@@ -279,7 +279,7 @@ class ColorfulStatusBar(Static):
             }.get(vim_state, "#a855f7")
             separator()
             if medium:
-                result.append("VIM ", style="#71717a")
+                result.append("VIM ", style="#a1a1aa")
                 result.append(vim_label, style=f"bold {vim_color}")
             else:
                 result.append(vim_label[:1], style=f"bold {vim_color} reverse")
@@ -296,18 +296,18 @@ class ColorfulStatusBar(Static):
             else:
                 context_color = "#ef4444"
             separator()
-            result.append("ctx ", style="#71717a")
+            result.append("ctx ", style="#a1a1aa")
             result.append(f"{pct}%", style=context_color)
             if wide:
                 result.append(
                     f" · {self._format_token_count(context_used)}/"
                     f"{self._format_token_count(self.context_window)}",
-                    style="#71717a",
+                    style="#a1a1aa",
                 )
         elif medium and self.byok_tokens > 0:
             separator()
             result.append(self._format_token_count(self.byok_tokens), style="#06b6d4")
-            result.append(" tok", style="#52525b")
+            result.append(" tok", style="#71717a")
 
         if self.plan_state:
             state = self.plan_state.strip()
@@ -370,7 +370,7 @@ class GradientTagline(Static):
             color = self.PART1_GRADIENT[color_idx]
             result.append(char, style=f"bold {color}")
 
-        result.append("  •  ", style="bold #71717a")
+        result.append("  •  ", style="bold #a1a1aa")
 
         part2 = TAGLINE_PART2
         for i, char in enumerate(part2):
@@ -692,7 +692,7 @@ class StreamingThinkingIndicator(Static):
         # phrase already conveys that.
         status = (self.status or "").strip()
         if status and "thinking" not in status.lower():
-            result.append("  ·  ", style="#52525b")
+            result.append("  ·  ", style="#71717a")
             result.append(status, style="#a1a1aa")
 
         result.append("   ", style="")
@@ -858,7 +858,7 @@ class SelectableTextArea(Static):
 
     SelectableTextArea .hint {
         text-align: center;
-        color: #71717a;
+        color: #a1a1aa;
         margin-top: 1;
     }
     """

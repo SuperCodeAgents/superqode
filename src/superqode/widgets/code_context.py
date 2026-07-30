@@ -324,7 +324,7 @@ class CodeContextViewer(Static):
                 content.append(
                     f"{len(ctx.related_findings)} similar patterns found", style="#a1a1aa"
                 )
-                content.append(" (expand to view)\n", style="#52525b")
+                content.append(" (expand to view)\n", style="#71717a")
 
         # Build title with file path
         title_text = f"{self.title}: {ctx.file_path}"

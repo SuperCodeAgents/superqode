@@ -53,8 +53,8 @@ except ImportError:
         text_primary = "#fafafa"
         text_secondary = "#e4e4e7"
         text_muted = "#a1a1aa"
-        text_dim = "#71717a"
-        text_ghost = "#52525b"
+        text_dim = "#a1a1aa"
+        text_ghost = "#71717a"
         bg_surface = "#050505"
         border_subtle = "#1a1a1a"
 
@@ -108,7 +108,7 @@ PANEL_CSS = """
 
 .panel-empty {
     text-align: center;
-    color: #52525b;
+    color: #71717a;
     padding: 2;
 }
 """
@@ -192,7 +192,7 @@ class AgentPanel(Container):
 
     AgentPanel .stat-label {
         width: 12;
-        color: #71717a;
+        color: #a1a1aa;
     }
 
     AgentPanel .stat-value {

@@ -1757,7 +1757,7 @@ class DialogsMixin:
         t = Text()
         t.append("  🟢 ", style="#22c55e")
         t.append(f"{line}", style="#a1a1aa")
-        t.append(" → ", style="#52525b")
+        t.append(" → ", style="#71717a")
         t.append("AUTO-APPROVED\n", style="bold #22c55e")
         log.write(t)
 
@@ -1766,7 +1766,7 @@ class DialogsMixin:
         t = Text()
         t.append("  🔴 ", style="#ef4444")
         t.append(f"{line}", style="#a1a1aa")
-        t.append(" → ", style="#52525b")
+        t.append(" → ", style="#71717a")
         t.append("DENIED\n", style="bold #ef4444")
         log.write(t)
 
@@ -1810,7 +1810,7 @@ class DialogsMixin:
         t.append("  ├─────────────────────────────────────────────────────────┤\n", style="#f59e0b")
         t.append("  │  ", style="#f59e0b")
         t.append("✅ Allowed", style="#22c55e")
-        t.append(" (use :mode deny to block destructive ops) │\n", style="#71717a")
+        t.append(" (use :mode deny to block destructive ops) │\n", style="#a1a1aa")
         t.append("  ╰─────────────────────────────────────────────────────────╯\n", style="#f59e0b")
         log.write(t)
 
@@ -1831,8 +1831,8 @@ class DialogsMixin:
         header.append("\n")
         header.append(f"  🤖 ", style="#a855f7")
         header.append(f"{name.upper()} ", style="bold #a855f7")
-        header.append("is working...", style="#71717a")
-        header.append("  [Ctrl+T to hide logs]  [Esc to cancel]\n", style="#52525b")
+        header.append("is working...", style="#a1a1aa")
+        header.append("  [Ctrl+T to hide logs]  [Esc to cancel]\n", style="#71717a")
         log.write(header)
 
     def _show_calm_summary(self, log: ConversationLog) -> None:
@@ -3288,7 +3288,7 @@ class DialogsMixin:
 
             DiffReviewScreen .hints {
                 text-align: center;
-                color: #71717a;
+                color: #a1a1aa;
                 height: 2;
             }
 
@@ -3517,7 +3517,7 @@ class DialogsMixin:
 
             TextOverlayScreen .hints {
                 text-align: center;
-                color: #71717a;
+                color: #a1a1aa;
                 height: 2;
             }
 

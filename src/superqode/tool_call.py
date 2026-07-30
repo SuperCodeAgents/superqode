@@ -73,7 +73,7 @@ class ToolCall:
 # SuperQode tool call colors
 TOOL_COLORS = {
     # Status colors
-    "pending": "#71717a",
+    "pending": "#a1a1aa",
     "in_progress": "#06b6d4",
     "completed": "#22c55e",
     "failed": "#ef4444",
@@ -83,7 +83,7 @@ TOOL_COLORS = {
     "edit": "#eab308",
     "shell": "#8b5cf6",
     "search": "#06b6d4",
-    "other": "#71717a",
+    "other": "#a1a1aa",
     # UI colors
     "header": "#a855f7",
     "border": "#2a2a2a",

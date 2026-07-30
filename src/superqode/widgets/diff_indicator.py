@@ -15,8 +15,8 @@ from rich.text import Text
 COLORS = {
     "addition": "#22c55e",
     "deletion": "#ef4444",
-    "neutral": "#52525b",
-    "text_dim": "#71717a",
+    "neutral": "#71717a",
+    "text_dim": "#a1a1aa",
     "text_muted": "#a1a1aa",
 }
 

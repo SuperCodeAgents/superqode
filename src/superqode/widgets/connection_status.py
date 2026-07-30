@@ -110,7 +110,7 @@ PROVIDER_STYLES = {
 }
 
 STATE_STYLES = {
-    ConnectionState.DISCONNECTED: {"icon": "○", "color": "#52525b"},
+    ConnectionState.DISCONNECTED: {"icon": "○", "color": "#71717a"},
     ConnectionState.CONNECTING: {"icon": "◐", "color": "#fbbf24"},
     ConnectionState.CONNECTED: {"icon": "●", "color": "#22c55e"},
     ConnectionState.ERROR: {"icon": "✗", "color": "#ef4444"},
@@ -163,8 +163,8 @@ class ConnectionIndicator(Static):
         text = Text()
 
         if not self._info:
-            text.append("○ ", style="#52525b")
-            text.append("Not connected", style="#52525b")
+            text.append("○ ", style="#71717a")
+            text.append("Not connected", style="#71717a")
             return text
 
         info = self._info
@@ -270,7 +270,7 @@ class ConnectionPanel(Container):
             return
 
         if not self._info:
-            header.update(Text("No connection", style="#52525b"))
+            header.update(Text("No connection", style="#71717a"))
             content.update("")
             stats.update("")
             return
@@ -299,7 +299,7 @@ class ConnectionPanel(Container):
             content_text.append(f"  {provider_style['icon']} Agent: ", style="#6b7280")
             content_text.append(f"{info.agent_name}", style=provider_style["color"])
             if info.agent_version:
-                content_text.append(f" v{info.agent_version}", style="#52525b")
+                content_text.append(f" v{info.agent_version}", style="#71717a")
             content_text.append("\n")
 
         if info.model_name:
@@ -314,7 +314,7 @@ class ConnectionPanel(Container):
 
         if info.session_id:
             content_text.append("  📋 Session: ", style="#6b7280")
-            content_text.append(f"{info.session_id[:12]}...", style="#52525b")
+            content_text.append(f"{info.session_id[:12]}...", style="#71717a")
             content_text.append("\n")
 
         if info.connected_at:
@@ -353,9 +353,9 @@ class ConnectionPanel(Container):
         if info.token_usage.total_tokens > 0:
             stats_text.append("\n  📊 Tokens: ", style="#6b7280")
             stats_text.append(f"{info.token_usage.prompt_tokens:,}", style="#3b82f6")
-            stats_text.append(" → ", style="#52525b")
+            stats_text.append(" → ", style="#71717a")
             stats_text.append(f"{info.token_usage.completion_tokens:,}", style="#22c55e")
-            stats_text.append(f" ({info.token_usage.total_tokens:,} total)", style="#52525b")
+            stats_text.append(f" ({info.token_usage.total_tokens:,} total)", style="#71717a")
 
         # Cost
         if info.token_usage.total_cost > 0:

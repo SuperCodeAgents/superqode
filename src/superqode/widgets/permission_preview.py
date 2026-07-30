@@ -843,7 +843,7 @@ class UnifiedDiffView(ScrollableContainer):
     }
 
     UnifiedDiffView .diff-context {
-        color: #71717a;
+        color: #a1a1aa;
     }
 
     UnifiedDiffView .diff-header {
@@ -977,7 +977,7 @@ class EnhancedPermissionPreviewScreen(Container):
     }
 
     #key-hints {
-        color: #52525b;
+        color: #71717a;
         text-align: center;
     }
     """

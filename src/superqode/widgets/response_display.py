@@ -361,7 +361,7 @@ class ResponseDisplay(Container):
             styles = {
                 1: ("bold #e4e4e7", "═" * 40),
                 2: ("bold #a1a1aa", "─" * 30),
-                3: ("bold #71717a", ""),
+                3: ("bold #a1a1aa", ""),
             }
             style, underline = styles.get(header_level, ("", ""))
 

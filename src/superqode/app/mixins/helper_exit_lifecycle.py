@@ -295,7 +295,7 @@ class HelperExitLifecycleMixin:
         padding = max(0, (term_width - len(fun_text) - 4) // 2)
         t.append(" " * padding)
         t.append("🚀 ", style="")
-        t.append("Keep building amazing things!", style="italic #71717a")
+        t.append("Keep building amazing things!", style="italic #a1a1aa")
         t.append(" 🚀\n\n\n", style="")
         log.write(t)
 

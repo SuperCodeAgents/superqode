@@ -85,8 +85,8 @@ DIFF_COLORS = {
     "addition_bg": "#22c55e15",
     "deletion": "#ef4444",
     "deletion_bg": "#ef444415",
-    "context": "#71717a",
-    "line_no": "#52525b",
+    "context": "#a1a1aa",
+    "line_no": "#71717a",
     "border": "#2a2a2a",
     "highlight_add": "#22c55e30",
     "highlight_del": "#ef444430",
@@ -685,11 +685,11 @@ class SplitDiffWidget(Container):
         t.append(f"  [{status}]", style=f"bold {status_color}")
         t.append("  ", style="")
         t.append(f"+{self._diff.additions}", style=f"bold {DIFF_COLORS['addition']}")
-        t.append(" / ", style="#52525b")
+        t.append(" / ", style="#71717a")
         t.append(f"-{self._diff.deletions}", style=f"bold {DIFF_COLORS['deletion']}")
         t.append("  ", style="")
         mode_text = "split" if self.split_mode else "unified"
-        t.append(f"[{mode_text}]", style="#52525b")
+        t.append(f"[{mode_text}]", style="#71717a")
         t.append("  ", style="")
         t.append("d", style="bold #a855f7")
         t.append(" toggle", style="#3f3f46")
@@ -872,7 +872,7 @@ class UnifiedDiffWidget(Container):
         t.append(self._diff.path, style="bold white")
         t.append("  ", style="")
         t.append(f"+{self._diff.additions}", style=f"bold {DIFF_COLORS['addition']}")
-        t.append("/", style="#52525b")
+        t.append("/", style="#71717a")
         t.append(f"-{self._diff.deletions}", style=f"bold {DIFF_COLORS['deletion']}")
 
         return t

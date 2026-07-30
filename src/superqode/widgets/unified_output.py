@@ -69,8 +69,8 @@ class Theme:
     # Text colors
     text = "#e4e4e7"
     text_secondary = "#a1a1aa"
-    text_muted = "#71717a"
-    text_dim = "#52525b"
+    text_muted = "#a1a1aa"
+    text_dim = "#71717a"
 
     # Background colors
     bg = "#0a0a0a"

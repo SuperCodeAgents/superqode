@@ -57,7 +57,7 @@ APPROVAL_COLORS = {
     "pending_bg": "#f59e0b20",
     "header": "#a855f7",
     "border": "#2a2a2a",
-    "muted": "#71717a",
+    "muted": "#a1a1aa",
 }
 
 # Icons for approval UI

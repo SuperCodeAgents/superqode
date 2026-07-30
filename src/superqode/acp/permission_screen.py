@@ -36,8 +36,8 @@ THEME = {
     "error": "#ef4444",
     "warning": "#f59e0b",
     "text": "#e4e4e7",
-    "muted": "#71717a",
-    "dim": "#52525b",
+    "muted": "#a1a1aa",
+    "dim": "#71717a",
     "bg": "#000000",
 }
 
@@ -125,7 +125,7 @@ class PermissionScreen(ModalScreen[str]):
 
     #permission-hints {
         text-align: center;
-        color: #52525b;
+        color: #71717a;
         margin-top: 1;
     }
     """

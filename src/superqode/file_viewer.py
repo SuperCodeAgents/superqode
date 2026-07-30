@@ -153,10 +153,10 @@ FILE_ICONS = {
 VIEWER_COLORS = {
     "header": "#a855f7",
     "border": "#2a2a2a",
-    "line_no": "#52525b",
+    "line_no": "#71717a",
     "highlight": "#f59e0b30",
     "search": "#22c55e40",
-    "info": "#71717a",
+    "info": "#a1a1aa",
 }
 
 

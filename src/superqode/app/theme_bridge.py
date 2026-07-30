@@ -44,8 +44,13 @@ def _palette_to_theme(colors: "ds.ColorPalette") -> dict[str, str]:
         "error": colors.error,
         "warning": colors.warning,
         "text": colors.text_secondary,
-        "muted": colors.text_dim,
-        "dim": colors.text_ghost,
+        # Each rung shifts up one: "muted" carries real prose and needs body-text
+        # contrast, which ``text_dim`` does not reach (4.35:1 on the default
+        # palette, below 4.5:1). ``text_muted`` is the rung meant for it and was
+        # otherwise unused, while ``text_ghost`` (2.72:1) is too faint for any
+        # visible text and is now dropped.
+        "muted": colors.text_muted,
+        "dim": colors.text_dim,
     }
 
 

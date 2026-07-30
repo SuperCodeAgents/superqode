@@ -551,7 +551,7 @@ class FilePreview(Container):
 
         if self.current_file is None:
             t.append("\n  📄 ", style="bold #a855f7")
-            t.append("No file selected", style="#71717a")
+            t.append("No file selected", style="#a1a1aa")
             return t
 
         path = self.current_file
@@ -564,7 +564,7 @@ class FilePreview(Container):
         try:
             size = path.stat().st_size
             size_str = self._format_size(size)
-            t.append(f"  [{size_str}]", style="#71717a")
+            t.append(f"  [{size_str}]", style="#a1a1aa")
         except Exception:
             pass
 
@@ -578,21 +578,21 @@ class FilePreview(Container):
         if self.current_file is not None:
             # File is open - show file-specific hints
             t.append("↑↓", style="bold #ec4899")
-            t.append(" scroll  ", style="#71717a")
+            t.append(" scroll  ", style="#a1a1aa")
             t.append("e", style="bold #22c55e")
-            t.append(" edit  ", style="#71717a")
+            t.append(" edit  ", style="#a1a1aa")
             t.append("o", style="bold #06b6d4")
-            t.append(" open in chat  ", style="#71717a")
+            t.append(" open in chat  ", style="#a1a1aa")
             t.append("q", style="bold #f59e0b")
-            t.append(" close", style="#71717a")
+            t.append(" close", style="#a1a1aa")
         else:
             # No file - show navigation hints
             t.append("↑↓", style="bold #ec4899")
-            t.append(" navigate  ", style="#71717a")
+            t.append(" navigate  ", style="#a1a1aa")
             t.append("Enter", style="bold #ec4899")
-            t.append(" select  ", style="#71717a")
+            t.append(" select  ", style="#a1a1aa")
             t.append("Ctrl+B", style="bold #f59e0b")
-            t.append(" close sidebar", style="#71717a")
+            t.append(" close sidebar", style="#a1a1aa")
 
         return t
 
@@ -608,11 +608,11 @@ class FilePreview(Container):
         t = Text()
         t.append("\n\n", style="")
         t.append("  👆 ", style="bold #a855f7")
-        t.append("Select a file from the tree\n\n", style="#71717a")
+        t.append("Select a file from the tree\n\n", style="#a1a1aa")
         t.append("  📁 ", style="#ec4899")
-        t.append("Click folders to expand\n", style="#52525b")
+        t.append("Click folders to expand\n", style="#71717a")
         t.append("  📄 ", style="#ec4899")
-        t.append("Click files to preview\n", style="#52525b")
+        t.append("Click files to preview\n", style="#71717a")
         return t
 
     def _render_file_content(self, path: Path) -> Text | Syntax:
@@ -622,8 +622,8 @@ class FilePreview(Container):
             t = Text()
             t.append("\n  🔒 ", style="bold #f59e0b")
             t.append("Binary file\n\n", style="#f59e0b")
-            t.append(f"  Size: {self._format_size(path.stat().st_size)}\n", style="#71717a")
-            t.append("  Cannot display binary content\n", style="#52525b")
+            t.append(f"  Size: {self._format_size(path.stat().st_size)}\n", style="#a1a1aa")
+            t.append("  Cannot display binary content\n", style="#71717a")
             return t
 
         # Read content
@@ -653,7 +653,7 @@ class FilePreview(Container):
             t = Text()
             t.append(f"\n  ❌ ", style="bold #ef4444")
             t.append("Error reading file\n\n", style="#ef4444")
-            t.append(f"  {str(e)}\n", style="#71717a")
+            t.append(f"  {str(e)}\n", style="#a1a1aa")
             return t
 
     def _is_binary(self, path: Path) -> bool:
@@ -777,7 +777,7 @@ class EnhancedSidebar(Container):
     }
 
     EnhancedSidebar ColorfulDirectoryTree:focus > .tree--cursor {
-        background: #52525b;
+        background: #71717a;
         color: #ec4899;
         text-style: bold;
         border-left: tall #a855f7;
@@ -823,8 +823,8 @@ class EnhancedSidebar(Container):
         t.append("📁 ", style="bold #ec4899")
         t.append(self.root_path.name or "Files", style="bold #a855f7")
         t.append("  ", style="")
-        t.append("Ctrl+B", style="bold #71717a")
-        t.append(" close", style="#52525b")
+        t.append("Ctrl+B", style="bold #a1a1aa")
+        t.append(" close", style="#71717a")
         return t
 
     @on(DirectoryTree.FileSelected)
@@ -1086,7 +1086,7 @@ class GitStatusWidget(Static):
         if self._loading:
             t.append("\n", style="")
             t.append("  ⎇ ", style="bold #a855f7")
-            t.append("Loading git status...", style="#52525b italic")
+            t.append("Loading git status...", style="#71717a italic")
             return t
 
         status = self.status
@@ -1094,8 +1094,8 @@ class GitStatusWidget(Static):
         t.append("\n", style="")
 
         if not status.is_repo:
-            t.append("  📁 ", style="#71717a")
-            t.append("Not a git repository", style="#52525b")
+            t.append("  📁 ", style="#a1a1aa")
+            t.append("Not a git repository", style="#71717a")
             return t
 
         # Branch icon and name
@@ -1108,7 +1108,7 @@ class GitStatusWidget(Static):
         if status.modified > 0:
             t.append(f"  ●{status.modified}", style="bold #f97316")
         if status.untracked > 0:
-            t.append(f"  +{status.untracked}", style="#71717a")
+            t.append(f"  +{status.untracked}", style="#a1a1aa")
 
         # Ahead/behind with arrows
         if status.ahead > 0:
@@ -1154,7 +1154,7 @@ class PlanPanel(Container):
     }
 
     PlanPanel .task-pending {
-        color: #71717a;
+        color: #a1a1aa;
     }
 
     PlanPanel .task-in-progress {
@@ -1166,7 +1166,7 @@ class PlanPanel(Container):
     }
 
     PlanPanel .empty-state {
-        color: #52525b;
+        color: #71717a;
         text-style: italic;
         padding: 1;
     }
@@ -1190,7 +1190,7 @@ class PlanPanel(Container):
         t = Text()
 
         if not self.tasks:
-            t.append("  No active tasks\n", style="italic #52525b")
+            t.append("  No active tasks\n", style="italic #71717a")
             t.append("  Start a conversation to see plan", style="#3f3f46")
             return t
 
@@ -1201,13 +1201,13 @@ class PlanPanel(Container):
             elif task.status == "in_progress":
                 t.append(" ● ", style="bold #f97316")
             else:
-                t.append(" ○ ", style="#71717a")
+                t.append(" ○ ", style="#a1a1aa")
 
             # Task content (truncated)
             content = task.content[:40] + "..." if len(task.content) > 40 else task.content
 
             if task.status == "completed":
-                t.append(content, style="#52525b")
+                t.append(content, style="#71717a")
             elif task.status == "in_progress":
                 t.append(content, style="#f97316")
             else:
@@ -1216,7 +1216,7 @@ class PlanPanel(Container):
             t.append("\n")
 
         if len(self.tasks) > 8:
-            t.append(f"  +{len(self.tasks) - 8} more tasks...", style="#52525b")
+            t.append(f"  +{len(self.tasks) - 8} more tasks...", style="#71717a")
 
         return t
 
@@ -1307,7 +1307,7 @@ class FileSearchResults(Container):
         t = Text()
 
         if not self.results:
-            t.append("  No matches found", style="italic #52525b")
+            t.append("  No matches found", style="italic #71717a")
             return t
 
         for i, path in enumerate(self.results[:10]):
@@ -1334,7 +1334,7 @@ class FileSearchResults(Container):
             t.append("\n")
 
         if len(self.results) > 10:
-            t.append(f"  +{len(self.results) - 10} more results", style="#52525b")
+            t.append(f"  +{len(self.results) - 10} more results", style="#71717a")
 
         return t
 
@@ -1663,7 +1663,7 @@ class CodeSearchResults(Container):
         t = Text()
 
         if not self.results:
-            t.append("  No matches found", style="italic #52525b")
+            t.append("  No matches found", style="italic #71717a")
             return t
 
         # Group by file
@@ -1694,26 +1694,26 @@ class CodeSearchResults(Container):
                 t.append("    ", style="")
 
             # Line number
-            t.append(f"{result.line_no:>4}:", style="#52525b")
+            t.append(f"{result.line_no:>4}:", style="#71717a")
 
             # Line content with highlight
             line = result.line_content[:80]
             if result.match_start < len(line):
                 # Before match
-                t.append(line[: result.match_start], style="#71717a")
+                t.append(line[: result.match_start], style="#a1a1aa")
                 # Match (highlighted)
                 match_end = min(result.match_end, len(line))
                 t.append(line[result.match_start : match_end], style="bold #fbbf24 on #1a1a1a")
                 # After match
-                t.append(line[match_end:], style="#71717a")
+                t.append(line[match_end:], style="#a1a1aa")
             else:
-                t.append(line, style="#71717a")
+                t.append(line, style="#a1a1aa")
 
             t.append("\n", style="")
             display_count += 1
 
         if len(self.results) > 30:
-            t.append(f"\n  +{len(self.results) - 30} more results", style="#52525b")
+            t.append(f"\n  +{len(self.results) - 30} more results", style="#71717a")
 
         return t
 
@@ -1756,7 +1756,7 @@ class CodebaseSearch(Container):
     CodebaseSearch #search-status {
         height: 1;
         padding: 0 1;
-        color: #52525b;
+        color: #71717a;
     }
     """
 
@@ -1897,7 +1897,7 @@ class SidebarTabs(Container):
         content-align: center middle;
         text-align: center;
         background: #000000;
-        color: #71717a;
+        color: #a1a1aa;
         padding: 0 1;
     }
 
@@ -2127,14 +2127,14 @@ class GitChangesPanel(Container):
         height: 100%;
         content-align: center middle;
         text-align: center;
-        color: #52525b;
+        color: #71717a;
     }
 
     GitChangesPanel #loading {
         height: 100%;
         content-align: center middle;
         text-align: center;
-        color: #71717a;
+        color: #a1a1aa;
     }
     """
 
@@ -2224,7 +2224,7 @@ class GitChangesPanel(Container):
         t.append("\n", style="")
         t.append("📊 Git Changes", style="bold #a855f7")
         t.append("  ", style="")
-        t.append("r", style="bold #52525b")
+        t.append("r", style="bold #71717a")
         t.append(" refresh", style="#3f3f46")
         return t
 
@@ -2266,7 +2266,7 @@ class GitChangesPanel(Container):
         elif change.status == "D":
             t.append("- ", style="bold #ef4444")
         elif change.status == "?":
-            t.append("? ", style="#71717a")
+            t.append("? ", style="#a1a1aa")
         elif change.status == "R":
             t.append("→ ", style="bold #06b6d4")
         else:
@@ -2324,7 +2324,7 @@ class GitChangesPanel(Container):
 
         for line in diff.split("\n"):
             if line.startswith("+++") or line.startswith("---"):
-                t.append(line + "\n", style="bold #71717a")
+                t.append(line + "\n", style="bold #a1a1aa")
             elif line.startswith("@@"):
                 t.append(line + "\n", style="bold #06b6d4")
             elif line.startswith("+"):
@@ -2524,7 +2524,7 @@ class CollapsibleSidebar(Container):
     }
 
     CollapsibleSidebar ColorfulDirectoryTree:focus > .tree--cursor {
-        background: #52525b;
+        background: #71717a;
         color: #ec4899;
         text-style: bold;
         border-left: tall #a855f7;
@@ -2719,9 +2719,9 @@ class CollapsibleSidebar(Container):
         t.append("📁 ", style="bold #ec4899")
         t.append(self.root_path.name or "Project", style="bold #a855f7")
         t.append("  ", style="")
-        t.append("Ctrl+B", style="#52525b")
+        t.append("Ctrl+B", style="#71717a")
         t.append(" close  ", style="#3f3f46")
-        t.append("Ctrl+F", style="#52525b")
+        t.append("Ctrl+F", style="#71717a")
         t.append(" search", style="#3f3f46")
         return t
 

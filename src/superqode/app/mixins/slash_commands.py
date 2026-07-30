@@ -2600,7 +2600,7 @@ class SlashCommandMixin:
 
         if theme_name:
             if self._apply_and_persist_theme(theme_name):
-                log.add_success(f"Theme changed to: {theme_name}")
+                self._report_theme_change(theme_name, log)
             else:
                 log.add_error(f"Unknown theme: {theme_name}")
                 log.add_info(f"Available: {', '.join(theme_names())}")
@@ -2609,9 +2609,18 @@ class SlashCommandMixin:
         def _on_dismissed(name: str | None) -> None:
             self.set_timer(0.1, self._ensure_input_focus)
             if name and self._apply_and_persist_theme(name):
-                log.add_success(f"Theme changed to: {name}")
+                self._report_theme_change(name, log)
 
         self.push_screen(ThemePicker(current=self._current_theme), callback=_on_dismissed)
+
+    def _report_theme_change(self, name: str, log: ConversationLog) -> None:
+        """Confirm a theme change and say what it could and could not repaint."""
+        log.add_success(f"Theme changed to: {name}")
+        if not getattr(self, "_theme_repainted_welcome", False):
+            log.add_info(
+                "Output already on screen keeps the colours it was written with. "
+                "New output uses the new theme, and :home repaints in full."
+            )
 
     def _handle_diagnostics(self, args: str, log: ConversationLog):
         """Handle :diagnostics command with a fast, non-blocking source scan."""
@@ -2865,7 +2874,7 @@ class SlashCommandMixin:
 
             SelectableScreen .hints {
                 text-align: center;
-                color: #71717a;
+                color: #a1a1aa;
                 height: 2;
             }
 

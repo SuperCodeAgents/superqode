@@ -464,16 +464,33 @@ class HelpersMixin(
         ]
 
     def _apply_and_persist_theme(self, name: str) -> bool:
-        """Apply a theme palette live, persist it, and refresh the visible UI."""
+        """Apply a theme palette live, persist it, and repaint what is on screen.
+
+        ``refresh()`` alone looks like nothing happened. The conversation log
+        holds text whose colours were resolved when each line was written, so
+        redrawing the same styled objects reproduces the old palette. Anything
+        already on screen therefore has to be rebuilt from source, not refreshed.
+        """
         if not _apply_theme_palette(name):
             return False
         self._current_theme = name
         save_theme(name)
-        # Re-render widgets that read THEME at render time.
+        # Rebuild the home screen from source when that is all that is shown, so
+        # the new palette is visible immediately. Rebuilding is only safe here:
+        # it clears the log, and a transcript must never be destroyed by a
+        # cosmetic command.
+        repainted = False
+        if getattr(self, "_welcome_active", False):
+            try:
+                self._rerender_welcome()
+                repainted = True
+            except Exception:  # noqa: BLE001 - repaint is best-effort
+                repainted = False
         try:
             self.screen.refresh(layout=True)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
+        self._theme_repainted_welcome = repainted
         return True
 
     def _perform_rewind(self, occurrence: int, log: ConversationLog) -> None:

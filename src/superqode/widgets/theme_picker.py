@@ -49,7 +49,7 @@ class ThemePicker(ModalScreen[str | None]):
 
     ThemePicker .subtitle {
         text-align: center;
-        color: #71717a;
+        color: #a1a1aa;
         height: 2;
     }
 
@@ -66,7 +66,7 @@ class ThemePicker(ModalScreen[str | None]):
 
     ThemePicker .hints {
         text-align: center;
-        color: #71717a;
+        color: #a1a1aa;
         height: 1;
         margin-top: 1;
     }
@@ -109,7 +109,7 @@ class ThemePicker(ModalScreen[str | None]):
                 colors.warning,
             ):
                 label.append("██", style=hex_color)
-            label.append(f"  {description}", style="#71717a")
+            label.append(f"  {description}", style="#a1a1aa")
             options.append(Option(label, id=name))
         return options
 

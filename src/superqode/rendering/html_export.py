@@ -17,10 +17,10 @@ _ROLE_META = {
     "user": ("you", "#22d3ee"),
     "agent": ("agent", "#a855f7"),
     "assistant": ("agent", "#a855f7"),
-    "system": ("system", "#71717a"),
+    "system": ("system", "#a1a1aa"),
     "error": ("error", "#f43f5e"),
     "success": ("done", "#22c55e"),
-    "info": ("info", "#71717a"),
+    "info": ("info", "#a1a1aa"),
     "shell": ("shell", "#fbbf24"),
 }
 
@@ -106,7 +106,7 @@ _TEMPLATE = """<!DOCTYPE html>
   .wrap {{ max-width:880px; margin:0 auto; }}
   header {{ border-bottom:1px solid #27272a; padding-bottom:1rem; margin-bottom:1.5rem; }}
   h1.title {{ font-size:1.4rem; margin:0; color:#a855f7; }}
-  .meta {{ color:#71717a; font-size:.85rem; margin-top:.25rem; }}
+  .meta {{ color:#a1a1aa; font-size:.85rem; margin-top:.25rem; }}
   .msg {{ margin:0 0 1.25rem; padding:.75rem 1rem; background:#0a0a0a;
     border:1px solid #1a1a1a; border-radius:8px; }}
   .msg .role {{ font-weight:700; font-size:.8rem; text-transform:uppercase;
@@ -118,7 +118,7 @@ _TEMPLATE = """<!DOCTYPE html>
   .msg pre code {{ background:none; padding:0; }}
   .msg h1,.msg h2,.msg h3 {{ color:#d4d4d8; }}
   .msg p {{ margin:.4rem 0; }}
-  footer {{ color:#52525b; font-size:.8rem; margin-top:2rem; text-align:center; }}
+  footer {{ color:#71717a; font-size:.8rem; margin-top:2rem; text-align:center; }}
 </style>
 </head>
 <body>

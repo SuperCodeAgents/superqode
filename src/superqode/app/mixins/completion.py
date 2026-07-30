@@ -709,7 +709,7 @@ class CompletionMixin:
         t.append("\n\n")
 
         # Stats
-        t.append(f"  ⏱️ Completed in {duration:.1f}s\n", style="#71717a")
+        t.append(f"  ⏱️ Completed in {duration:.1f}s\n", style="#a1a1aa")
 
         if tool_count > 0:
             t.append(f"  ⚡ {tool_count} tools executed\n", style="#a855f7")

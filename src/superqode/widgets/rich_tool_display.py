@@ -71,15 +71,15 @@ TOOL_STYLES = {
     ToolKind.LSP: {"icon": "🔬", "color": "#ec4899", "label": "LSP"},
     ToolKind.BROWSER: {"icon": "🌐", "color": "#f97316", "label": "Browser"},
     ToolKind.MCP: {"icon": "🔌", "color": "#a855f7", "label": "MCP"},
-    ToolKind.OTHER: {"icon": "⚡", "color": "#71717a", "label": "Tool"},
+    ToolKind.OTHER: {"icon": "⚡", "color": "#a1a1aa", "label": "Tool"},
 }
 
 STATE_STYLES = {
-    ToolState.PENDING: {"icon": "○", "color": "#71717a", "animate": False},
+    ToolState.PENDING: {"icon": "○", "color": "#a1a1aa", "animate": False},
     ToolState.RUNNING: {"icon": "◐", "color": "#fbbf24", "animate": True},
     ToolState.SUCCESS: {"icon": "✓", "color": "#22c55e", "animate": False},
     ToolState.ERROR: {"icon": "✗", "color": "#ef4444", "animate": False},
-    ToolState.CANCELLED: {"icon": "⊘", "color": "#71717a", "animate": False},
+    ToolState.CANCELLED: {"icon": "⊘", "color": "#a1a1aa", "animate": False},
 }
 
 
@@ -254,7 +254,7 @@ class SingleToolDisplay(Static):
 
         if len(old_lines) > max_lines // 2:
             result.append(
-                f"    ... {len(old_lines) - max_lines // 2} more removed\n", style="#71717a"
+                f"    ... {len(old_lines) - max_lines // 2} more removed\n", style="#a1a1aa"
             )
 
         for line in new_lines[: max_lines // 2]:
@@ -264,7 +264,7 @@ class SingleToolDisplay(Static):
 
         if len(new_lines) > max_lines // 2:
             result.append(
-                f"    ... {len(new_lines) - max_lines // 2} more added\n", style="#71717a"
+                f"    ... {len(new_lines) - max_lines // 2} more added\n", style="#a1a1aa"
             )
 
         return result
@@ -285,7 +285,7 @@ class SingleToolDisplay(Static):
             if len(self.tool.output.splitlines()) > 10:
                 result.append(
                     f"    ... {len(self.tool.output.splitlines()) - 10} more lines\n",
-                    style="#52525b",
+                    style="#71717a",
                 )
 
         if self.tool.exit_code is not None:
@@ -312,7 +312,7 @@ class SingleToolDisplay(Static):
                 result.append(f"      {preview}\n", style="#a1a1aa")
 
         if len(self.tool.matches) > 5:
-            result.append(f"    ... {len(self.tool.matches) - 5} more matches\n", style="#52525b")
+            result.append(f"    ... {len(self.tool.matches) - 5} more matches\n", style="#71717a")
 
         return result
 
@@ -340,7 +340,7 @@ class SingleToolDisplay(Static):
 
         # Expand indicator
         expand_icon = "▼" if self.expanded else "▶"
-        content.append(f"  {expand_icon}", style="#52525b")
+        content.append(f"  {expand_icon}", style="#71717a")
 
         content.append("\n")
 
@@ -539,7 +539,7 @@ class CompactToolIndicator(Static):
 
         total = self._running + self._completed + self._errors
         if total == 0:
-            text.append("-", style="#52525b")
+            text.append("-", style="#71717a")
         else:
             if self._running > 0:
                 text.append(f"◐{self._running} ", style="bold #fbbf24")

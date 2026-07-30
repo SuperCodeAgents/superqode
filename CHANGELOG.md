@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.65] - 2026-07-30
+
+### Fixed
+
+- **Secondary text is now readable in every theme.** The palette bridge mapped
+  the flat render-time colours onto the wrong rungs of each theme's text scale:
+  prose used the `text_dim` step and faint text used `text_ghost`, while
+  `text_muted`, the step meant for prose, went unused. On the SuperQode theme
+  secondary text measured 4.35:1 against the background, below the 4.5:1 WCAG
+  needs for body text, and faint text measured 2.72:1. On Dracula the same bug
+  put faint text at **1.56:1**, effectively invisible. Each rung now shifts up
+  one, which fixes every theme at once. The brand gradient is untouched, and a
+  test asserts it verbatim so contrast work can never dilute the identity.
+- **`:theme` looked like it did nothing.** It correctly replaced all 21 palette
+  colours, but `refresh()` cannot recolour text whose styles were resolved when
+  it was written, so the screen kept the old palette. The home screen is now
+  rebuilt from source, so a theme change is visible immediately. A conversation
+  is never cleared for a cosmetic command: when a transcript is present the
+  command explains that earlier output keeps its original colours and that
+  `:home` repaints in full.
+
+### Added
+
+- **`scripts/show_theme_contrast.py`** prints a theme's text colours as real
+  terminal swatches with their measured contrast ratio, because a colour change
+  is hard to judge from a diff.
+
 ## [0.2.64] - 2026-07-30
 
 Hotfix for 0.2.63, which shipped a GitHub Copilot CLI route that could not

@@ -409,7 +409,7 @@ class FormattingMixin:
             return
 
         if not data:
-            self._call_ui(log.write, Text("  📋 No tasks", style="#71717a"))
+            self._call_ui(log.write, Text("  📋 No tasks", style="#a1a1aa"))
             return
 
         # Count statuses
@@ -452,10 +452,10 @@ class FormattingMixin:
                 "done": ("✅", "#22c55e"),
                 "in_progress": ("🔄", "#a855f7"),
                 "active": ("🔄", "#a855f7"),
-                "pending": ("○", "#71717a"),
+                "pending": ("○", "#a1a1aa"),
                 "blocked": ("🚫", "#ef4444"),
             }
-            icon, color = status_icons.get(status, ("○", "#71717a"))
+            icon, color = status_icons.get(status, ("○", "#a1a1aa"))
 
             # Priority styling
             title_style = "#e4e4e7"
@@ -464,7 +464,7 @@ class FormattingMixin:
             elif priority in ("critical", "urgent"):
                 title_style = "#ef4444"
             elif status in ("completed", "done"):
-                title_style = "#71717a"
+                title_style = "#a1a1aa"
 
             line = Text()
             line.append(f"    {icon} ", style=color)
@@ -473,7 +473,7 @@ class FormattingMixin:
 
         if len(data) > 8:
             more = Text()
-            more.append(f"    ... and {len(data) - 8} more\n", style="#71717a")
+            more.append(f"    ... and {len(data) - 8} more\n", style="#a1a1aa")
             self._call_ui(log.write, more)
 
     def _display_file_results(self, data: Any, tool_name: str, log: ConversationLog) -> None:
@@ -489,7 +489,7 @@ class FormattingMixin:
                 return
 
         if not files:
-            self._call_ui(log.write, Text("  🔍 No matches found\n", style="#71717a"))
+            self._call_ui(log.write, Text("  🔍 No matches found\n", style="#a1a1aa"))
             return
 
         # Header
@@ -518,13 +518,13 @@ class FormattingMixin:
                 path_str = "..." + path_str[-52:]
 
             line = Text()
-            line.append(f"    {icon} ", style="#52525b")
+            line.append(f"    {icon} ", style="#71717a")
             line.append(f"{path_str}\n", style="#06b6d4")
             self._call_ui(log.write, line)
 
         if len(files) > 6:
             more = Text()
-            more.append(f"    ... and {len(files) - 6} more\n", style="#71717a")
+            more.append(f"    ... and {len(files) - 6} more\n", style="#a1a1aa")
             self._call_ui(log.write, more)
 
     def _display_task_list(self, data: list, log: ConversationLog) -> None:
@@ -547,16 +547,16 @@ class FormattingMixin:
             icons = {
                 "completed": ("✅", "#22c55e"),
                 "in_progress": ("⏳", "#a855f7"),
-                "pending": ("○", "#71717a"),
+                "pending": ("○", "#a1a1aa"),
             }
-            icon, color = icons.get(status, ("○", "#71717a"))
+            icon, color = icons.get(status, ("○", "#a1a1aa"))
 
             line = Text()
             line.append(f"    {icon} ", style=color)
             if task_id:
-                line.append(f"[{task_id}] ", style="#52525b")
+                line.append(f"[{task_id}] ", style="#71717a")
             line.append(
-                f"{str(subject)}\n", style="#e4e4e7" if status != "completed" else "#71717a"
+                f"{str(subject)}\n", style="#e4e4e7" if status != "completed" else "#a1a1aa"
             )
             self._call_ui(log.write, line)
 
@@ -633,7 +633,7 @@ class FormattingMixin:
 
         for item in data[:5]:
             line = Text()
-            line.append("    • ", style="#52525b")
+            line.append("    • ", style="#71717a")
 
             if isinstance(item, dict):
                 display = None
@@ -650,7 +650,7 @@ class FormattingMixin:
 
         if len(data) > 5:
             more = Text()
-            more.append(f"    ... and {len(data) - 5} more\n", style="#71717a")
+            more.append(f"    ... and {len(data) - 5} more\n", style="#a1a1aa")
             self._call_ui(log.write, more)
 
     def _display_generic_dict(self, data: dict, tool_name: str, log: ConversationLog) -> None:
@@ -668,7 +668,7 @@ class FormattingMixin:
 
         if len(data) > 4:
             more = Text()
-            more.append(f"  ... +{len(data) - 4} more fields\n", style="#71717a")
+            more.append(f"  ... +{len(data) - 4} more fields\n", style="#a1a1aa")
             self._call_ui(log.write, more)
 
     def _format_tool_message_rich(self, tool_name: str, tool_input: dict) -> str:

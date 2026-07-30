@@ -716,7 +716,7 @@ def format_response_styled(
         result.append(f"  ({duration:.1f}s)", style="#6b7280")
 
     if token_count > 0:
-        result.append(f"  {token_count} tokens", style="#52525b")
+        result.append(f"  {token_count} tokens", style="#71717a")
 
     result.append("\n─" * 50 + "\n\n", style="#27272a")
 

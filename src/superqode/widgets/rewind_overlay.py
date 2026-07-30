@@ -69,7 +69,7 @@ class RewindOverlay(ModalScreen[int | None]):
 
     RewindOverlay .subtitle {
         text-align: center;
-        color: #71717a;
+        color: #a1a1aa;
         height: 2;
     }
 
@@ -94,7 +94,7 @@ class RewindOverlay(ModalScreen[int | None]):
 
     RewindOverlay .hints {
         text-align: center;
-        color: #71717a;
+        color: #a1a1aa;
         height: 1;
     }
     """
@@ -136,13 +136,13 @@ class RewindOverlay(ModalScreen[int | None]):
         "agent": ("#a855f7", "agent"),
         "assistant": ("#a855f7", "agent"),
         "error": ("#f43f5e", "error"),
-        "system": ("#71717a", "system"),
+        "system": ("#a1a1aa", "system"),
     }
 
     def _render_transcript(self) -> Text:
         text = Text()
         if not self._transcript:
-            text.append("  (empty transcript)\n", style="#71717a")
+            text.append("  (empty transcript)\n", style="#a1a1aa")
             return text
         user_seen = 0
         for role, body, agent in self._transcript:
@@ -165,7 +165,7 @@ class RewindOverlay(ModalScreen[int | None]):
             label.append(target.preview, style="#e4e4e7")
             options.append(Option(label, id=str(target.occurrence)))
         if not options:
-            options.append(Option(Text("  No messages to rewind to", style="#71717a")))
+            options.append(Option(Text("  No messages to rewind to", style="#a1a1aa")))
         return options
 
     # ----- actions -----------------------------------------------------------
